@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cost Centre Form View -->
+    <record id="view_partner_cost_centre_form" model="ir.ui.view">
+        <field name="name">partner.cost.centre.form</field>
+        <field name="model">partner.cost.centre</field>
+        <field name="arch" type="xml">
+            <form string="Cost Centre">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="cost_centre" placeholder="e.g., CC001"/>
+                            <field name="business" placeholder="Business name"/>
+                            <field name="business_unit" placeholder="Business unit code"/>
+                        </group>
+                        <group>
+                            <field name="profit_centre" placeholder="Profit centre code"/>
+                            <field name="notes" placeholder="Additional notes"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Cost Centre list View -->
+    <record id="view_partner_cost_centre_list" model="ir.ui.view">
+        <field name="name">partner.cost.centre.list</field>
+        <field name="model">partner.cost.centre</field>
+        <field name="arch" type="xml">
+            <list string="Cost Centres" decoration-muted="not active">
+                <field name="cost_centre"/>
+                <field name="business"/>
+                <field name="business_unit"/>
+                <field name="profit_centre"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Inherit Partner Form View to add Cost Centre Tab -->
+    <record id="view_partner_form_inherit_cost_centre" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.cost.centre</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Cost Centres" name="cost_centres" invisible="not is_company">
+                    <field name="cost_centre_ids">
+                        <list editable="bottom" decoration-muted="not active">
+                            <field name="cost_centre" required="1"/>
+                            <field name="business"/>
+                            <field name="business_unit"/>
+                            <field name="profit_centre"/>
+                            <field name="notes"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </list>
+                        <form>
+                            <sheet>
+                                <group>
+                                    <group>
+                                        <field name="cost_centre"/>
+                                        <field name="business"/>
+                                        <field name="business_unit"/>
+                                    </group>
+                                    <group>
+                                        <field name="profit_centre"/>
+                                        <field name="notes"/>
+                                        <field name="active" widget="boolean_toggle"/>
+                                    </group>
+                                </group>
+                            </sheet>
+                        </form>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
