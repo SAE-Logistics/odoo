@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_sale_order_goods" model="ir.actions.act_window">
+        <field name="name">Goods Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form,kanban,calendar,pivot,graph,activity</field>
+        <field name="context">{"ord_type":"goods"}</field>
+        <field name="domain">[("order_type","in",["goods_in", "goods_out"])]</field>
+    </record>
+    <menuitem id="menu_sale_order_goods" name="Goods Orders" parent="sale.menu_sale_order" sequence="25"
+              action="action_sale_order_goods"/>
+
+
+    <record id="action_sale_order_transport" model="ir.actions.act_window">
+        <field name="name">Transport Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form,kanban,calendar,pivot,graph,activity</field>
+        <field name="context">{"ord_type":"transport"}</field>
+        <field name="domain">[("order_type","=","transport")]</field>
+    </record>
+    <menuitem id="menu_sale_order_transport" name="Transport Orders" parent="sale.menu_sale_order" sequence="26"
+              action="action_sale_order_transport"/>
+</odoo>

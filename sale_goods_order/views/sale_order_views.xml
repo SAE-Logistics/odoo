@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+       <!-- Inherit Form View to Modify it -->
+       <record id="sale_order_form_inherit_order_type" model="ir.ui.view">
+           <field name="name">sale.order.form.inherit.order.type</field>
+           <field name="model">sale.order</field>
+           <field name="inherit_id" ref="sale.view_order_form"/>
+           <field name="arch" type="xml">
+
+               <xpath expr="//field[@name='sale_order_template_id']" position="after">
+                   <field name="order_type"/>
+                   <field name="picking_type"/>
+               </xpath>
+
+               <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
+                   <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')]</attribute>
+               </xpath>
+
+           </field>
+       </record>
+
+        <!-- Inherit Form View to Modify it -->
+        <record id="sale_order_template_view_form_inherit_order_type" model="ir.ui.view">
+            <field name="name">sale.order.template.view.form.inherit.order.type</field>
+            <field name="model">sale.order.template</field>
+            <field name="inherit_id" ref="sale_management.sale_order_template_view_form"/>
+            <field name="arch" type="xml">
+
+                <xpath expr="//field[@name='number_of_days']" position="before">
+                    <field name="order_type"/>
+                    <field name="picking_type"/>
+                </xpath>
+
+            </field>
+        </record>
+
+    </data>
+</odoo>
