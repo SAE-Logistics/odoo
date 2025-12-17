@@ -2,24 +2,33 @@
 <odoo>
     <data>
 
-       <!-- Inherit Form View to Modify it -->
-       <record id="sale_order_form_inherit_order_type" model="ir.ui.view">
-           <field name="name">sale.order.form.inherit.order.type</field>
-           <field name="model">sale.order</field>
-           <field name="inherit_id" ref="sale.view_order_form"/>
-           <field name="arch" type="xml">
+        <!-- Inherit Form View to Modify it -->
+        <record id="sale_order_form_inherit_order_type" model="ir.ui.view">
+            <field name="name">sale.order.form.inherit.order.type</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type="xml">
 
-               <xpath expr="//field[@name='sale_order_template_id']" position="after">
-                   <field name="order_type"/>
-                   <field name="picking_type"/>
-               </xpath>
+                <xpath expr="//field[@name='sale_order_template_id']" position="after">
+                    <field name="order_type"/>
+                    <field name="picking_type"/>
+                </xpath>
 
-               <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
-                   <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')]</attribute>
-               </xpath>
+                <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
+                    <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')]</attribute>
+                </xpath>
 
-           </field>
-       </record>
+                <xpath expr="//sheet//div[@name='button_box']" position="inside">
+                    <button name="action_view_materials_pickings"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-cubes">
+                        <field name="materials_picking_count" widget="statinfo" string="Materials"/>
+                    </button>
+                </xpath>
+
+            </field>
+        </record>
 
         <!-- Inherit Form View to Modify it -->
         <record id="sale_order_template_view_form_inherit_order_type" model="ir.ui.view">

@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_material_template,sale_material_template,model_sale_material_template,base.group_user,1,1,1,1
+access_sale_material_template_line,sale_material_template_line,model_sale_material_template_line,base.group_user,1,1,1,1
+access_material_picking_wizard,material_picking_wizard,model_material_picking_wizard,base.group_user,1,1,1,1
+access_material_picking_wizard_line,material_picking_wizard_line,model_material_picking_wizard_line,base.group_user,1,1,1,1
+access_stock_picking_consumption_line,stock_picking_consumption_line,model_stock_picking_consumption_line,base.group_user,1,1,1,1

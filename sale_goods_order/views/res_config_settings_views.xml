@@ -110,6 +110,15 @@
                             </div>
                         </div>
                     </setting>
+
+                    <setting id="default_material_template" company_dependent="1" string="Materials Template">
+                        <div class="content-group">
+                            <div class="row">
+                                <label string="Default Materials Template" for="sale_material_template_id" class="col-lg-3 o_light_label"/>
+                                <field name="sale_material_template_id"/>
+                            </div>
+                        </div>
+                    </setting>
                 </block>
             </app>
         </field>

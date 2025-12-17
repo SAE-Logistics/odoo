@@ -1,0 +1,59 @@
+<!-- stock_materials_consumption/views/stock_picking_views.xml -->
+<odoo>
+    <record id="view_picking_form_inherit_materials" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.materials</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Boolean to mark materials picking -->
+            <xpath expr="//sheet/notebook" position="inside">
+                <group string="Materials">
+                    <field name="is_material_picking"/>
+                    <field name="source_picking_id"
+                           invisible="is_material_picking == False"/>
+                </group>
+                <!-- New page for Materials Consumption -->
+                <page string="Materials Consumption">
+                    <group string="Material Pickings">
+                        <field name="material_consumption_ids">
+                            <list>
+                                <field name="name"/>
+                                <field name="picking_type_id"/>
+                                <field name="scheduled_date"/>
+                                <field name="state"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Consumed Products (Summary)">
+                        <field name="consumed_product_line_ids">
+                            <list>
+                                <field name="product_id"/>
+                                <field name="product_uom_id"/>
+                                <field name="quantity"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Consumed Moves">
+                        <field name="consumed_move_ids">
+                            <list>
+                                <field name="product_id"/>
+                                <field name="product_uom_qty"/>
+                                <field name="picking_id"/>
+                                <field name="state"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+            </xpath>
+
+            <!-- Button in header -->
+            <xpath expr="//header" position="inside">
+                <button name="action_open_material_wizard"
+                        string="Add Materials"
+                        type="object"
+                        class="btn-primary"
+                        invisible="sale_id == False or picking_type_code == 'internal'"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

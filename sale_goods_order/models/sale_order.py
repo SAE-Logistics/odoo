@@ -19,6 +19,11 @@ class SaleOrder(models.Model):
     # order_type = fields.Selection(ORDER_TYPE, default=lambda self: self._context.get('order_type', 'standard'), required=True, index=True)
     order_type = fields.Selection(related='sale_order_template_id.order_type')
     picking_type = fields.Selection(related='sale_order_template_id.picking_type')
+    materials_picking_count = fields.Integer(
+        string="Materials",
+        compute="_compute_materials_picking_count",
+    )
+
     @api.onchange('order_type')
     def _onchange_order_type_set_template(self):
         if self.order_type in ['goods_in', 'goods_out'] and not self.sale_order_template_id:
@@ -82,6 +87,36 @@ class SaleOrder(models.Model):
 
         return res
 
+    def _compute_materials_picking_count(self):
+        Picking = self.env["stock.picking"]
+        for order in self:
+            count = Picking.search_count([
+                ("sale_id", "=", order.id),
+                ("is_material_picking", "=", True),
+            ])
+            order.materials_picking_count = count
+
+    def action_view_materials_pickings(self):
+        self.ensure_one()
+        action = self.env.ref("stock.action_picking_tree_all").read()[0]
+        action["domain"] = [
+            ("sale_id", "=", self.id),
+            ("is_material_picking", "=", True),
+        ]
+        action["context"] = {
+            "default_sale_id": self.id,
+            "default_is_material_picking": True,
+        }
+        return action
+
+    @api.depends('picking_ids')
+    def _compute_picking_ids(self):
+        for order in self:
+            order.delivery_count = len(order.picking_ids.filtered(lambda p: not p.is_material_picking))
+
+    def action_view_delivery(self):
+        return self._get_action_view_picking(self.picking_ids.filtered(lambda p: not p.is_material_picking))
+
 class SaleOrderTemplate(models.Model):
     _inherit = 'sale.order.template'
 
@@ -94,7 +129,64 @@ class SaleOrderLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # If nothing to create, just return empty recordset
+        if not vals_list:
+            return self.env["sale.order.line"]
+
+        # 1) Check if ANY of the vals has `move_ids`
+        contains_move_ids = any(vals.get("move_ids") for vals in vals_list)
+        if not contains_move_ids:
+            # No special handling → normal behavior
+            return super(SaleOrderLine, self).create(vals_list)
+
+        # 2) We are in the "material consumption" flow → load template
+        material_ids = []
+        template = self.env["material.picking.wizard"]._get_template()
+        if template:
+            material_ids = set(template.line_ids.mapped("product_id").ids)
+
+        lines_to_create = []
+
         for vals in vals_list:
-            if vals.get('move_ids', False):
-                return
-        return super(SaleOrderLine, self).create(vals_list)
+            # Case A: material-flow lines (non-empty move_ids)
+            if vals.get("move_ids"):
+                product_id = vals.get("product_id")
+                order_id = vals.get("order_id")
+
+                # If we don't have product or order, fall back to normal create
+                if not product_id or not order_id:
+                    lines_to_create.append(vals)
+                    continue
+
+                # If this product is not part of the materials template, ignore it
+                if product_id not in material_ids:
+                    # neither update nor create a line for this vals
+                    continue
+
+                # Look for an existing SO line with same order + product
+                existing_line = self.env["sale.order.line"].search([
+                    ("order_id", "=", order_id),
+                    ("product_id", "=", product_id),
+                ], limit=1)
+
+                if existing_line:
+                    # Add extra delivered qty to existing line
+                    extra_delivered = vals.get("qty_delivered") or 0.0
+                    if extra_delivered:
+                        existing_line.qty_delivered += extra_delivered
+                    # Do NOT create a new line for this vals
+                else:
+                    # No existing SO line with this product: create a new one
+                    lines_to_create.append(vals)
+
+            # Case B: non-material lines (no move_ids key or empty move_ids)
+            else:
+                # Just create as usual
+                lines_to_create.append(vals)
+
+        # 3) If nothing left to create, return empty recordset
+        if not lines_to_create:
+            return self.env["sale.order.line"]
+
+        # 4) Create remaining lines normally
+        return super(SaleOrderLine, self).create(lines_to_create)

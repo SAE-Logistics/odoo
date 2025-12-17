@@ -5,11 +5,79 @@ from collections import defaultdict
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
+    is_material_picking = fields.Boolean(
+        string="Materials",
+        help="Marks this picking as a materials consumption picking.",
+    )
+    # The picking this material picking was created from
+    source_picking_id = fields.Many2one(
+        "stock.picking",
+        string="Source Picking",
+        help="Original picking for which these materials were consumed.",
+    )
+    # All material consumption pickings created from this one
+    material_consumption_ids = fields.One2many(
+        "stock.picking",
+        "source_picking_id",
+        string="Material Consumptions",
+    )
+    # Flattened list of consumed moves tied back to this picking
+    consumed_move_ids = fields.One2many(
+        "stock.move",
+        "consumption_source_picking_id",
+        string="Consumed Products",
+    )
+
+    consumed_product_line_ids = fields.One2many(
+        "stock.picking.consumption.line",
+        "picking_id",
+        string="Consumed Products Summary",
+    )
+
+    def action_open_material_wizard(self):
+        """Button on picking: open wizard with template lines."""
+        self.ensure_one()
+        # Make sure there is an SO linked
+        sale = self.sale_id
+        if not sale:
+            # you can change to UserError if you prefer
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": "No Sale Order",
+                    "message": "This transfer is not linked to a Sale Order.",
+                    "sticky": False,
+                    "type": "warning",
+                },
+            }
+
+        wizard = self.env["material.picking.wizard"].create({
+            "picking_id": self.id,
+            "sale_id": sale.id,
+        })
+        wizard._load_lines_from_template()
+
+        return {
+            "name": "Add Materials",
+            "type": "ir.actions.act_window",
+            "res_model": "material.picking.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "res_id": wizard.id,
+        }
 
     def button_validate(self):
         res = super().button_validate()
-        print("Validate called")
-        self._update_goods_order_metrics()
+        # print(self._context)
+        # print("Validate called")
+        # self._update_goods_order_metrics()
+        # material_pickings = self.filtered(
+        #     lambda p: p.is_material_picking and p.state == "done" and p.source_picking_id
+        # )
+        # for mat_picking in material_pickings:
+        #     mat_picking.source_picking_id._recompute_consumed_products()
+
         return res
 
 
@@ -22,6 +90,8 @@ class StockPicking(models.Model):
 
     def _update_goods_order_metrics(self):
         for picking in self:
+            if picking.is_material_picking:
+                continue
             sale = picking.sale_id
             if not sale or sale.order_type not in ['goods_in', 'goods_out']:
                 continue
@@ -76,6 +146,7 @@ class StockPicking(models.Model):
         metrics['order_receipt'] = 1
         metrics['cartons_in' if picking.picking_type_code == 'incoming' else 'cartons_out'] = cartons
         metrics['pallets_in' if picking.picking_type_code == 'incoming' else 'pallets_out'] = pallets
+        print(metrics)
         return metrics
 
     def _apply_metrics_to_sale_order(self, sale, metrics):
@@ -135,9 +206,50 @@ class StockPicking(models.Model):
             else:
                 line.qty_delivered += qty
 
+    def _recompute_consumed_products(self):
+        """
+        Rebuild the aggregated consumed products for each picking, based on
+        all DONE material consumption moves linked via consumption_source_picking_id.
+        """
+        Move = self.env["stock.move"]
+        Line = self.env["stock.picking.consumption.line"]
 
-    # def _action_done(self):
-    #     res = super()._action_done()
+        for picking in self:
+            # Find all done moves that consumed materials for this picking
+            moves = Move.search([
+                ("consumption_source_picking_id", "=", picking.id),
+                ("state", "=", "done"),
+            ])
+
+            # Group by (product, uom)
+            aggregated = {}
+            for move in moves:
+                key = (move.product_id.id, move.product_uom.id)
+                qty = move.quantity or move.product_uom_qty
+                aggregated[key] = aggregated.get(key, 0.0) + qty
+
+            # Remove old summary lines
+            picking.consumed_product_line_ids.unlink()
+
+            # Create new summary lines
+            for (product_id, uom_id), qty in aggregated.items():
+                Line.create({
+                    "picking_id": picking.id,
+                    "product_id": product_id,
+                    "product_uom_id": uom_id,
+                    "quantity": qty,
+                })
+    def _action_done(self):
+        res = super()._action_done()
+        print(self._context)
+        print("Validate called")
+        self._update_goods_order_metrics()
+        material_pickings = self.filtered(
+            lambda p: p.is_material_picking and p.state == "done" and p.source_picking_id
+        )
+        for mat_picking in material_pickings:
+            mat_picking.source_picking_id._recompute_consumed_products()
+        return res
     #     if self.sale_id and self.sale_id.order_type != 'standard':
     #         print("called during deliveries as well")
     #         return res

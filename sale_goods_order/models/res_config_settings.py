@@ -29,3 +29,9 @@ class ResConfigSettings(models.TransientModel):
     product_storage_unit_month_id     = fields.Many2one('product.product', string='Unit Storage (per month)', config_parameter='sale_gto.product_storage_unit_month_id')
     product_storage_yard_month_id     = fields.Many2one('product.product', string='Yard Space (per month)', config_parameter='sale_gto.product_storage_yard_month_id')
     product_storage_other_id          = fields.Many2one('product.product', string='Storage – Other', config_parameter='sale_gto.product_storage_other_id')
+
+    sale_material_template_id = fields.Many2one(
+        "sale.material.template",
+        string="Materials Template",
+        config_parameter='sale_gto.sale_material_template_id',
+    )
