@@ -54,6 +54,11 @@
                         class="btn-primary"
                         invisible="sale_id == False or picking_type_code == 'internal'"/>
             </xpath>
+
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="collect_note"/>
+                <field name="deliver_note"/>
+            </xpath>
         </field>
     </record>
 </odoo>

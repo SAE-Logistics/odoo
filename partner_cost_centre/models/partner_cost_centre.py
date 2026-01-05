@@ -7,6 +7,12 @@ class PartnerCostCentre(models.Model):
     _description = 'Partner Cost Centre'
     _order = 'cost_centre'
 
+    name = fields.Char(
+        compute="_compute_name",
+        store=True,
+        index=True
+    )
+
     partner_id = fields.Many2one(
         'res.partner',
         string='Company',
@@ -61,13 +67,12 @@ class PartnerCostCentre(models.Model):
                         f"Cost Centre '{record.cost_centre}' already exists "
                         f"for this company. Please use a unique value."
                     )
-
-    def name_get(self):
+    @api.depends("cost_centre", "business")
+    def _compute_name(self):
         """Display cost centre and business name"""
-        result = []
+        print("cost centre name calculation triggered")
         for record in self:
             name = record.cost_centre
             if record.business:
                 name = f"{name} - {record.business}"
-            result.append((record.id, name))
-        return result
+            record.name = name

@@ -23,6 +23,10 @@ class SaleOrder(models.Model):
         string="Materials",
         compute="_compute_materials_picking_count",
     )
+    commercial_partner_id = fields.Many2one(related='partner_id.commercial_partner_id', store=True)
+    cost_centre_id = fields.Many2one('partner.cost.centre', string='Cost Centre')
+    collect_note = fields.Text(string='Collection Note')
+    deliver_note = fields.Text(string='Delivery Note')
 
     @api.onchange('order_type')
     def _onchange_order_type_set_template(self):

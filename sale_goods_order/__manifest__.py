@@ -5,7 +5,7 @@
     "category": "Sales",
     "author": "rahways",
     "license": "LGPL-3",
-    "depends": ["sale_management", "stock", "product", "sale_stock"],
+    "depends": ["sale_management", "stock", "product", "sale_stock", "partner_cost_centre"],
     "data": [
         "security/ir.model.access.csv",
         "views/menu.xml",

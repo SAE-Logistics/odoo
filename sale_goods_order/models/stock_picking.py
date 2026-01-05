@@ -34,6 +34,9 @@ class StockPicking(models.Model):
         string="Consumed Products Summary",
     )
 
+    collect_note = fields.Text(related='sale_id.collect_note')
+    deliver_note = fields.Text(related='sale_id.deliver_note')
+
     def action_open_material_wizard(self):
         """Button on picking: open wizard with template lines."""
         self.ensure_one()
