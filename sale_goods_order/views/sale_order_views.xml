@@ -11,16 +11,18 @@
 
                 <xpath expr="//field[@name='sale_order_template_id']" position="after">
                     <field name="order_type"/>
-                    <field name="picking_type"/>
+                    <field name="picking_type" invisible="order_type not in ['goods_in', 'goods_out']"/>
                     <field name="commercial_partner_id" invisible="1"/>
                     <field name="cost_centre_id" domain="[('partner_id', '=', commercial_partner_id)]"/>
                 </xpath>
 
                 <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
-                    <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')]</attribute>
+                    <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')]
+                    </attribute>
                 </xpath>
 
-                <xpath expr="//page[@name='other_information']/group/group[@name='sale_info']/field[@name='invoice_status']" position="after">
+                <xpath expr="//page[@name='other_information']/group/group[@name='sale_info']/field[@name='invoice_status']"
+                       position="after">
                     <field name="collect_note"/>
                     <field name="deliver_note"/>
                 </xpath>
@@ -29,11 +31,69 @@
                     <button name="action_view_materials_pickings"
                             type="object"
                             class="oe_stat_button"
-                            icon="fa-cubes">
+                            icon="fa-cubes"
+                            invisible="order_type not in ['goods_in', 'goods_out'] or state != 'sale'">
                         <field name="materials_picking_count" widget="statinfo" string="Materials"/>
                     </button>
                 </xpath>
 
+                <!-- Add a new notebook page similar to Order Lines -->
+                <xpath expr="//notebook" position="inside">
+                    <page string="Additional Information" name="additional_info">
+                        <group>
+<!--                            <field name="rep_name"/>-->
+                            <field name="label_email"/>
+                            <field name="order_note"/>
+                        </group>
+                    </page>
+                    <page string="Transport Products" name="product_lines" invisible="order_type != 'transport'">
+                        <group>
+                            <group>
+                                <field name="transport_from_id" options="{'no_create_edit': False}"/>
+                            </group>
+                            <group>
+                                <field name="transport_to_id" options="{'no_create_edit': False}"/>
+                            </group>
+                        </group>
+                        <field name="product_line_ids">
+<!--                            <tree editable="bottom">-->
+<!--                                <field name="sequence" widget="handle"/>-->
+<!--                                <field name="image" widget="image" class="oe_avatar"-->
+<!--                                       options="{'preview_image': 'image'}"/>-->
+<!--                                <field name="product_id"/>-->
+<!--                                <field name="type"/>-->
+<!--                                <field name="description"/>-->
+<!--                                <field name="hs_code"/>-->
+<!--                                <field name="country_of_origin_id"/>-->
+<!--                                <field name="qty"/>-->
+<!--                                <field name="weight"/>-->
+<!--                                <field name="price"/>-->
+<!--                            </tree>-->
+
+<!--                            <form string="Transport Line">-->
+<!--                                <sheet>-->
+<!--                                    <group>-->
+<!--                                        <group>-->
+<!--                                            <field name="product_id"/>-->
+<!--                                            <field name="type"/>-->
+<!--                                            <field name="hs_code"/>-->
+<!--                                            <field name="country_of_origin_id"/>-->
+<!--                                        </group>-->
+<!--                                        <group>-->
+<!--                                            <field name="qty"/>-->
+<!--                                            <field name="weight"/>-->
+<!--                                            <field name="price"/>-->
+<!--                                        </group>-->
+<!--                                    </group>-->
+<!--                                    <group>-->
+<!--                                        <field name="image" widget="image" options="{'preview_image': 'image'}"/>-->
+<!--                                        <field name="description"/>-->
+<!--                                    </group>-->
+<!--                                </sheet>-->
+<!--                            </form>-->
+                        </field>
+                    </page>
+                </xpath>
             </field>
         </record>
 

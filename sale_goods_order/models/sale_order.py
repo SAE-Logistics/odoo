@@ -1,4 +1,6 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
+
 
 ORDER_TYPE = [
         ('standard', 'Standard'),
@@ -27,6 +29,44 @@ class SaleOrder(models.Model):
     cost_centre_id = fields.Many2one('partner.cost.centre', string='Cost Centre')
     collect_note = fields.Text(string='Collection Note')
     deliver_note = fields.Text(string='Delivery Note')
+
+    product_line_ids = fields.One2many(
+        "transport.product.line",
+        "sale_order_id",
+        string="Transport Product Lines",
+        copy=True,
+    )
+
+    transport_from_id = fields.Many2one(
+        "res.partner",
+        string="From (Pickup Address)",
+        domain="[('type', 'in', ('delivery', 'contact', 'other'))]",
+        help="Pickup location for transport orders",
+    )
+
+    transport_to_id = fields.Many2one(
+        "res.partner",
+        string="To (Delivery Address)",
+        domain="[('type', 'in', ('delivery', 'contact', 'other'))]",
+        help="Drop-off location for transport orders",
+    )
+
+    transport_state = fields.Selection(
+        [
+            ("pending", "Pending"),
+            ("scheduled", "Scheduled"),
+            ("in_transit", "In Transit"),
+            ("delivered", "Delivered"),
+            ("cancelled", "Cancelled"),
+        ],
+        string="Transport State",
+        default="pending",
+        tracking=True,
+    )
+
+    # rep_name = fields.Char(string="Rep Name")
+    label_email = fields.Char(string="Collection Label Email")
+    order_note = fields.Text(string="Order Notes")
 
     @api.onchange('order_type')
     def _onchange_order_type_set_template(self):
@@ -120,6 +160,32 @@ class SaleOrder(models.Model):
 
     def action_view_delivery(self):
         return self._get_action_view_picking(self.picking_ids.filtered(lambda p: not p.is_material_picking))
+
+    @api.constrains("order_type", "order_line")
+    def _check_transport_order_has_no_stock_moves(self):
+        """
+        You said all products in default order_line will be services for transport orders.
+        This prevents accidental stockable/consu items from sneaking in.
+        """
+        for order in self:
+            if order.order_type != "transport":
+                continue
+            bad = order.order_line.filtered(lambda l: l.product_id and l.product_id.type != "service")
+            if bad:
+                raise ValidationError(_(
+                    "Transport orders must not contain stockable/consumable products in Order Lines.\n"
+                    "Please use only Service products in order_line."
+                ))
+
+    @api.depends('user_id', 'company_id')
+    def _compute_warehouse_id(self):
+        super(SaleOrder, self)._compute_warehouse_id()
+        for order in self:
+            if order.commercial_partner_id:
+                default_warehouse_id = self.env['stock.warehouse'].search([('commercial_partner_id', '=', order.commercial_partner_id.id)], limit=1)
+                if default_warehouse_id:
+                    order.warehouse_id = default_warehouse_id
+
 
 class SaleOrderTemplate(models.Model):
     _inherit = 'sale.order.template'

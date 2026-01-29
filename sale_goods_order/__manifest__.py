@@ -5,7 +5,7 @@
     "category": "Sales",
     "author": "rahways",
     "license": "LGPL-3",
-    "depends": ["sale_management", "stock", "product", "sale_stock", "partner_cost_centre"],
+    "depends": ["sale_management", "stock", "product", "sale_stock", "partner_cost_centre", "product_harmonized_system"],
     "data": [
         "security/ir.model.access.csv",
         "views/menu.xml",
@@ -15,6 +15,8 @@
         "views/material_template_views.xml",
         "views/material_picking_wizard_views.xml",
         "views/stock_picking_views.xml",
+        "views/transport_product_line_views.xml",
+        "views/stock_warehouse_views.xml"
     ],
     "installable": True,
     "application": False,

@@ -4,3 +4,6 @@ from . import res_config_settings
 from . import material_template
 from . import stock_move
 from . import stock_picking_consumption_line
+from . import transport_product_line
+from . import stock_warehouse
+
