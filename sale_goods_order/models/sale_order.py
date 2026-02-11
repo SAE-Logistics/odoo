@@ -197,6 +197,39 @@ class SaleOrderTemplate(models.Model):
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
+    order_type = fields.Selection(related='order_id.order_type')
+    package_type_id = fields.Many2one('stock.package.type', string='Package Type')
+    package_qty = fields.Integer(string='Package Qty')
+    total_weight = fields.Float(string='Total Weight')
+    transport_leg_ids = fields.One2many('sale.transport.leg', 'order_line_id', string='Transport Legs')
+    package_ids = fields.One2many('sale.package.line', 'order_line_id', string='Package Details')
+    fs_unit_price = fields.Monetary(string='F/S')
+
+    def _recompute_transport_cost_sell_from_legs(self):
+        """Server-side recalculation of cost from transport legs (no computed field)."""
+        for line in self:
+            legs = self.env['sale.transport.leg'].search([('order_line_id', '=', line.id)])
+            total_buy_rate = sum(legs.mapped('buy_rate') or [0.0]) + sum(legs.mapped('fs_buy_rate') or [0.0])
+            total_sell_rate = sum(legs.mapped('sell_rate') or [0.0]) + sum(legs.mapped('fs_sell_rate') or [0.0])
+            line.write({'purchase_price': total_buy_rate, 'price_unit': total_sell_rate})
+
+    def _recompute_package_count_weight(self):
+        """Server-side recalculation of cost from transport legs (no computed field)."""
+        for line in self:
+            packages = self.env['sale.package.line'].search([('order_line_id', '=', line.id)])
+            total_weight = sum(packages.mapped('weight') or [0.0])
+            total_quantity = sum(packages.mapped('quantity') or [0.0])
+            line.write({'total_weight': total_weight, 'package_qty': total_quantity})
+
+
+    @api.onchange('package_type_id')
+    def onchange_package_type_id(self):
+        for record in self:
+            if record.package_type_id:
+                record.product_id = record.package_type_id.product_id
+            else:
+                record.product_id = False
+
     @api.model_create_multi
     def create(self, vals_list):
         # If nothing to create, just return empty recordset
@@ -260,3 +293,65 @@ class SaleOrderLine(models.Model):
 
         # 4) Create remaining lines normally
         return super(SaleOrderLine, self).create(lines_to_create)
+
+    def action_open_transport_legs(self):
+        self.ensure_one()
+        if not self.order_id.transport_from_id or not self.order_id.transport_to_id:
+            raise ValidationError(_("Please specify the Pickup and Dropoff locations in 'Transport Products' tab"))
+        print("entered here >>> ", self.transport_leg_ids.ids)
+        if not self.transport_leg_ids:
+            print("entered here")
+            default_address_id = int(self.env['ir.config_parameter'].sudo().get_param('sale_gto.transport_address_id', 0))
+            print("self.order_id.order_type >>> ", self.order_id.order_type)
+            if self.order_id.order_type == 'transport':
+                result = self.transport_leg_ids.create([
+                    {
+                        'from_location': self.order_id.transport_from_id.id,
+                        'to_location': default_address_id,
+                        'sequence': 1,
+                        'order_line_id': self.id
+                    },
+                    {
+                        'sequence': 2,
+                        'from_location': default_address_id,
+                        'to_location': self.order_id.transport_to_id.id,
+                        'order_line_id': self.id
+                    }
+
+                ])
+                print('result >>> ', result)
+
+        domain = [('id', 'in', self.transport_leg_ids.ids)]
+        print("domain >>> ", domain)
+        ctx = dict(self.env.context or {})
+        # Optional defaults if you create from this screen
+        # ctx.update({
+        #     "default_sale_line_id": self.id,
+        #     "default_order_id": self.order_id.id,
+        # })
+
+
+
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Transport Legs"),
+            "res_model": "sale.transport.leg",
+            "view_mode": "list,form",
+            "domain": domain,
+            "context": ctx,
+            "target": "current",
+        }
+
+    def add_view_package_details(self):
+        domain = [('id', 'in', self.package_ids.ids)]
+        ctx = dict(self.env.context or {})
+        ctx['default_order_line_id'] = self.id
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Package Details"),
+            "res_model": "sale.package.line",
+            "view_mode": "list,form",
+            "domain": domain,
+            "context": ctx,
+            "target": "new",
+        }

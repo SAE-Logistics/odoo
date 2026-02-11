@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="sale_transport_leg_form_view" model="ir.ui.view">
+            <field name="name">sale.transport.leg.form.view</field>
+            <field name="model">sale.transport.leg</field>
+            <field name="arch" type="xml">
+                <form string="Transport Leg">
+                    <header>
+                        <button name="action_in_transit" string="In Transit" class="oe_highlight" invisible="state not in ['scheduled']" type="object"/>
+                        <button name="action_completed" string="Mark Completed" class="oe_highlight" invisible="state not in ['in_transit']" type="object"/>
+                        <button name="action_back" string="Back" invisible="state in ['scheduled']" type="object"/>
+                        <field name="state" widget="statusbar" statusbar_visible="scheduled,in_transit,completed"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <group string="From" name="pickup_from">
+                                <field name="from_location"/>
+                                <field name="from_date"/>
+                                <field name="from_postcode"/>
+                                <field name="from_address"/>
+                                <field name="from_town"/>
+                                <field name="from_county"/>
+                                <field name="from_country"/>
+                                <field name="from_tel"/>
+                                <field name="from_contact"/>
+                                <field name="from_email"/>
+                                <field name="from_instructions"/>
+                            </group>
+                            <group string="To" name="dropoff_to">
+                                <field name="to_location"/>
+                                <field name="to_date"/>
+                                <field name="to_postcode"/>
+                                <field name="to_address"/>
+                                <field name="to_town"/>
+                                <field name="to_county"/>
+                                <field name="to_country"/>
+                                <field name="to_tel"/>
+                                <field name="to_contact"/>
+                                <field name="to_email"/>
+                                <field name="to_instructions"/>
+                            </group>
+                        </group>
+                        <group string="Service Details">
+                            <group>
+                                <field name="service_id"/>
+                                <field name="carrier_id"/>
+                                <field name="is_internal"/>
+                                <field name="fleet_id" invisible="not is_internal"/>
+                                <field name="driver_id" invisible="not is_internal"/>
+                            </group>
+                            <group>
+                                <field name="sell_rate"/>
+                                <field name="buy_rate"/>
+                                <field name="margin"/>
+                                <field name="fs_sell_rate"/>
+                                <field name="fs_buy_rate"/>
+                                <field name="fs_margin"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Service">
+                                <group>
+                                    <group>
+                                        <label for="preferred_service_id"/>
+                                        <div class="o_row">
+                                            <field name="preferred_service_id" options="{'no_open':True,'no_create': True}"/>
+                                            <button name="action_fetch_service_carrier_options" type="object" string=" Fetch" help="Recompute all carrier options based on this service" class="btn-link mb-1 px-0" icon="fa-refresh"/>
+                                        </div>
+                                    </group>
+                                </group>
+                                <field name="carrier_service_option_ids">
+                                    <list>
+                                        <field name="carrier_id"/>
+                                        <field name="service_id"/>
+                                        <field name="currency_id" invisible="1"/>
+                                        <field name="buy_rate"/>
+                                        <field name="is_selected"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Completion Details" invisible="state not in ['completed']">
+                                <group>
+                                    <group>
+                                        <field name="date_completion"/>
+                                        <field name="contact"/>
+                                        <field name="reference"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+
+        <record id="sale_transport_leg_list_view" model="ir.ui.view">
+            <field name="name">sale.transport.leg.list.view</field>
+            <field name="model">sale.transport.leg</field>
+            <field name="arch" type="xml">
+                <list string="Transport Legs" editable="bottom" open_form_view="True">
+                    <field name="sequence" widget="handle"/>
+                    <field name="order_id"/>
+                    <field name="from_location" string="From"/>
+                    <field name="to_location" string="To"/>
+                    <field name="from_date" string="Pickup Date" widget="remaining_days"/>
+                    <field name="to_date" string="Dropoff Date" widget="remaining_days"/>
+                    <field name="carrier_id"/>
+                    <field name="service_id"/>
+                    <field name="currency_id" column_invisible="1"/>
+                    <field name="sell_rate"/>
+                    <field name="buy_rate"/>
+                    <field name="margin"/>
+                    <field name="fs_sell_rate"/>
+                    <field name="fs_buy_rate"/>
+                    <field name="fs_margin"/>
+                    <field name="state"/>
+                </list>
+            </field>
+        </record>
+
+    </data>
+</odoo>

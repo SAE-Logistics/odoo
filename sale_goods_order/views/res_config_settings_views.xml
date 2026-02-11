@@ -119,6 +119,14 @@
                             </div>
                         </div>
                     </setting>
+                    <setting id="transport_address" company_dependent="1" string="Transport Address">
+                        <div class="content-group">
+                            <div class="row">
+                                <label string="Transport Address" for="transport_address_id" class="col-lg-3 o_light_label"/>
+                                <field name="transport_address_id"/>
+                            </div>
+                        </div>
+                    </setting>
                 </block>
             </app>
         </field>

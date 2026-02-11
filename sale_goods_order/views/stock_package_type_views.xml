@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+       <!-- Inherit Form View to Modify it -->
+       <record id="stock_package_type_product_form_inherit" model="ir.ui.view">
+           <field name="name">stock.package.type.product.form.inherit</field>
+           <field name="model">stock.package.type</field>
+           <field name="inherit_id" ref="stock.stock_package_type_form"/>
+           <field name="arch" type="xml">
+
+                <xpath expr="//group[@name='delivery']" position="inside">
+                    <group>
+                        <field name="product_id"/>
+                    </group>
+                </xpath>
+           </field>
+       </record>
+
+        <record id="sale_package_line_list_view" model="ir.ui.view">
+            <field name="name">sale.package.line.list.view</field>
+            <field name="model">sale.package.line</field>
+            <field name="arch" type="xml">
+                <list string="Package Details" editable="bottom">
+                    <field name="order_line_id" column_invisible="1"/>
+                    <field name="length"/>
+                    <field name="width"/>
+                    <field name="height"/>
+                    <field name="weight"/>
+                    <field name="quantity"/>
+                </list>
+            </field>
+        </record>
+
+    </data>
+</odoo>

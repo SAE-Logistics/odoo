@@ -6,4 +6,5 @@ from . import stock_move
 from . import stock_picking_consumption_line
 from . import transport_product_line
 from . import stock_warehouse
-
+from . import transport_leg
+from . import stock_package_type

@@ -37,6 +37,33 @@
                     </button>
                 </xpath>
 
+                <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list" position="inside">
+                    <button name="action_open_transport_legs" type="object" class="btn-primary" string="View Legs"/>
+                </xpath>
+
+                <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='product_id']" position="before">
+                    <field name="order_type" column_invisible="1"/>
+                    <field name="package_type_id"/>
+                    <button name="add_view_package_details" type="object" icon="fa-archive"/>
+                    <field name="package_qty"/>
+                    <field name="total_weight"/>
+                </xpath>
+
+                <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='product_template_id']" position="attributes">
+                    <attribute name="column_invisible">parent.order_type == 'transport'</attribute>
+                </xpath>
+                <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='name']" position="attributes">
+                    <attribute name="column_invisible">parent.order_type == 'transport'</attribute>
+                </xpath>
+                <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='product_uom_qty']" position="attributes">
+                    <attribute name="column_invisible">parent.order_type == 'transport'</attribute>
+                </xpath>
+                <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='product_packaging_qty']" position="attributes">
+                    <attribute name="column_invisible">parent.order_type == 'transport'</attribute>
+                </xpath>
+                <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='product_packaging_id']" position="attributes">
+                    <attribute name="column_invisible">parent.order_type == 'transport'</attribute>
+                </xpath>
                 <!-- Add a new notebook page similar to Order Lines -->
                 <xpath expr="//notebook" position="inside">
                     <page string="Additional Information" name="additional_info">
