@@ -176,12 +176,7 @@ class AccountMove(models.Model):
                 "sale_gto.product_lot_id",
                 "sale_gto.product_expiry_id",
             ],
-            "containers": [
-                "sale_gto.product_cartons_in_id",
-                "sale_gto.product_cartons_out_id",
-                "sale_gto.product_pallets_in_id",
-                "sale_gto.product_pallets_out_id",
-            ],
+            "containers": [],
             "storage": [
                 "sale_gto.product_storage_pallet_week_id",
                 "sale_gto.product_storage_carton_week_id",
@@ -249,7 +244,7 @@ class AccountMove(models.Model):
                 product = line.product_id
                 if self._is_storable_product(product):
                     row["materials"] += subtotal
-                elif product.id in metric_products["containers"]:
+                elif getattr(line, "container_charge_line", False):
                     row["containers"] += subtotal
                 elif product.id in metric_products["lot_expiry"]:
                     row["lot_expiry"] += subtotal

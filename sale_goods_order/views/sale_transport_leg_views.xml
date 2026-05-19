@@ -19,6 +19,11 @@
                             <field name="currency_id" invisible="1"/>
                         </group>
                         <group>
+                            <field name="order_id" readonly="1"/>
+                            <field name="order_line_id"/>
+                            <field name="picking_id"/>
+                        </group>
+                        <group>
                             <group string="From" name="pickup_from">
                                 <field name="from_location"/>
                                 <field name="from_date"/>
@@ -107,6 +112,8 @@
                 <list string="Transport Legs" editable="bottom" open_form_view="True">
                     <field name="sequence" widget="handle"/>
                     <field name="order_id"/>
+                    <field name="picking_id"/>
+                    <field name="order_line_id"/>
                     <field name="from_location" string="From"/>
                     <field name="to_location" string="To"/>
                     <field name="from_date" string="Pickup Date" widget="remaining_days"/>

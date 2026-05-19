@@ -35,6 +35,19 @@ class StockPicking(models.Model):
         "picking_id",
         string="Consumed Products Summary",
     )
+    transport_leg_ids = fields.One2many(
+        'sale.transport.leg',
+        'picking_id',
+        string='Transport Legs',
+    )
+    sale_order_type = fields.Selection(
+        related='sale_id.order_type',
+        string='Sale Order Type',
+    )
+    sale_no_transport_needed = fields.Boolean(
+        related='sale_id.no_transport_needed',
+        string='No Transport Needed',
+    )
 
     collect_note = fields.Text(related='sale_id.collect_note')
     deliver_note = fields.Text(related='sale_id.deliver_note')
@@ -87,13 +100,22 @@ class StockPicking(models.Model):
 
 
     def _update_goods_order_metrics(self):
-        for picking in self:
-            if picking.is_material_picking:
-                continue
-            sale = picking.sale_id
-            if not sale or sale.order_type not in ['goods_in', 'goods_out']:
-                continue
-            metrics = self._collect_metrics_from_picking(picking)
+        sales = self.filtered(
+            lambda p: (
+                not p.is_material_picking
+                and p.sale_id
+                and p.sale_id.order_type in ['goods_in', 'goods_out']
+            )
+        ).mapped('sale_id')
+        for sale in sales:
+            done_pickings = sale.picking_ids.filtered(
+                lambda p: not p.is_material_picking and p.state == 'done'
+            )
+            metrics = defaultdict(float)
+            for picking in done_pickings:
+                picking_metrics = self._collect_metrics_from_picking(picking)
+                for key, qty in picking_metrics.items():
+                    metrics[key] += qty
             self._apply_metrics_to_sale_order(sale, metrics)
 
     def _update_container_sale_lines(self):
@@ -121,9 +143,6 @@ class StockPicking(models.Model):
         lots = set()
         serials = set()
         expiries = set()
-        cartons = 0
-        pallets = 0
-
         for line in done_lines:
             lot = line.lot_id or line.lot_name
             if lot:
@@ -134,20 +153,11 @@ class StockPicking(models.Model):
             lot_rec = line.lot_id
             if lot_rec and (lot_rec.removal_date or lot_rec.use_date or lot_rec.expiration_date):
                 expiries.add(lot_rec.id)
-            if line.container_type_id and line.container_count:
-                container_name = (line.container_type_id.name or '').lower()
-                if 'carton' in container_name:
-                    cartons += line.container_count
-                elif 'pallet' in container_name:
-                    pallets += line.container_count
 
         metrics['lot_count'] = len(lots)
         metrics['serial_count'] = len(serials)
         metrics['expiry_count'] = len(expiries)
         metrics['order_receipt'] = 1
-        metrics['cartons_in' if picking.picking_type_code == 'incoming' else 'cartons_out'] = cartons
-        metrics['pallets_in' if picking.picking_type_code == 'incoming' else 'pallets_out'] = pallets
-        print(metrics)
         return metrics
 
     def _apply_metrics_to_sale_order(self, sale, metrics):
@@ -174,19 +184,16 @@ class StockPicking(models.Model):
             'serial_count': config.get_param('sale_gto.product_serial_id', False),
             'lot_count': config.get_param('sale_gto.product_lot_id', False),
             'expiry_count': config.get_param('sale_gto.product_expiry_id', False),
-            'cartons_in': config.get_param('sale_gto.product_cartons_in_id', False),
-            'cartons_out': config.get_param('sale_gto.product_cartons_out_id', False),
-            'pallets_in': config.get_param('sale_gto.product_pallets_in_id', False),
-            'pallets_out': config.get_param('sale_gto.product_pallets_out_id', False)
         }
 
         for key, qty in metrics.items():
-            print("Mapping Key >>> ", mapping[key])
-            product = self.env['product.product'].browse(int(mapping[key]))
+            product_id = mapping.get(key)
+            if not product_id:
+                continue
+            product = self.env['product.product'].browse(int(product_id))
             if not product or qty <= 0:
                 continue
 
-            print("product.display_name >>> ", product.display_name)
             line = sale.order_line.filtered(lambda l: l.product_id == product and not l.display_type)
             if not line:
                 line = self.env['sale.order.line'].create({
@@ -194,18 +201,23 @@ class StockPicking(models.Model):
                     'product_id': product.id,
                     'name': product.get_product_multiline_description_sale() or product.display_name,
                     'product_uom_qty': qty,
+                    'product_uom': product.uom_id.id,
                     'price_unit': product.lst_price,
                 })
             else:
                 line = line[0]
+                line.write({
+                    'name': product.get_product_multiline_description_sale() or product.display_name,
+                    'product_uom_qty': qty,
+                })
 
             if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
                 line.qty_delivered_method = 'manual'
 
             if hasattr(line, 'qty_delivered_manual'):
-                line.qty_delivered_manual += qty
+                line.qty_delivered_manual = qty
             else:
-                line.qty_delivered += qty
+                line.qty_delivered = qty
 
     def _recompute_container_sale_lines(self, sale):
         done_pickings = sale.picking_ids.filtered(
@@ -398,7 +410,12 @@ class StockPicking(models.Model):
 
     def _create_internal_transfer_to_rental(self):
         warehouses = self.mapped('picking_type_id.warehouse_id').filtered(
-            lambda w: w.rental_location_id and w.lot_stock_id and w.int_type_id
+            lambda w: (
+                w.enable_auto_rental_refill
+                and w.rental_location_id
+                and w.lot_stock_id
+                and w.int_type_id
+            )
         )
         for warehouse in warehouses:
             existing_transfer = self.env['stock.picking'].search(
@@ -478,8 +495,6 @@ class StockPicking(models.Model):
                 })
     def _action_done(self):
         res = super()._action_done()
-        print(self._context)
-        print("Validate called")
         self._update_goods_order_metrics()
         self._update_container_sale_lines()
         self.filtered(

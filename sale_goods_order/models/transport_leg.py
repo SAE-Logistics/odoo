@@ -9,7 +9,13 @@ class SaleTransportLeg(models.Model):
     sequence = fields.Integer(string='Sequence', default=1)
     preferred_service_id = fields.Many2one('sale.transport.service', string='Service Type')
     order_line_id = fields.Many2one('sale.order.line', string='Sale Order Line')
-    order_id = fields.Many2one(related='order_line_id.order_id', string='Sale Order')
+    picking_id = fields.Many2one('stock.picking', string='Delivery')
+    order_id = fields.Many2one(
+        'sale.order',
+        string='Sale Order',
+        compute='_compute_order_id',
+        store=True,
+    )
     from_location = fields.Many2one('res.partner', string='Company (Pickup)')
     from_date = fields.Date(string='Date (Pickup)')
     from_postcode = fields.Char(related='from_location.zip', string='Post Code (Pickup)')
@@ -57,6 +63,115 @@ class SaleTransportLeg(models.Model):
     fleet_id = fields.Many2one('fleet.vehicle', string='Vehicle')
     driver_id = fields.Many2one('hr.employee', string='Driver')
 
+    @api.model
+    def _get_goods_delivery_default_locations(self, picking):
+        sale = picking.sale_id
+        if not sale or sale.order_type not in ('goods_in', 'goods_out'):
+            return {}
+
+        if sale.order_type == 'goods_in':
+            return {
+                'from_location': sale.partner_id.id if sale.partner_id else False,
+                'to_location': sale.partner_shipping_id.id if sale.partner_shipping_id else False,
+            }
+
+        return {
+            'from_location': picking.company_id.partner_id.id if picking.company_id and picking.company_id.partner_id else False,
+            'to_location': sale.partner_shipping_id.id if sale.partner_shipping_id else False,
+        }
+
+    @api.model
+    def default_get(self, fields_list):
+        vals = super().default_get(fields_list)
+        picking_id = self.env.context.get('default_picking_id')
+        if picking_id:
+            picking = self.env['stock.picking'].browse(picking_id)
+            defaults = self._get_goods_delivery_default_locations(picking)
+            for field_name, value in defaults.items():
+                if field_name in fields_list and not vals.get(field_name) and value:
+                    vals[field_name] = value
+        return vals
+
+    def _get_target_sale_order(self, vals=None):
+        self.ensure_one()
+        vals = vals or {}
+        order_line = self.order_line_id
+        picking = self.picking_id
+        if vals.get('order_line_id'):
+            order_line = self.env['sale.order.line'].browse(vals['order_line_id'])
+        if vals.get('picking_id'):
+            picking = self.env['stock.picking'].browse(vals['picking_id'])
+        return order_line.order_id or picking.sale_id
+
+    @api.model
+    def _check_no_transport_needed_on_vals(self, vals_list):
+        for vals in vals_list:
+            sale = self.env['sale.order.line'].browse(vals['order_line_id']).order_id if vals.get('order_line_id') else False
+            if not sale and vals.get('picking_id'):
+                sale = self.env['stock.picking'].browse(vals['picking_id']).sale_id
+            if sale and sale.no_transport_needed:
+                raise ValidationError(_("No transport legs can be added because No Transport Needed is enabled on the sale order."))
+
+    def _check_no_transport_needed_on_records(self, vals=None):
+        for record in self:
+            sale = record._get_target_sale_order(vals=vals)
+            if sale and sale.no_transport_needed:
+                raise ValidationError(_("No transport legs can be added because No Transport Needed is enabled on the sale order."))
+
+    def _get_or_create_goods_delivery_sale_line(self):
+        self.ensure_one()
+        sale = self.picking_id.sale_id
+        if not sale or sale.order_type not in ('goods_in', 'goods_out'):
+            return self.env['sale.order.line']
+
+        existing_line = sale.order_line.filtered(
+            lambda line: (
+                not line.display_type
+                and (
+                    line.goods_delivery_transport_charge_line
+                    or line.transport_leg_ids.filtered('picking_id')
+                )
+            )
+        )[:1]
+        if existing_line:
+            if not existing_line.goods_delivery_transport_charge_line:
+                existing_line.goods_delivery_transport_charge_line = True
+            return existing_line
+
+        product = self.env.ref('sale_goods_order.prod_transport_delivery_leg', raise_if_not_found=False)
+        line_vals = {
+            'order_id': sale.id,
+            'name': product.get_product_multiline_description_sale() if product else _('Transport Charges'),
+            'product_uom_qty': 1.0,
+            'price_unit': 0.0,
+            'goods_delivery_transport_charge_line': True,
+        }
+        if product:
+            line_vals.update({
+                'product_id': product.id,
+                'product_uom': product.uom_id.id,
+                'name': product.get_product_multiline_description_sale() or product.display_name,
+            })
+        return self.env['sale.order.line'].create(line_vals)
+
+    def _assign_goods_delivery_order_lines(self):
+        for record in self:
+            if not record.picking_id or not record.picking_id.sale_id:
+                continue
+            sale = record.picking_id.sale_id
+            if sale.order_type not in ('goods_in', 'goods_out'):
+                continue
+            line = record._get_or_create_goods_delivery_sale_line()
+            if line and not line.goods_delivery_transport_charge_line:
+                line.goods_delivery_transport_charge_line = True
+            if line and record.order_line_id != line:
+                record.order_line_id = line.id
+
+    @api.depends('order_line_id.order_id', 'picking_id.sale_id')
+    def _compute_order_id(self):
+        for record in self:
+            record.order_id = record.order_line_id.order_id or record.picking_id.sale_id
+
     @api.depends('sell_rate', 'buy_rate', 'fs_sell_rate', 'fs_buy_rate')
     def _compute_margin(self):
         for record in self:
@@ -71,15 +186,27 @@ class SaleTransportLeg(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('picking_id'):
+                picking = self.env['stock.picking'].browse(vals['picking_id'])
+                defaults = self._get_goods_delivery_default_locations(picking)
+                if defaults.get('from_location') and not vals.get('from_location'):
+                    vals['from_location'] = defaults['from_location']
+                if defaults.get('to_location') and not vals.get('to_location'):
+                    vals['to_location'] = defaults['to_location']
+        self._check_no_transport_needed_on_vals(vals_list)
         records = super().create(vals_list)
+        records._assign_goods_delivery_order_lines()
         lines = records.mapped('order_line_id')
         if lines:
             lines._recompute_transport_cost_sell_from_legs()
         return records
 
     def write(self, vals):
+        self._check_no_transport_needed_on_records(vals=vals)
         lines_before = self.mapped('order_line_id')
         res = super().write(vals)
+        self._assign_goods_delivery_order_lines()
         lines_after = self.mapped('order_line_id')
 
         # If sale_line_id changed, recompute both old and new lines
@@ -140,4 +267,3 @@ class SaleCarrierServiceOption(models.Model):
     buy_rate = fields.Monetary(string='Buy')
     currency_id = fields.Many2one('res.currency', string='Currency')
     is_selected = fields.Boolean(string='Opt In')
-

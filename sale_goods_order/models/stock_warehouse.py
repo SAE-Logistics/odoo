@@ -13,6 +13,12 @@ class StockWarehouse(models.Model):
         string='Rental Location',
         domain="[('usage', '=', 'internal'), ('id', 'child_of', view_location_id)]",
     )
+    enable_auto_rental_refill = fields.Boolean(
+        string='Enable Auto Rental Refill',
+        default=True,
+        help='When enabled, validating a goods-out transfer can create an internal transfer '
+             'from the warehouse default location to the rental location when capacity is available.',
+    )
 
     @api.constrains('rental_location_id')
     def _check_rental_location_id(self):

@@ -45,6 +45,12 @@
         <field name="service_type">manual</field>
         <field name="list_price">0.00</field>
     </record>
+    <record id="prod_transport_delivery_leg" model="product.product">
+        <field name="name">Transport Charges</field>
+        <field name="type">service</field>
+        <field name="service_type">manual</field>
+        <field name="list_price">0.00</field>
+    </record>
 
     <!-- ================= Storage ================= -->
     <record id="prod_storage_carton_week" model="product.product">

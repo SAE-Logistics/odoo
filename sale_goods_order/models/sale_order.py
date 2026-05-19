@@ -67,6 +67,39 @@ class SaleOrder(models.Model):
     # rep_name = fields.Char(string="Rep Name")
     label_email = fields.Char(string="Collection Label Email")
     order_note = fields.Text(string="Order Notes")
+    no_transport_needed = fields.Boolean(
+        string="No Transport Needed",
+        copy=False,
+        help="Enable this when no transport legs should be added for this goods order.",
+    )
+    has_transport_legs = fields.Boolean(
+        string="Has Transport Legs",
+        compute="_compute_has_transport_legs",
+    )
+
+    @api.depends('order_line.transport_leg_ids')
+    def _compute_has_transport_legs(self):
+        for order in self:
+            order.has_transport_legs = bool(order.order_line.mapped('transport_leg_ids'))
+
+    def _check_no_transport_needed_allowed(self):
+        for order in self:
+            if order.no_transport_needed and order.has_transport_legs:
+                raise ValidationError(_("You cannot enable No Transport Needed once transport legs are already linked to the sale order."))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        orders = super().create(vals_list)
+        orders._check_no_transport_needed_allowed()
+        return orders
+
+    def write(self, vals):
+        if vals.get('no_transport_needed'):
+            for order in self:
+                if order.order_line.mapped('transport_leg_ids'):
+                    raise ValidationError(_("You cannot enable No Transport Needed once transport legs are already linked to the sale order."))
+        res = super().write(vals)
+        return res
 
     def _get_goods_in_shipping_partner_from_warehouse(self, warehouse):
         self.ensure_one()
@@ -81,8 +114,13 @@ class SaleOrder(models.Model):
         )
         return self.env["res.partner"].browse(shipping_partner_id)
 
-    def _sync_goods_in_shipping_address_from_warehouse(self):
+    @api.depends('partner_id', 'warehouse_id', 'order_type')
+    def _compute_partner_shipping_id(self):
+        super()._compute_partner_shipping_id()
         for order in self:
+            if order.order_type == 'goods_out':
+                order.partner_shipping_id = False
+                continue
             if order.order_type != 'goods_in' or not order.warehouse_id.partner_id:
                 continue
             order.partner_shipping_id = order._get_goods_in_shipping_partner_from_warehouse(
@@ -97,15 +135,21 @@ class SaleOrder(models.Model):
                 self.sale_order_template_id = self.env.ref(tmpl_xmlid, raise_if_not_found=False)
 
     @api.onchange('partner_id')
-    def onchange_partner_id(self):
-        res = super().onchange_partner_id()
+    def _onchange_partner_id(self):
+        res = super()._onchange_partner_id()
         self._compute_warehouse_id()
-        self._sync_goods_in_shipping_address_from_warehouse()
+        self._compute_partner_shipping_id()
         return res
 
     @api.onchange('warehouse_id', 'order_type')
     def _onchange_warehouse_id_set_goods_in_shipping(self):
-        self._sync_goods_in_shipping_address_from_warehouse()
+        self._compute_partner_shipping_id()
+
+    @api.constrains('order_type', 'partner_shipping_id')
+    def _check_goods_out_requires_delivery_address(self):
+        for order in self:
+            if order.order_type == 'goods_out' and not order.partner_shipping_id:
+                raise ValidationError(_("Delivery Address is required for Goods Out orders."))
 
     def _compute_has_only_service_products(self):
         """
@@ -217,7 +261,6 @@ class SaleOrder(models.Model):
                 default_warehouse_id = self.env['stock.warehouse'].search([('commercial_partner_id', '=', order.commercial_partner_id.id)], limit=1)
                 if default_warehouse_id:
                     order.warehouse_id = default_warehouse_id
-            order._sync_goods_in_shipping_address_from_warehouse()
 
 
 class SaleOrderTemplate(models.Model):
@@ -232,6 +275,7 @@ class SaleOrderLine(models.Model):
 
     order_type = fields.Selection(related='order_id.order_type')
     container_charge_line = fields.Boolean(string='Container Charge Line', copy=False)
+    goods_delivery_transport_charge_line = fields.Boolean(string='Goods Delivery Transport Charge Line', copy=False)
     package_type_id = fields.Many2one('stock.package.type', string='Package Type')
     package_qty = fields.Integer(string='Package Qty')
     total_weight = fields.Float(string='Total Weight')
@@ -330,7 +374,7 @@ class SaleOrderLine(models.Model):
 
     def action_open_transport_legs(self):
         self.ensure_one()
-        if not self.order_id.transport_from_id or not self.order_id.transport_to_id:
+        if self.order_id.order_type == 'transport' and (not self.order_id.transport_from_id or not self.order_id.transport_to_id):
             raise ValidationError(_("Please specify the Pickup and Dropoff locations in 'Transport Products' tab"))
         print("entered here >>> ", self.transport_leg_ids.ids)
         if not self.transport_leg_ids:

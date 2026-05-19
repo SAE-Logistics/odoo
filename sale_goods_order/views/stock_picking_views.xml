@@ -12,6 +12,31 @@
                     <field name="source_picking_id"
                            invisible="is_material_picking == False"/>
                 </group>
+                <page string="Transport Legs"
+                      invisible="sale_id == False or sale_order_type not in ['goods_in', 'goods_out'] or sale_no_transport_needed or is_material_picking">
+                    <group>
+                        <div class="o_form_label">
+                            Transport legs will automatically attach to the existing transport charge line for the sale order, or create one if none exists.
+                        </div>
+                    </group>
+                    <field name="transport_leg_ids" context="{'default_picking_id': id}" readonly="state in ('done', 'cancel')">
+                        <list editable="bottom" open_form_view="True">
+                            <field name="sequence" widget="handle"/>
+                            <field name="from_location"/>
+                            <field name="to_location"/>
+                            <field name="from_date"/>
+                            <field name="to_date"/>
+                            <field name="carrier_id"/>
+                            <field name="service_id"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="sell_rate"/>
+                            <field name="buy_rate"/>
+                            <field name="fs_sell_rate"/>
+                            <field name="fs_buy_rate"/>
+                            <field name="state"/>
+                        </list>
+                    </field>
+                </page>
                 <!-- New page for Materials Consumption -->
                 <page string="Materials Consumption">
                     <group string="Material Pickings">

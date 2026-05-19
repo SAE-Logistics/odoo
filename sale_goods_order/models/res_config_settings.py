@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import fields, models
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
@@ -12,10 +12,6 @@ class ResConfigSettings(models.TransientModel):
     product_serial_id       = fields.Many2one('product.product', string='Serial Capture',       config_parameter='sale_gto.product_serial_id')
     product_lot_id          = fields.Many2one('product.product', string='Lot Capture',          config_parameter='sale_gto.product_lot_id')
     product_expiry_id       = fields.Many2one('product.product', string='Expiry Capture',       config_parameter='sale_gto.product_expiry_id')
-    product_cartons_in_id   = fields.Many2one('product.product', string='Cartons In',           config_parameter='sale_gto.product_cartons_in_id')
-    product_cartons_out_id  = fields.Many2one('product.product', string='Cartons Out',          config_parameter='sale_gto.product_cartons_out_id')
-    product_pallets_in_id   = fields.Many2one('product.product', string='Pallets In',           config_parameter='sale_gto.product_pallets_in_id')
-    product_pallets_out_id  = fields.Many2one('product.product', string='Pallets Out',          config_parameter='sale_gto.product_pallets_out_id')
 
     # Handling – explicit items (for manual usage or future automation)
     product_container20_id  = fields.Many2one('product.product', string='Offload/Load 20ft Container', config_parameter='sale_gto.product_container20_id')

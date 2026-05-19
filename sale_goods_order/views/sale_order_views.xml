@@ -12,6 +12,11 @@
                 <xpath expr="//field[@name='sale_order_template_id']" position="after">
                     <field name="order_type"/>
                     <field name="picking_type" invisible="order_type not in ['goods_in', 'goods_out']"/>
+                    <field name="has_transport_legs" invisible="1"/>
+                    <field name="no_transport_needed"
+                           widget="boolean_toggle"
+                           invisible="order_type not in ['goods_in', 'goods_out']"
+                           readonly="has_transport_legs"/>
                     <field name="commercial_partner_id" invisible="1"/>
                     <field name="cost_centre_id" domain="[('partner_id', '=', commercial_partner_id)]"/>
                 </xpath>
@@ -19,6 +24,10 @@
                 <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
                     <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')]
                     </attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='partner_shipping_id']" position="attributes">
+                    <attribute name="required">order_type == 'goods_out'</attribute>
                 </xpath>
 
                 <xpath expr="//page[@name='other_information']/group/group[@name='sale_info']/field[@name='invoice_status']"

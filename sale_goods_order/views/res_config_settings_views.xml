@@ -44,28 +44,6 @@
                             </div>
                         </div>
                     </setting>
-                    <setting id="default_packaging_counts" company_dependent="1" string="Packaging Counts">
-                        <div class="content-group">
-                            <div class="row">
-                                <label string="Cartons In" for="product_cartons_in_id" class="col-lg-3 o_light_label"/>
-                                <field name="product_cartons_in_id"/>
-                            </div>
-                            <div class="row">
-                                <label string="Cartons Out" for="product_cartons_out_id" class="col-lg-3 o_light_label"/>
-                                <field name="product_cartons_out_id"/>
-                                </div>
-                            <div class="row">
-                                <label string="Pallets In" for="product_pallets_in_id" class="col-lg-3 o_light_label"/>
-                                <field name="product_pallets_in_id"/>
-                                </div>
-                            <div class="row">
-                                <label string="Pallets Out" for="product_pallets_out_id" class="col-lg-3 o_light_label"/>
-                                <field name="product_pallets_out_id"/>
-                            </div>
-                        </div>
-                    </setting>
-
-
                     <setting id="default_handling_products" company_dependent="1" string="Handling">
                         <div class="content-group">
                             <div class="row">
