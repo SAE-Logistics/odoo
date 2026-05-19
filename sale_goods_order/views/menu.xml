@@ -27,7 +27,12 @@
     </record>
     <menuitem id="menu_sale_order_transport" name="Transport Orders" parent="sale.menu_sale_order" sequence="26"
               action="action_sale_order_transport"/>
+    <menuitem id="menu_sale_bulk_invoice_orders" name="Bulk Invoice Orders" parent="sale.menu_sale_order" sequence="27"
+              action="action_sale_bulk_invoice_wizard"/>
     <menuitem id="menu_sale_transport_legs" name="Transport Legs" parent="sale.menu_sale_order" sequence="30"
               action="action_sale_transport_legs"/>
+    <menuitem id="menu_stock_container_balance_report" name="Containers Ledger"
+              parent="stock.menu_warehouse_report" sequence="50"
+              action="action_stock_container_report_wizard"/>
 
 </odoo>

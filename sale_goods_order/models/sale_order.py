@@ -68,12 +68,44 @@ class SaleOrder(models.Model):
     label_email = fields.Char(string="Collection Label Email")
     order_note = fields.Text(string="Order Notes")
 
+    def _get_goods_in_shipping_partner_from_warehouse(self, warehouse):
+        self.ensure_one()
+        if not warehouse.partner_id:
+            return self.env["res.partner"]
+
+        address_ids = warehouse.partner_id.address_get(["delivery", "contact"])
+        shipping_partner_id = (
+            address_ids.get("delivery")
+            or address_ids.get("contact")
+            or warehouse.partner_id.id
+        )
+        return self.env["res.partner"].browse(shipping_partner_id)
+
+    def _sync_goods_in_shipping_address_from_warehouse(self):
+        for order in self:
+            if order.order_type != 'goods_in' or not order.warehouse_id.partner_id:
+                continue
+            order.partner_shipping_id = order._get_goods_in_shipping_partner_from_warehouse(
+                order.warehouse_id
+            )
+
     @api.onchange('order_type')
     def _onchange_order_type_set_template(self):
         if self.order_type in ['goods_in', 'goods_out'] and not self.sale_order_template_id:
             tmpl_xmlid = self.env.context.get('default_template_xmlid')
             if tmpl_xmlid:
                 self.sale_order_template_id = self.env.ref(tmpl_xmlid, raise_if_not_found=False)
+
+    @api.onchange('partner_id')
+    def onchange_partner_id(self):
+        res = super().onchange_partner_id()
+        self._compute_warehouse_id()
+        self._sync_goods_in_shipping_address_from_warehouse()
+        return res
+
+    @api.onchange('warehouse_id', 'order_type')
+    def _onchange_warehouse_id_set_goods_in_shipping(self):
+        self._sync_goods_in_shipping_address_from_warehouse()
 
     def _compute_has_only_service_products(self):
         """
@@ -185,6 +217,7 @@ class SaleOrder(models.Model):
                 default_warehouse_id = self.env['stock.warehouse'].search([('commercial_partner_id', '=', order.commercial_partner_id.id)], limit=1)
                 if default_warehouse_id:
                     order.warehouse_id = default_warehouse_id
+            order._sync_goods_in_shipping_address_from_warehouse()
 
 
 class SaleOrderTemplate(models.Model):
@@ -198,6 +231,7 @@ class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
     order_type = fields.Selection(related='order_id.order_type')
+    container_charge_line = fields.Boolean(string='Container Charge Line', copy=False)
     package_type_id = fields.Many2one('stock.package.type', string='Package Type')
     package_qty = fields.Integer(string='Package Qty')
     total_weight = fields.Float(string='Total Weight')

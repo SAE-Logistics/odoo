@@ -11,6 +11,7 @@
 
                <xpath expr="//field[@name='code']" position="after">
                    <field name="commercial_partner_id" domain="[('is_company', '=', True)]"/>
+                   <field name="rental_location_id"/>
                </xpath>
 
            </field>

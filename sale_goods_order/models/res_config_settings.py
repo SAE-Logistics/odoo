@@ -31,6 +31,11 @@ class ResConfigSettings(models.TransientModel):
     product_storage_other_id          = fields.Many2one('product.product', string='Storage – Other', config_parameter='sale_gto.product_storage_other_id')
 
     transport_address_id = fields.Many2one('res.partner', string='Transport Order Default Address', config_parameter='sale_gto.transport_address_id')
+    container_default_type_id = fields.Many2one(
+        'stock.package.type',
+        string='Default Container Type',
+        config_parameter='sale_gto.default_container_type_id',
+    )
 
     sale_material_template_id = fields.Many2one(
         "sale.material.template",

@@ -5,6 +5,38 @@ class StockPackageType(models.Model):
     _inherit = 'stock.package.type'
 
     product_id = fields.Many2one('product.product', string='Product')
+    container_move_count = fields.Integer(
+        string='Container Moves',
+        compute='_compute_container_move_count',
+    )
+
+    def _compute_container_move_count(self):
+        grouped_data = self.env['stock.move'].read_group(
+            [('container_type_id', 'in', self.ids), ('state', '=', 'done')],
+            ['container_type_id'],
+            ['container_type_id'],
+        )
+        counts = {
+            group['container_type_id'][0]: group['container_type_id_count']
+            for group in grouped_data
+            if group.get('container_type_id')
+        }
+        for record in self:
+            record.container_move_count = counts.get(record.id, 0)
+
+    def action_view_container_moves(self):
+        self.ensure_one()
+        return {
+            'name': 'Container Moves',
+            'type': 'ir.actions.act_window',
+            'res_model': 'stock.move',
+            'view_mode': 'list,form',
+            'domain': [
+                ('container_type_id', '=', self.id),
+                ('state', '=', 'done'),
+            ],
+            'context': {'search_default_done': 1},
+        }
 
 
 class SalePackageLine(models.Model):

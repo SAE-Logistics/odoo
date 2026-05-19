@@ -59,6 +59,15 @@
                 <field name="collect_note"/>
                 <field name="deliver_note"/>
             </xpath>
+
+            <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_packaging_id']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+                <attribute name="optional">hide</attribute>
+            </xpath>
+            <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_uom_qty']" position="after">
+                <field name="container_type_id" readonly="parent.state in ('done', 'cancel')"/>
+                <field name="container_count" readonly="parent.state in ('done', 'cancel')" sum="Total Containers"/>
+            </xpath>
         </field>
     </record>
 </odoo>

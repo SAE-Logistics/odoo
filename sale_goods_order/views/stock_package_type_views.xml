@@ -8,6 +8,14 @@
            <field name="model">stock.package.type</field>
            <field name="inherit_id" ref="stock.stock_package_type_form"/>
            <field name="arch" type="xml">
+                <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
+                    <button name="action_view_container_moves"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-exchange">
+                        <field name="container_move_count" string="Container Moves" widget="statinfo"/>
+                    </button>
+                </xpath>
 
                 <xpath expr="//group[@name='delivery']" position="inside">
                     <group>

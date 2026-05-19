@@ -119,6 +119,14 @@
                             </div>
                         </div>
                     </setting>
+                    <setting id="default_container_type" company_dependent="1" string="Default Container Type">
+                        <div class="content-group">
+                            <div class="row">
+                                <label string="Default Container Type" for="container_default_type_id" class="col-lg-3 o_light_label"/>
+                                <field name="container_default_type_id"/>
+                            </div>
+                        </div>
+                    </setting>
                     <setting id="transport_address" company_dependent="1" string="Transport Address">
                         <div class="content-group">
                             <div class="row">
