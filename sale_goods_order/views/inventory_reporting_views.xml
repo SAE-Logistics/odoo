@@ -9,9 +9,6 @@
                 <attribute name="column_invisible">True</attribute>
                 <attribute name="optional">hide</attribute>
             </xpath>
-            <xpath expr="//field[@name='quantity']" position="after">
-                <field name="container_count" string="No. of Containers" sum="Total Containers"/>
-            </xpath>
         </field>
     </record>
 
@@ -23,9 +20,6 @@
             <xpath expr="//field[@name='package_id']" position="attributes">
                 <attribute name="column_invisible">True</attribute>
                 <attribute name="optional">hide</attribute>
-            </xpath>
-            <xpath expr="//field[@name='inventory_quantity_auto_apply']" position="after">
-                <field name="container_count" string="No. of Containers" sum="Total Containers"/>
             </xpath>
         </field>
     </record>
@@ -41,33 +35,4 @@
         </field>
     </record>
 
-    <record id="view_move_line_tree_inherit_container_count" model="ir.ui.view">
-        <field name="name">stock.move.line.tree.inherit.container.count</field>
-        <field name="model">stock.move.line</field>
-        <field name="inherit_id" ref="stock.view_move_line_tree"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='package_id']" position="attributes">
-                <attribute name="column_invisible">True</attribute>
-                <attribute name="optional">hide</attribute>
-            </xpath>
-            <xpath expr="//field[@name='quantity']" position="after">
-                <field name="container_count" string="No. of Containers" sum="Total Containers"/>
-            </xpath>
-        </field>
-    </record>
-
-    <record id="view_move_line_tree_detailed_inherit_container_count" model="ir.ui.view">
-        <field name="name">stock.move.line.tree.detailed.inherit.container.count</field>
-        <field name="model">stock.move.line</field>
-        <field name="inherit_id" ref="stock.view_move_line_tree_detailed"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='package_id']" position="attributes">
-                <attribute name="column_invisible">True</attribute>
-                <attribute name="optional">hide</attribute>
-            </xpath>
-            <xpath expr="//field[@name='quantity']" position="after">
-                <field name="container_count" string="No. of Containers" sum="Total Containers"/>
-            </xpath>
-        </field>
-    </record>
 </odoo>

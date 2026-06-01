@@ -43,7 +43,7 @@ class StockContainerReportWizard(models.TransientModel):
             raise UserError("'From Date' cannot be later than 'To Date'.")
         self.result_line_ids.unlink()
 
-        snapshot = self.env["stock.move"].get_container_ledger_snapshot(
+        snapshot = self.env["stock.picking.container"].get_container_ledger_snapshot(
             self.from_date,
             self.to_date,
             partner_id=self.partner_id.id,
@@ -133,14 +133,14 @@ class StockContainerReportLine(models.TransientModel):
             ("container_type_id", "=", self.container_type_id.id),
             (field_name, "=", self.location_id.id),
             (
-                "date",
+                "movement_date",
                 ">=",
                 fields.Datetime.to_string(
                     datetime.combine(self.wizard_id.from_date, time.min)
                 ),
             ),
             (
-                "date",
+                "movement_date",
                 "<=",
                 fields.Datetime.to_string(
                     datetime.combine(self.wizard_id.to_date, time.max)
@@ -148,16 +148,16 @@ class StockContainerReportLine(models.TransientModel):
             ),
         ]
         if self.partner_id:
-            domain.append(("picking_id.partner_id", "child_of", self.partner_id.id))
+            domain.append(("commercial_partner_id", "child_of", self.partner_id.id))
         return {
             "type": "ir.actions.act_window",
             "name": action_name,
-            "res_model": "stock.move",
+            "res_model": "stock.picking.container",
             "view_mode": "list,form,pivot,graph",
             "domain": domain,
             "context": {
                 "search_default_done": 1,
-                "group_by": ["picking_type_id"],
+                "group_by": "picking_type_id",
             },
         }
 

@@ -16,6 +16,8 @@ class ResConfigSettings(models.TransientModel):
     # Handling – explicit items (for manual usage or future automation)
     product_container20_id  = fields.Many2one('product.product', string='Offload/Load 20ft Container', config_parameter='sale_gto.product_container20_id')
     product_container40_id  = fields.Many2one('product.product', string='Offload/Load 40ft Container', config_parameter='sale_gto.product_container40_id')
+    product_pallets_in_id   = fields.Many2one('product.product', string='Pallets In', config_parameter='sale_gto.product_pallets_in_id')
+    product_pallets_out_id  = fields.Many2one('product.product', string='Pallets Out', config_parameter='sale_gto.product_pallets_out_id')
     product_handling_other_id = fields.Many2one('product.product', string='Handling – Other', config_parameter='sale_gto.product_handling_other_id')
 
     # Storage – explicit items (manual/periodic billing)

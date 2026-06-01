@@ -37,6 +37,21 @@
                         </list>
                     </field>
                 </page>
+                <page string="Package Details" invisible="is_material_picking">
+                    <group>
+                        <field name="pallet_qty" readonly="state in ('done', 'cancel')"/>
+                    </group>
+                    <field name="package_ids" context="{'default_picking_id': id}" readonly="state in ('done', 'cancel')">
+                        <list editable="bottom">
+                            <field name="package_type_id"/>
+                            <field name="length"/>
+                            <field name="width"/>
+                            <field name="height"/>
+                            <field name="weight"/>
+                            <field name="quantity"/>
+                        </list>
+                    </field>
+                </page>
                 <!-- New page for Materials Consumption -->
                 <page string="Materials Consumption">
                     <group string="Material Pickings">
@@ -88,10 +103,6 @@
             <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_packaging_id']" position="attributes">
                 <attribute name="column_invisible">True</attribute>
                 <attribute name="optional">hide</attribute>
-            </xpath>
-            <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_uom_qty']" position="after">
-                <field name="container_type_id" readonly="parent.state in ('done', 'cancel')"/>
-                <field name="container_count" readonly="parent.state in ('done', 'cancel')" sum="Total Containers"/>
             </xpath>
         </field>
     </record>

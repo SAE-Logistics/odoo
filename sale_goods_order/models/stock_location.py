@@ -26,15 +26,14 @@ class StockLocation(models.Model):
         grouped = defaultdict(float)
         location_ids = self.ids
         if location_ids:
-            moves = self.env["stock.move"].search([
+            container_lines = self.env["stock.picking.container"].search([
                 ("state", "=", "done"),
                 ("container_count", ">", 0),
-                ("container_type_id", "!=", False),
                 "|",
                 ("location_id", "in", location_ids),
                 ("location_dest_id", "in", location_ids),
             ])
-            for impact in moves._iter_container_impacts(date_to=fields.Date.context_today(self)):
+            for impact in container_lines._iter_container_impacts(date_to=fields.Date.context_today(self)):
                 if impact["location_id"] not in location_ids:
                     continue
                 signed_qty = impact["quantity"] if impact["direction"] == "inward" else -impact["quantity"]

@@ -34,5 +34,4 @@
     <menuitem id="menu_stock_container_balance_report" name="Containers Ledger"
               parent="stock.menu_warehouse_report" sequence="50"
               action="action_stock_container_report_wizard"/>
-
 </odoo>

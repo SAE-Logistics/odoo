@@ -40,6 +40,12 @@ class StockPicking(models.Model):
         'picking_id',
         string='Transport Legs',
     )
+    package_ids = fields.One2many(
+        'sale.package.line',
+        'picking_id',
+        string='Package Details',
+    )
+    pallet_qty = fields.Integer(string='Pallets', default=0)
     sale_order_type = fields.Selection(
         related='sale_id.order_type',
         string='Sale Order Type',
@@ -118,18 +124,6 @@ class StockPicking(models.Model):
                     metrics[key] += qty
             self._apply_metrics_to_sale_order(sale, metrics)
 
-    def _update_container_sale_lines(self):
-        sales = self.filtered(
-            lambda p: (
-                not p.is_material_picking
-                and p.state == 'done'
-                and p.sale_id
-                and p.picking_type_code in ('incoming', 'outgoing')
-            )
-        ).mapped('sale_id')
-        for sale in sales:
-            self._recompute_container_sale_lines(sale)
-
     def _collect_metrics_from_picking(self, picking):
         metrics = defaultdict(float)
 
@@ -158,10 +152,22 @@ class StockPicking(models.Model):
         metrics['serial_count'] = len(serials)
         metrics['expiry_count'] = len(expiries)
         metrics['order_receipt'] = 1
+        metrics['pallets_in' if picking.picking_type_code == 'incoming' else 'pallets_out'] = max(int(picking.pallet_qty or 0), 0)
         return metrics
 
     def _apply_metrics_to_sale_order(self, sale, metrics):
         config = self.env['ir.config_parameter'].sudo()
+        default_container_type_id = config.get_param('sale_gto.default_container_type_id', False)
+        default_container_type = self.env['stock.package.type'].browse(int(default_container_type_id)) if default_container_type_id else self.env['stock.package.type']
+        default_container_product = default_container_type.product_id if default_container_type else self.env['product.product']
+        legacy_pallet_product_ids = {
+            int(product_id)
+            for product_id in (
+                config.get_param('sale_gto.product_pallets_in_id', False),
+                config.get_param('sale_gto.product_pallets_out_id', False),
+            )
+            if product_id
+        }
         # mapping = {
         #     'order_receipt': 'sale_goods_transport_orders.prod_go_order_receipt',
         #     'sku_in': 'sale_goods_transport_orders.prod_gi_movements_sku',
@@ -184,14 +190,20 @@ class StockPicking(models.Model):
             'serial_count': config.get_param('sale_gto.product_serial_id', False),
             'lot_count': config.get_param('sale_gto.product_lot_id', False),
             'expiry_count': config.get_param('sale_gto.product_expiry_id', False),
+            'pallets_in': default_container_product.id if default_container_product else False,
+            'pallets_out': default_container_product.id if default_container_product else False,
         }
 
+        product_quantities = defaultdict(float)
         for key, qty in metrics.items():
             product_id = mapping.get(key)
-            if not product_id:
+            if not product_id or qty <= 0:
                 continue
-            product = self.env['product.product'].browse(int(product_id))
-            if not product or qty <= 0:
+            product_quantities[int(product_id)] += qty
+
+        for product_id, qty in product_quantities.items():
+            product = self.env['product.product'].browse(product_id)
+            if not product:
                 continue
 
             line = sale.order_line.filtered(lambda l: l.product_id == product and not l.display_type)
@@ -219,88 +231,27 @@ class StockPicking(models.Model):
             else:
                 line.qty_delivered = qty
 
-    def _recompute_container_sale_lines(self, sale):
-        done_pickings = sale.picking_ids.filtered(
-            lambda p: not p.is_material_picking and p.state == 'done'
-        )
-        container_quantities = defaultdict(float)
-        container_products = self.env['product.product']
-
-        for move in done_pickings.move_ids_without_package.filtered(
-            lambda m: m.state == 'done' and m.container_count > 0 and m.container_type_id and m.container_type_id.product_id
-        ):
-            product = move.container_type_id.product_id
-            container_quantities[product.id] += move.container_count
-            container_products |= product
-
-        existing_lines = sale.order_line.filtered(
-            lambda line: not line.display_type and (line.container_charge_line or line.product_id in container_products)
-        )
-        lines_by_product = {
-            line.product_id.id: line
-            for line in existing_lines
-            if line.product_id
-        }
-
-        for product in container_products:
-            qty = container_quantities.get(product.id, 0.0)
-            line = lines_by_product.get(product.id)
-            price_unit = sale.pricelist_id._get_product_price(
-                product,
-                qty or 1.0,
-                currency=sale.currency_id,
-                uom=product.uom_id,
-                date=sale.date_order or fields.Datetime.now(),
-            ) if sale.pricelist_id else product.lst_price
-
-            vals = {
-                'name': product.get_product_multiline_description_sale() or product.display_name,
-                'product_uom_qty': qty,
-                'price_unit': price_unit,
-                'container_charge_line': True,
-            }
-            if line:
+        if default_container_product:
+            for line in sale.order_line.filtered(
+                lambda l: (
+                    not l.display_type
+                    and l.product_id
+                    and l.product_id.id in legacy_pallet_product_ids
+                    and l.product_id != default_container_product
+                )
+            ):
+                vals = {'product_uom_qty': 0.0}
                 if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
                     vals['qty_delivered_method'] = 'manual'
                 line.write(vals)
                 if hasattr(line, 'qty_delivered_manual'):
-                    line.qty_delivered_manual = qty
+                    line.qty_delivered_manual = 0.0
                 else:
-                    line.qty_delivered = qty
-                continue
+                    line.qty_delivered = 0.0
 
-            line = self.env['sale.order.line'].create({
-                'order_id': sale.id,
-                'product_id': product.id,
-                'product_uom': product.uom_id.id,
-                **vals,
-            })
-            if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
-                line.qty_delivered_method = 'manual'
-            if hasattr(line, 'qty_delivered_manual'):
-                line.qty_delivered_manual = qty
-            else:
-                line.qty_delivered = qty
-
-        for line in sale.order_line.filtered(lambda l: l.container_charge_line and l.product_id.id not in container_quantities):
-            vals = {
-                'product_uom_qty': 0.0,
-                'container_charge_line': True,
-            }
-            if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
-                vals['qty_delivered_method'] = 'manual'
-            line.write(vals)
-            if hasattr(line, 'qty_delivered_manual'):
-                line.qty_delivered_manual = 0.0
-            else:
-                line.qty_delivered = 0.0
-
-    def _get_pallet_count_from_move(self, move):
+    def _get_pallet_qty(self):
         self.ensure_one()
-        warehouse = move.picking_id.picking_type_id.warehouse_id
-        if not warehouse._is_pallet_container_type(move.container_type_id):
-            return 0
-        return max(int(move.container_count or 0), 0)
+        return max(int(self.pallet_qty or 0), 0)
 
     def _route_incoming_to_rental_or_default(self):
         for picking in self:
@@ -311,17 +262,15 @@ class StockPicking(models.Model):
                 continue
 
             available_capacity = warehouse._get_available_rental_pallet_capacity()
+            pallet_count = picking._get_pallet_qty()
+            target_location = rental_location
+            if pallet_count and pallet_count > available_capacity:
+                target_location = default_location
+
             move_updates = []
             for move in picking.move_ids_without_package.filtered(
                 lambda m: m.state not in ('done', 'cancel')
             ):
-                pallet_count = picking._get_pallet_count_from_move(move)
-                target_location = rental_location
-                if pallet_count and pallet_count > available_capacity:
-                    target_location = default_location
-                elif pallet_count:
-                    available_capacity -= pallet_count
-
                 if move.location_dest_id != target_location:
                     move_updates.append((move, target_location))
 
@@ -332,7 +281,7 @@ class StockPicking(models.Model):
     def _get_relocation_quant_data(self, warehouse, max_pallets_to_move):
         self.ensure_one()
         if max_pallets_to_move <= 0 or not warehouse.lot_stock_id:
-            return []
+            return [], 0
 
         quants = self.env['stock.quant'].search(
             [
@@ -343,54 +292,32 @@ class StockPicking(models.Model):
         )
         move_values = []
         remaining_capacity = max_pallets_to_move
+        total_pallets_to_move = remaining_capacity
+        if total_pallets_to_move <= 0:
+            return [], 0
+
+        total_available_qty = sum(
+            getattr(quant, 'available_quantity', quant.quantity)
+            for quant in quants
+            if getattr(quant, 'available_quantity', quant.quantity) > 0
+        )
+        if total_available_qty <= 0:
+            return [], 0
+
+        allocated_pallets = 0
         for quant in quants:
             if remaining_capacity <= 0:
                 break
-            if quant.container_count <= 0:
-                continue
             available_quantity = getattr(quant, 'available_quantity', quant.quantity)
             if available_quantity <= 0:
                 continue
 
-            move = self.env['stock.move'].search(
-                [
-                    ('product_id', '=', quant.product_id.id),
-                    ('state', '=', 'done'),
-                    ('container_type_id', '!=', False),
-                    '|',
-                    ('location_dest_id', '=', warehouse.lot_stock_id.id),
-                    ('location_id', '=', warehouse.lot_stock_id.id),
-                ],
-                order='date desc, id desc',
-                limit=1,
-            )
-            if not warehouse._is_pallet_container_type(move.container_type_id):
-                continue
-
-            quant_pallets = int(quant.container_count or 0)
-            if quant_pallets <= 0:
-                continue
-
-            available_pallets = quant_pallets
-            if quant.quantity > 0:
-                available_pallets = min(
-                    quant_pallets,
-                    int(float_round(
-                        quant_pallets * available_quantity / quant.quantity,
-                        precision_digits=0,
-                    )),
-                )
-            if available_pallets <= 0:
-                continue
-
-            pallets_to_move = min(available_pallets, remaining_capacity)
-            qty_to_move = available_quantity
-            if available_pallets > pallets_to_move:
-                qty_to_move = available_quantity * pallets_to_move / available_pallets
-            qty_to_move = float_round(
-                qty_to_move,
-                precision_rounding=quant.product_id.uom_id.rounding,
-            )
+            qty_share = available_quantity / total_available_qty
+            pallets_to_move = int(float_round(total_pallets_to_move * qty_share, precision_digits=0))
+            if pallets_to_move <= 0 and remaining_capacity > 0:
+                pallets_to_move = 1
+            pallets_to_move = min(pallets_to_move, remaining_capacity)
+            qty_to_move = float_round(available_quantity * min(pallets_to_move, total_pallets_to_move) / total_pallets_to_move, precision_rounding=quant.product_id.uom_id.rounding)
             if qty_to_move <= 0:
                 continue
 
@@ -401,12 +328,11 @@ class StockPicking(models.Model):
                 'product_uom': quant.product_id.uom_id.id,
                 'location_id': warehouse.lot_stock_id.id,
                 'location_dest_id': warehouse.rental_location_id.id,
-                'container_type_id': move.container_type_id.id,
-                'container_count': pallets_to_move,
             })
             remaining_capacity -= pallets_to_move
+            allocated_pallets += pallets_to_move
 
-        return move_values
+        return move_values, allocated_pallets
 
     def _create_internal_transfer_to_rental(self):
         warehouses = self.mapped('picking_type_id.warehouse_id').filtered(
@@ -431,32 +357,33 @@ class StockPicking(models.Model):
             if available_capacity <= 0 or warehouse._get_default_location_pallet_count() <= 0:
                 continue
 
-            existing_pallets = sum(
-                max(int(move.container_count or 0), 0)
-                for move in existing_transfer.move_ids_without_package
-                if warehouse._is_pallet_container_type(move.container_type_id)
-            )
+            existing_pallets = max(int(existing_transfer.pallet_qty or 0), 0)
             remaining_capacity = max(available_capacity - existing_pallets, 0)
             if remaining_capacity <= 0:
                 continue
 
-            move_values = self._get_relocation_quant_data(warehouse, remaining_capacity)
-            if not move_values:
+            move_values, pallets_to_move = self._get_relocation_quant_data(warehouse, remaining_capacity)
+            if not move_values or not pallets_to_move:
                 continue
 
             if existing_transfer:
-                existing_transfer.write({
-                    'move_ids_without_package': [(0, 0, values) for values in move_values],
-                })
+                write_vals = {}
+                if move_values:
+                    write_vals['move_ids_without_package'] = [(0, 0, values) for values in move_values]
+                write_vals['pallet_qty'] = existing_pallets + pallets_to_move
+                existing_transfer.write(write_vals)
                 picking = existing_transfer
             else:
-                picking = self.env['stock.picking'].create({
+                create_vals = {
                     'picking_type_id': warehouse.int_type_id.id,
                     'location_id': warehouse.lot_stock_id.id,
                     'location_dest_id': warehouse.rental_location_id.id,
                     'origin': 'Auto Refill Rental Location',
-                    'move_ids_without_package': [(0, 0, values) for values in move_values],
-                })
+                    'pallet_qty': pallets_to_move,
+                }
+                if move_values:
+                    create_vals['move_ids_without_package'] = [(0, 0, values) for values in move_values]
+                picking = self.env['stock.picking'].create(create_vals)
             picking.action_confirm()
             picking.action_assign()
 
@@ -496,7 +423,6 @@ class StockPicking(models.Model):
     def _action_done(self):
         res = super()._action_done()
         self._update_goods_order_metrics()
-        self._update_container_sale_lines()
         self.filtered(
             lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
         )._create_internal_transfer_to_rental()

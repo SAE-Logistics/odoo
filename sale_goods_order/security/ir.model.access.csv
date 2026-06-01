@@ -11,5 +11,6 @@ access_sale_transport_service_user,sale.transport.service.user,model_sale_transp
 access_sale_transport_carrier_user,sale.transport.carrier.user,model_sale_transport_carrier,base.group_user,1,1,1,1
 access_sale_carrier_service_option_user,sale.carrier.service.option.user,model_sale_carrier_service_option,base.group_user,1,1,1,1
 access_sale_package_line_user,sale.package.line.user,model_sale_package_line,base.group_user,1,1,1,1
+access_stock_picking_container_user,stock.picking.container.user,model_stock_picking_container,base.group_user,1,1,1,1
 access_stock_container_report_wizard_user,stock.container.report.wizard.user,model_stock_container_report_wizard,base.group_user,1,1,1,1
 access_stock_container_report_line_user,stock.container.report.line.user,model_stock_container_report_line,base.group_user,1,1,1,1

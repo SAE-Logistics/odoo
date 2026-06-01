@@ -18,7 +18,6 @@
         "views/material_template_views.xml",
         "views/material_picking_wizard_views.xml",
         "views/stock_location_views.xml",
-        "views/stock_move_views.xml",
         "views/stock_picking_views.xml",
         "views/transport_product_line_views.xml",
         "views/stock_warehouse_views.xml",

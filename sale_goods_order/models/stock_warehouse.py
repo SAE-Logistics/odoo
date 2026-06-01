@@ -63,21 +63,23 @@ class StockWarehouse(models.Model):
         if not scoped_location_ids:
             return 0
 
-        snapshot = self.env['stock.move'].get_container_balance_snapshot(
-            fields.Date.context_today(self),
-            location_ids=scoped_location_ids,
-        )
-        package_types = self.env['stock.package.type'].browse(
-            [container_type_id for (_, container_type_id, _) in snapshot]
-        )
-        pallet_type_ids = {
-            package_type.id for package_type in package_types if self._is_pallet_container_type(package_type)
-        }
-        return sum(
-            quantity
-            for (_, container_type_id, _), quantity in snapshot.items()
-            if container_type_id in pallet_type_ids
-        )
+        total = 0
+        pickings = self.env['stock.picking'].search([
+            ('state', '=', 'done'),
+            ('pallet_qty', '>', 0),
+            '|',
+            ('location_id', 'in', scoped_location_ids),
+            ('location_dest_id', 'in', scoped_location_ids),
+        ])
+        for picking in pickings:
+            pallets = max(int(picking.pallet_qty or 0), 0)
+            if not pallets:
+                continue
+            if picking.location_dest_id.id in scoped_location_ids and picking.location_dest_id.usage == 'internal':
+                total += pallets
+            if picking.location_id.id in scoped_location_ids and picking.location_id.usage == 'internal':
+                total -= pallets
+        return total
 
     def _get_rental_location_pallet_count(self):
         self.ensure_one()
@@ -135,8 +137,8 @@ class StockWarehouse(models.Model):
         if not outside_location_ids:
             return []
 
-        move_model = self.env['stock.move']
-        opening_snapshot = move_model.get_container_balance_snapshot(
+        container_model = self.env['stock.picking.container']
+        opening_snapshot = container_model.get_container_balance_snapshot(
             fields.Date.subtract(date_from, days=1),
             partner_id=self.commercial_partner_id.id,
             location_ids=outside_location_ids,
@@ -156,13 +158,13 @@ class StockWarehouse(models.Model):
             outward_by_type = {}
             container_type_ids = set(current_opening_by_type)
 
-            for impact in move_model._iter_container_impacts(
+            for impact in container_model._iter_container_impacts(
                 date_from=current_week_start,
                 date_to=current_week_end,
                 partner_id=self.commercial_partner_id.id,
             ):
-                move = impact['move']
-                if move.location_id.id == move.location_dest_id.id:
+                line = impact['line']
+                if line.location_id.id == line.location_dest_id.id:
                     continue
                 if impact['location_id'] not in outside_location_ids:
                     continue
