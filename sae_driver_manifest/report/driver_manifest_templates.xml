@@ -3,6 +3,8 @@
 
     <template id="report_driver_manifest">
         <t t-call="web.html_container">
+            <!-- Set company for the logo — docs.env.company is always available -->
+            <t t-set="company" t-value="docs.env.company"/>
             <!-- Distinct drivers in the selected legs -> one run page each -->
             <t t-set="drivers" t-value="docs.mapped('driver_id')"/>
 
@@ -10,101 +12,142 @@
                 <t t-set="run_legs"
                    t-value="docs.filtered(lambda l: l.driver_id.id == driver.id).sorted(key=lambda l: (l.to_postcode or l.from_postcode or ''))"/>
                 <t t-set="first" t-value="run_legs[:1]"/>
-                <t t-set="run_date" t-value="first.to_date or first.from_date"/>
+                <!-- Date = today's date (the date we print these) -->
+                <t t-set="print_date" t-value="time.strftime('%d/%m/%Y')"/>
 
-                <t t-call="web.external_layout">
-                    <div class="page">
+                <t t-call="sae_driver_manifest.external_layout_driver_manifest">
+                <div class="page" style="padding:8px 4px;">
 
-                        <h3 style="text-align:center; margin-bottom:8px;">
-                            Goods Release Note / Driver Manifest
-                        </h3>
-
-                        <!-- Run header -->
-                        <table style="width:100%; margin-bottom:8px; font-size:12px;">
-                            <tr>
-                                <td><strong>Driver:</strong> <span t-field="driver.name"/></td>
-                                <td><strong>Vehicle:</strong>
-                                    <span t-out="first.fleet_id.name or ''"/>
-                                </td>
-                                <td><strong>Date:</strong>
-                                    <span t-if="run_date" t-out="run_date"/>
-                                </td>
-                            </tr>
-                        </table>
-
-                        <!-- Job lines -->
-                        <table class="table table-sm table-bordered" style="font-size:10px;">
-                            <thead>
-                                <tr>
-                                    <th>Ord</th>
-                                    <th>Customer</th>
-                                    <th>Job No</th>
-                                    <th>Del/Coll</th>
-                                    <th>Town / Post Code</th>
-                                    <th>Description</th>
-                                    <th>Special Instructions</th>
-                                    <th style="width:70px; text-align:center;">Loaded<br/>Y / N/A</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <t t-set="row_no" t-value="0"/>
-                                <t t-foreach="run_legs" t-as="leg">
-                                    <t t-set="row_no" t-value="row_no + 1"/>
-                                    <!-- incoming picking = Collect, otherwise Deliver -->
-                                    <t t-set="is_collect"
-                                       t-value="leg.picking_id and leg.picking_id.picking_type_id.code == 'incoming'"/>
-                                    <t t-set="pk" t-value="leg.picking_id"/>
-                                    <tr>
-                                        <td><span t-out="row_no"/></td>
-                                        <td><span t-out="leg.order_id.partner_id.name or leg.to_location.name or ''"/></td>
-                                        <td><span t-out="(pk and pk.name) or leg.reference or leg.name or ''"/></td>
-                                        <td><span t-out="'Collect' if is_collect else 'Deliver'"/></td>
-                                        <td>
-                                            <span t-out="(leg.from_town or '') if is_collect else (leg.to_town or '')"/>
-                                            <span t-out="(leg.from_postcode or '') if is_collect else (leg.to_postcode or '')"/>
-                                        </td>
-                                        <td>
-                                            <t t-if="pk and pk.package_ids">
-                                                <t t-foreach="pk.package_ids" t-as="pl">
-                                                    <div>
-                                                        <t t-if="pl.quantity"><t t-out="pl.quantity"/> x </t>
-                                                        <t t-out="pl.package_type_id.name or pl.name or 'Package'"/>
-                                                        <t t-if="pl.weight">, <t t-out="'%.1f' % pl.weight"/> Kg</t>
-                                                    </div>
-                                                </t>
-                                            </t>
-                                            <t t-elif="pk and pk.weight">
-                                                <t t-out="'%.1f' % pk.weight"/> <t t-out="pk.weight_uom_name or 'Kg'"/>
-                                            </t>
-                                        </td>
-                                        <td><span t-out="(leg.from_instructions or '') if is_collect else (leg.to_instructions or '')"/></td>
-                                        <td></td>
-                                    </tr>
-                                </t>
-                            </tbody>
-                        </table>
-
-                        <!-- Sign-off block -->
-                        <table style="width:100%; margin-top:28px; font-size:11px;">
-                            <tr>
-                                <td style="width:50%; vertical-align:top;">
-                                    <strong>Vehicle loaded by:</strong><br/><br/>
-                                    Sign: ______________________<br/><br/>
-                                    Print: ______________________<br/><br/>
-                                    Date / Time: ________________
-                                </td>
-                                <td style="width:50%; vertical-align:top;">
-                                    <strong>Driver Confirmation:</strong><br/><br/>
-                                    Sign: ______________________<br/><br/>
-                                    Print: ______________________<br/><br/>
-                                    Date / Time: ________________
-                                </td>
-                            </tr>
-                        </table>
-
+                    <!-- Company logo top-left + title centered -->
+                    <div style="margin-bottom:6px;">
+                        <img t-if="company and company.logo"
+                             t-att-src="image_data_uri(company.logo)"
+                             style="max-height:45px; max-width:180px;" alt="Logo"/>
                     </div>
-                </t>
+
+                    <h3 style="text-align:center; margin:0 0 10px 0; font-size:18px; font-weight:bold;">
+                        Goods Release Note / Driver Manifest
+                    </h3>
+
+                    <!-- Run header: bordered box -->
+                    <table style="width:100%; margin-bottom:10px; font-size:12px; border-collapse:collapse; border:1px solid #888;">
+                        <tr>
+                            <td style="padding:6px 10px; border-right:1px solid #ccc; width:33%;">
+                                <strong>Driver:</strong> <span t-field="driver.name"/>
+                            </td>
+                            <td style="padding:6px 10px; border-right:1px solid #ccc; width:34%;">
+                                <strong>Vehicle:</strong>
+                                <span t-out="first.fleet_id.name or ''"/>
+                            </td>
+                            <td style="padding:6px 10px; width:33%;">
+                                <strong>Date:</strong>
+                                <span t-out="print_date"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Job lines: dark header bar, bordered cells -->
+                    <table style="width:100%; table-layout:fixed; font-size:10px; border-collapse:collapse; border:1px solid #888;">
+                        <colgroup>
+                            <col style="width:3%;"/>
+                            <col style="width:15%;"/>
+                            <col style="width:7%;"/>
+                            <col style="width:7%;"/>
+                            <col style="width:13%;"/>
+                            <col style="width:19%;"/>
+                            <col style="width:28%;"/>
+                            <col style="width:3.5%;"/>
+                            <col style="width:4.5%;"/>
+                        </colgroup>
+                        <thead>
+                            <tr style="background-color:#e9ecef;">
+                                <th rowspan="2" style="padding:5px 8px; border:1px solid #999; text-align:left; text-transform:uppercase; font-weight:bold;">Ord</th>
+                                <th rowspan="2" style="padding:5px 8px; border:1px solid #999; text-align:left; text-transform:uppercase; font-weight:bold;">Customer</th>
+                                <th rowspan="2" style="padding:5px 8px; border:1px solid #999; text-align:left; text-transform:uppercase; font-weight:bold;">Job No</th>
+                                <th rowspan="2" style="padding:5px 8px; border:1px solid #999; text-align:left; text-transform:uppercase; font-weight:bold;">Del/Coll</th>
+                                <th rowspan="2" style="padding:5px 8px; border:1px solid #999; text-align:left; text-transform:uppercase; font-weight:bold;">Town / Post Code</th>
+                                <th rowspan="2" style="padding:5px 8px; border:1px solid #999; text-align:left; text-transform:uppercase; font-weight:bold;">Description</th>
+                                <th rowspan="2" style="padding:5px 8px; border:1px solid #999; text-align:left; text-transform:uppercase; font-weight:bold;">Special Instructions</th>
+                                <th colspan="2" style="padding:5px 8px; border:1px solid #999; text-align:center; text-transform:uppercase; font-weight:bold;">Loaded</th>
+                            </tr>
+                            <tr style="background-color:#e9ecef;">
+                                <th style="padding:3px 2px; border:1px solid #999; text-align:center; font-weight:bold;">Y</th>
+                                <th style="padding:3px 2px; border:1px solid #999; text-align:center; font-weight:bold;">N/A</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-set="row_no" t-value="0"/>
+                            <t t-foreach="run_legs" t-as="leg">
+                                <t t-set="row_no" t-value="row_no + 1"/>
+                                <!-- incoming picking = Collect, otherwise Deliver -->
+                                <t t-set="is_collect"
+                                   t-value="leg.picking_id and leg.picking_id.picking_type_id.code == 'incoming'"/>
+                                <t t-set="pk" t-value="leg.picking_id"/>
+                                <tr>
+                                    <td style="padding:5px 4px; border:1px solid #ccc; vertical-align:top;"><span t-out="row_no"/></td>
+                                    <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;"><span t-out="leg.order_id.partner_id.name or leg.to_location.name or ''"/></td>
+                                    <td style="padding:5px 4px; border:1px solid #ccc; vertical-align:top; white-space:nowrap;"><span t-out="(leg.order_id and leg.order_id.name) or ''"/></td>
+                                    <td style="padding:5px 4px; border:1px solid #ccc; vertical-align:top; white-space:nowrap;"><span t-out="'Collect' if is_collect else 'Deliver'"/></td>
+                                    <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;">
+                                        <!-- Town: prefer manual field, fall back to partner city -->
+                                        <t t-set="town"
+                                           t-value="(leg.from_town or (leg.from_location.city if leg.from_location else '') or '') if is_collect else (leg.to_town or (leg.to_location.city if leg.to_location else '') or '')"/>
+                                        <t t-set="pc"
+                                           t-value="(leg.from_postcode or '') if is_collect else (leg.to_postcode or '')"/>
+                                        <t t-set="location_line"
+                                           t-value="(town + (', ' + pc if pc else '')) if town else (pc or '')"/>
+                                        <span t-out="location_line"/>
+                                    </td>
+                                    <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;">
+                                        <!-- Description: package lines first; else picking name + weight; else picking name -->
+                                        <t t-if="pk and pk.package_ids">
+                                            <t t-foreach="pk.package_ids" t-as="pl">
+                                                <div>
+                                                    <t t-if="pl.quantity"><t t-out="pl.quantity"/> x </t>
+                                                    <t t-out="pl.package_type_id.name or pl.name or 'Package'"/>
+                                                    <t t-if="pl.weight">, <t t-out="'%.1f' % pl.weight"/> Kg</t>
+                                                </div>
+                                            </t>
+                                        </t>
+                                        <t t-elif="pk">
+                                            <span t-out="pk.name or ''"/>
+                                            <t t-if="pk.weight">, <t t-out="'%.1f' % pk.weight"/> <t t-out="pk.weight_uom_name or 'Kg'"/></t>
+                                        </t>
+                                    </td>
+                                    <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;"><span t-out="(leg.from_instructions or '') if is_collect else (leg.to_instructions or '')"/></td>
+                                    <!-- Loaded: tick boxes aligned under Y / N/A header columns -->
+                                    <td style="padding:5px 4px; border:1px solid #ccc; text-align:center; vertical-align:middle;">
+                                        <span style="display:inline-block; width:12px; height:12px; border:1.5px solid #333;"></span>
+                                    </td>
+                                    <td style="padding:5px 4px; border:1px solid #ccc; text-align:center; vertical-align:middle;">
+                                        <span style="display:inline-block; width:12px; height:12px; border:1.5px solid #333;"></span>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <!-- Sign-off block: two bordered boxes -->
+                    <table style="width:100%; margin-top:28px; font-size:11px; border-collapse:collapse;">
+                        <tr>
+                            <td style="width:50%; vertical-align:top; border:1px solid #888; padding:10px;">
+                                <strong>Vehicle loaded by:</strong><br/><br/>
+                                Sign: ______________________<br/><br/>
+                                Print: ______________________<br/><br/>
+                                Date / Time: ________________
+                            </td>
+                            <td style="width:50%; vertical-align:top; border:1px solid #888; padding:10px;">
+                                <strong>Driver Confirmation:</strong><br/><br/>
+                                Sign: ______________________<br/><br/>
+                                Print: ______________________<br/><br/>
+                                Date / Time: ________________
+                            </td>
+                        </tr>
+                    </table>
+
+                </div>
             </t>
+        </t>
         </t>
     </template>
 

@@ -35,4 +35,31 @@
         <field name="paperformat_id" ref="paperformat_driver_manifest"/>
     </record>
 
+    <!--
+        Minimal layout for the manifest: no SAE company header, no SAE footer
+        contact line. All visual styling is inlined in the report template
+        (driver_manifest_templates.xml) so the output does not depend on the
+        Odoo CSS bundle being applied by wkhtmltopdf for this report.
+
+        This scaffold only provides:
+          - an empty .header div (keeps the standard page spacing)
+          - an .article wrapper around the calling template's content
+          - a .footer with a thin border-top and the Page X / Y counter
+    -->
+    <template id="external_layout_driver_manifest">
+        <t t-if="not company">
+            <t t-set="company" t-value="res_company"/>
+        </t>
+        <div class="header"/>
+        <div class="article">
+            <t t-out="0"/>
+        </div>
+        <div class="footer">
+            <div class="o_footer_content text-end text-muted"
+                 style="border-top:1px solid #ccc; padding-top:6px;">
+                <div t-if="report_type == 'pdf'" class="text-nowrap">Page <span class="page"/> / <span class="topage"/></div>
+            </div>
+        </div>
+    </template>
+
 </odoo>

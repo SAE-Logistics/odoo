@@ -192,6 +192,56 @@ selection; legs filtered per driver and sorted by postcode; header
 **Lesson:** verify fields against the live instance with `get_model_fields`
 before writing template expressions. Guessing at `display_name` cost a round trip.
 
+## 6. Iterations on the layout (Jul 2026)
+
+The first deployment used `web.external_layout` which printed the SAE
+company header (logo, address) and footer (phone/email/website) — those were
+intentionally too prominent for a driver run-sheet. Iteration sequence:
+
+- **v1.1.0** — Job No changed to `order_id.name` (SO number). Town + postcode
+  joined with `, `. SAE address header still printed via `web.external_layout`.
+- **v1.2.0** — Dropped `web.external_layout`; added a minimal custom layout
+  `external_layout_driver_manifest` with empty `<div class="header"/>` so no
+  SAE branding prints. But: the custom layout used `<div class="article">`
+  with no `o_report_layout_standard` / `o_table_standard` / `o_company_N_layout`
+  classes — without those, the standard Odoo 18 layout CSS doesn't apply and
+  the PDF renders as plain unstyled text. **Bug: layout stripped.**
+- **v1.3.0** — Custom layout now sets `company` (with the standard multicompany
+  fallback chain) and applies the standard layout classes to the article div:
+  ```xml
+  <div t-attf-class="article o_report_layout_standard o_table_standard o_company_#{company.id}_layout"
+       t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id"
+       t-att-data-oe-lang="o and o.env.context.get('lang')">
+  ```
+  plus matching classes on the footer. This restores the font, table styling,
+  and page-X-of-Y footer while keeping the SAE header/address suppressed.
+
+**Lesson:** when replacing `web.external_layout`, do not strip the layout
+classes — they are what bring in the typography and table CSS. The
+`o_report_layout_standard` and `o_company_N_layout` classes are required
+even if you don't want the standard company header.
+
+- **v1.4.0** — Inline all visual styling directly in the QWeb template via
+  `style="..."` attributes on every element (table cells, header row, sign-off
+  boxes, footer border). The custom layout `external_layout_driver_manifest`
+  was stripped back to a minimal scaffold (`<div class="header"/>` + `<div class="article">`
+  + `<div class="footer">` with the Page X / Y counter). No dependency on
+  Odoo's compiled CSS bundle (which wkhtmltopdf was not applying for our
+  report context despite the correct classes being present on the article div).
+  Added a `t-elif="pk"` fallback in the Description column so the picking
+  name (e.g. `WH/OUT/00021`) and weight always print when package_ids is
+  empty — column is never blank for a leg that has a picking.
+
+**Lesson (v1.4.0):** the `o_report_layout_standard` / `o_table_standard` /
+`o_company_N_layout` classes did NOT produce styled output in this
+wkhtmltopdf environment, despite being present on the article div. The
+compiled CSS bundle (`web.report_assets_common`) loaded via `web.html_container`
+→ `web.report_layout` apparently was not being applied to our custom layout.
+Inline styles bypass this entirely and produce consistent output. When a
+report needs a custom layout (not the standard company header), prefer
+inline styles over relying on the standard layout CSS classes — they only
+reliably apply inside the standard `web.external_layout_*` chain.
+
 ---
 
 ## 6. Current state / immediate next step

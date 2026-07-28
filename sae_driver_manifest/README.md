@@ -22,13 +22,17 @@ on `staging.mysae.net` (Odoo 18). Built to pair with the A1 list-view tweak
 
 | GRN column | Source |
 |---|---|
-| Customer | `order_id.partner_id.name` |
-| Job No | `picking_id.name` (fallback `reference` / `name`) |
+| Customer | `order_id.partner_id.name` (fallback `to_location.name`) |
+| Job No | `order_id.name` (Sales Order number) — blank if leg has no SO |
 | Del/Coll | `picking_id.picking_type_id.code` (incoming = Collect, else Deliver) |
-| Town / Post Code | `from_*` if Collect else `to_*` |
+| Town / Post Code | `from_town` + `from_postcode` (comma-separated) if Collect else `to_town` + `to_postcode` |
 | Description | `picking_id.weight` + `picking_id.package_ids` summary |
 | Special Instructions | `from_instructions` if Collect else `to_instructions` |
 | Header Driver / Vehicle / Date | `driver_id` / `fleet_id` / leg run date |
+
+## Layout
+
+Custom layout template `external_layout_driver_manifest` (in `driver_manifest_report.xml`) is used instead of `web.external_layout` — this prints a clean run-sheet with NO SAE company header/address/footer (those were intentionally removed). Standard Odoo 18 layout CSS classes (`o_report_layout_standard`, `o_table_standard`, `o_company_N_layout`) are applied so fonts, table styling, and the page-X-of-Y footer still render correctly.
 
 ## Two things to verify on deploy
 
@@ -40,6 +44,9 @@ on `staging.mysae.net` (Odoo 18). Built to pair with the A1 list-view tweak
    is populated on real legs (e.g. leg 17 -> WH/OUT/00021 = outgoing = Deliver).
    If any internal legs have no picking, Del/Coll defaults to Deliver — decide if
    that fallback is acceptable or should read the depot-as-endpoint rule instead.
+3. **`from_town` / `to_town`** must be populated for the Town/Post Code column
+   to show town + postcode. Most current test data has empty town fields; the
+   column will render only the postcode until those are filled in.
 
 ## Next (step 3, not in this module)
 
