@@ -102,5 +102,64 @@ class ApcApiClient:
             ) from exc
         return _apc_normalise_items(data)
 
+    def json_or_error(self, payload):
+        # Check deepest, most specific error first — the field-level
+        # message (e.g. "Date cannot be in the past") is what the user
+        # needs to see, not the technical codes ("105 CREATION FAILED").
+        # APC returns Messages with Code="SUCCESS" on valid bookings,
+        # so we only raise when Code is a non-success value.
+        for order in payload.get("Orders", []):
+            if not isinstance(order, dict):
+                continue
+            order_entry = order.get("Order")
+            if isinstance(order_entry, dict):
+                order_msgs = order_entry.get("Messages")
+                if isinstance(order_msgs, dict):
+                    code = (order_msgs.get("Code") or "").upper()
+                    if code and code != "SUCCESS":
+                        err_fields = order_msgs.get("ErrorFields", {})
+                        if isinstance(err_fields, dict):
+                            err_field = err_fields.get("ErrorField")
+                            if isinstance(err_field, dict):
+                                field_name = err_field.get("FieldName", "")
+                                err_msg = err_field.get("ErrorMessage", "")
+                                if err_msg:
+                                    raise ValidationError(
+                                        _("APC booking error: %s%s") % (
+                                            err_msg,
+                                            (" (%s)" % field_name)
+                                            if field_name else "",
+                                        )
+                                    )
+                        desc = order_msgs.get("Description", "")
+                        if desc:
+                            raise ValidationError(
+                                _("APC booking error: %s") % desc
+                            )
+            order_msgs = order.get("Messages")
+            if isinstance(order_msgs, dict):
+                code = (order_msgs.get("Code") or "").upper()
+                desc = order_msgs.get("Description", "")
+                if code and code != "SUCCESS" and desc:
+                    raise ValidationError(
+                        _("APC booking error: %s") % desc
+                    )
+        # Fall back to top-level Messages (auth/global errors).
+        messages = payload.get("Messages", [])
+        if isinstance(messages, dict):
+            messages = [messages]
+        if messages:
+            error_parts = []
+            for msg in messages:
+                code = msg.get("Code", "")
+                text = msg.get("Description", msg.get("Text", ""))
+                if code or text:
+                    error_parts.append("%s: %s" % (code, text))
+            if error_parts:
+                raise ValidationError(
+                    _("APC API error: %s") % "\n".join(error_parts)
+                )
+        return payload
+
     def call_json(self, method, path, payload=None, params=None):
-        return self.call(method, path, payload, params)
+        return self.json_or_error(self.call(method, path, payload, params))

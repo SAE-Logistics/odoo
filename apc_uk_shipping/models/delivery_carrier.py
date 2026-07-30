@@ -484,6 +484,18 @@ class DeliveryCarrier(models.Model):
                 pass
         if error_msg:
             raise ValidationError(error_msg)
+        orders = response.get("Orders", [])
+        if isinstance(orders, list):
+            orders = orders[0] if orders else {}
+        order_entry = (
+            orders.get("Order", orders) if isinstance(orders, dict) else {})
+        if isinstance(order_entry, list):
+            order_entry = order_entry[0] if order_entry else {}
+        waybill = order_entry.get("WayBill", "") if isinstance(
+            order_entry, dict) else ""
+        if not waybill:
+            raise ValidationError(
+                _("APC did not return a waybill number."))
         return {
             "payload": payload,
             "response": response,
