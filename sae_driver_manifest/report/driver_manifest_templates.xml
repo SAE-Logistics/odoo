@@ -9,8 +9,10 @@
             <t t-set="drivers" t-value="docs.mapped('driver_id')"/>
 
             <t t-foreach="drivers" t-as="driver">
+                <!-- Rows are grouped per job: jobs ordered by their pickup postcode, then legs in
+                     their own sequence so a job's collection always prints above its delivery -->
                 <t t-set="run_legs"
-                   t-value="docs.filtered(lambda l: l.driver_id.id == driver.id).sorted(key=lambda l: (l.to_postcode or l.from_postcode or ''))"/>
+                   t-value="docs.filtered(lambda l: l.driver_id.id == driver.id).sorted(key=lambda l: (l.order_id.transport_from_id.zip or l.from_postcode or l.to_postcode or '', l.order_id.id, l.sequence, l.id))"/>
                 <t t-set="first" t-value="run_legs[:1]"/>
                 <!-- Date = today's date (the date we print these) -->
                 <t t-set="print_date" t-value="time.strftime('%d/%m/%Y')"/>
@@ -49,10 +51,10 @@
                     <!-- Job lines: dark header bar, bordered cells -->
                     <table style="width:100%; table-layout:fixed; font-size:10px; border-collapse:collapse; border:1px solid #888;">
                         <colgroup>
-                            <col style="width:3%;"/>
+                            <col style="width:4.5%;"/>
                             <col style="width:15%;"/>
                             <col style="width:7%;"/>
-                            <col style="width:7%;"/>
+                            <col style="width:5.5%;"/>
                             <col style="width:13%;"/>
                             <col style="width:19%;"/>
                             <col style="width:28%;"/>
@@ -79,10 +81,15 @@
                             <t t-set="row_no" t-value="0"/>
                             <t t-foreach="run_legs" t-as="leg">
                                 <t t-set="row_no" t-value="row_no + 1"/>
-                                <!-- incoming picking = Collect, otherwise Deliver -->
+                                <t t-set="order" t-value="leg.order_id"/>
+                                <!-- Transport / Goods In orders with several legs: first leg collects, the rest deliver -->
+                                <t t-set="all_legs" t-value="order.transport_all_leg_ids"/>
+                                <t t-set="use_leg_sequence"
+                                   t-value="order.order_type in ('transport', 'goods_in') and len(all_legs) &gt; 1"/>
                                 <t t-set="is_collect"
-                                   t-value="leg.picking_id and leg.picking_id.picking_type_id.code == 'incoming'"/>
+                                   t-value="(leg.sequence == min(all_legs.mapped('sequence'))) if use_leg_sequence else (leg.picking_id and leg.picking_id.picking_type_id.code == 'incoming')"/>
                                 <t t-set="pk" t-value="leg.picking_id"/>
+                                <t t-set="pkg_lines" t-value="pk.package_ids if pk else leg.order_line_id.package_ids"/>
                                 <tr>
                                     <td style="padding:5px 4px; border:1px solid #ccc; vertical-align:top;"><span t-out="row_no"/></td>
                                     <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;"><span t-out="leg.order_id.partner_id.name or leg.to_location.name or ''"/></td>
@@ -100,8 +107,8 @@
                                     </td>
                                     <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;">
                                         <!-- Description: package lines first; else picking name + weight; else picking name -->
-                                        <t t-if="pk and pk.package_ids">
-                                            <t t-foreach="pk.package_ids" t-as="pl">
+                                        <t t-if="pkg_lines">
+                                            <t t-foreach="pkg_lines" t-as="pl">
                                                 <div>
                                                     <t t-if="pl.quantity"><t t-out="pl.quantity"/> x </t>
                                                     <t t-out="pl.package_type_id.name or pl.name or 'Package'"/>
@@ -114,7 +121,10 @@
                                             <t t-if="pk.weight">, <t t-out="'%.1f' % pk.weight"/> <t t-out="pk.weight_uom_name or 'Kg'"/></t>
                                         </t>
                                     </td>
-                                    <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;"><span t-out="(leg.from_instructions or '') if is_collect else (leg.to_instructions or '')"/></td>
+                                    <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;">
+                                        <!-- Special Instructions: order collect/deliver note, falling back to the leg's own instructions -->
+                                        <span t-out="(order.collect_note or leg.from_instructions or '') if is_collect else (order.deliver_note or leg.to_instructions or '')"/>
+                                    </td>
                                     <!-- Loaded: tick boxes aligned under Y / N/A header columns -->
                                     <td style="padding:5px 4px; border:1px solid #ccc; text-align:center; vertical-align:middle;">
                                         <span style="display:inline-block; width:12px; height:12px; border:1.5px solid #333;"></span>
