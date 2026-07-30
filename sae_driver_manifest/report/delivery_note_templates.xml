@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="report_delivery_note">
+        <t t-call="web.html_container">
+            <!-- Set company for the letterhead — docs.env.company is always available -->
+            <t t-set="company" t-value="docs.env.company"/>
+            <!-- One page per copy. Reduce to a single entry if only one copy is wanted. -->
+            <t t-set="copies" t-value="['SAE Copy', 'Consignee Copy']"/>
+
+            <t t-foreach="docs" t-as="leg">
+                <t t-set="order" t-value="leg.order_id"/>
+
+                <!-- Direction: same derivation the GRN uses, so the two documents always agree.
+                     Transport / Goods In orders with several legs: first leg collects, rest deliver. -->
+                <t t-set="all_legs" t-value="order.transport_all_leg_ids"/>
+                <t t-set="use_leg_sequence"
+                   t-value="order.order_type in ('transport', 'goods_in') and len(all_legs) &gt; 1"/>
+                <t t-set="is_collect"
+                   t-value="(leg.sequence == min(all_legs.mapped('sequence'))) if use_leg_sequence else (leg.picking_id and leg.picking_id.picking_type_id.code == 'incoming')"/>
+
+                <!-- Package lines: picking first, order line as the Transport Order fallback -->
+                <t t-set="pk" t-value="leg.picking_id"/>
+                <t t-set="pkg_lines" t-value="pk.package_ids if pk else leg.order_line_id.package_ids"/>
+                <t t-set="total_qty"
+                   t-value="sum(pkg_lines.mapped('quantity')) if pkg_lines else (leg.order_line_id.package_qty or 0)"/>
+                <t t-set="total_weight"
+                   t-value="sum(pkg_lines.mapped('weight')) if pkg_lines else (((pk.shipping_weight or pk.weight) if pk else 0) or leg.order_line_id.total_weight or 0)"/>
+
+                <!-- Tracking lives on the leg in the leg-based booking flow; picking is the fallback -->
+                <t t-set="tracking"
+                   t-value="leg.tracking_code or leg.booking_ref or leg.apc_order_number or (pk.carrier_tracking_ref or pk.dpd_local_consignment_number if pk else '') or ''"/>
+
+                <t t-foreach="copies" t-as="copy_label">
+                <t t-call="sae_driver_manifest.external_layout_delivery_note">
+                <div class="page" style="padding:4px 6px; font-size:11px;">
+
+                    <!-- Title bar -->
+                    <div style="text-align:center; border-top:1px solid #1F6FB2; border-bottom:1px solid #1F6FB2; padding:5px 0; margin-bottom:10px; color:#1F6FB2; font-size:13px;">
+                        SAE Job No : <span t-out="order.name or ''"/>
+                        - <span t-out="'Collection Note' if is_collect else 'Delivery Note'"/>
+                        - <span t-out="copy_label"/>
+                    </div>
+
+                    <!-- Job summary: label / value / label / value -->
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:12px;">
+                        <colgroup>
+                            <col style="width:15%;"/>
+                            <col style="width:37%;"/>
+                            <col style="width:15%;"/>
+                            <col style="width:33%;"/>
+                        </colgroup>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Customer</td>
+                            <td style="padding:3px 4px; vertical-align:top; font-weight:bold; font-size:13px;">
+                                <span t-out="order.partner_id.name or leg.to_location.name or ''"/>
+                            </td>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">
+                                <span t-out="'Collection Date' if is_collect else 'Delivery Date'"/>
+                            </td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-field="leg.from_date" t-if="is_collect"/>
+                                <span t-field="leg.to_date" t-if="not is_collect"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Reference</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="leg.reference or order.client_order_ref or ''"/>
+                            </td>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Carrier</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="leg.carrier_id.name or leg.carrier_code or ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Service</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="leg.service_id.name or leg.preferred_service_id.name or ''"/>
+                            </td>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Tracking</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="tracking"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Goods Description</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="leg.order_line_id.name or order.order_note or ''"/>
+                            </td>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Qty / Weight</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <t t-if="total_qty"><span t-out="total_qty"/> pkg</t>
+                                <t t-if="total_qty and total_weight"> / </t>
+                                <t t-if="total_weight"><span t-out="'%.1f' % total_weight"/> Kg</t>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Package details -->
+                    <div style="color:#1F6FB2; border-bottom:1px solid #ccc; padding-bottom:2px; margin-bottom:5px;">Package Details</div>
+                    <t t-if="pkg_lines">
+                        <table style="width:100%; border-collapse:collapse; font-size:10px; margin-bottom:12px; border:1px solid #999;">
+                            <thead>
+                                <tr style="background-color:#e9ecef;">
+                                    <th style="padding:4px 6px; border:1px solid #999; text-align:left; width:10%;">Qty</th>
+                                    <th style="padding:4px 6px; border:1px solid #999; text-align:left; width:40%;">Package</th>
+                                    <th style="padding:4px 6px; border:1px solid #999; text-align:left; width:30%;">Dimensions (cm)</th>
+                                    <th style="padding:4px 6px; border:1px solid #999; text-align:left; width:20%;">Weight</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="pkg_lines" t-as="pl">
+                                    <tr>
+                                        <td style="padding:4px 6px; border:1px solid #ccc; vertical-align:top;">
+                                            <span t-out="pl.quantity or ''"/>
+                                        </td>
+                                        <td style="padding:4px 6px; border:1px solid #ccc; vertical-align:top;">
+                                            <!-- never use display_name here: non-stored, returns False -->
+                                            <span t-out="pl.package_type_id.name or pl.name or 'Package'"/>
+                                        </td>
+                                        <td style="padding:4px 6px; border:1px solid #ccc; vertical-align:top;">
+                                            <!-- dimensions are stored in mm; /10 for cm -->
+                                            <t t-if="pl.length or pl.width or pl.height">
+                                                <span t-out="'%gx%gx%g' % (pl.length / 10.0, pl.width / 10.0, pl.height / 10.0)"/>
+                                            </t>
+                                        </td>
+                                        <td style="padding:4px 6px; border:1px solid #ccc; vertical-align:top;">
+                                            <t t-if="pl.weight"><span t-out="'%.1f' % pl.weight"/> Kg</t>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </t>
+                    <t t-elif="pk">
+                        <div style="margin-bottom:12px;">
+                            <span t-out="pk.name or ''"/>
+                            <t t-if="pk.weight">, <span t-out="'%.1f' % pk.weight"/> <span t-out="pk.weight_uom_name or 'Kg'"/></t>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <div style="margin-bottom:12px;">&#160;</div>
+                    </t>
+
+                    <!-- Consign To / Collect From -->
+                    <div style="text-align:center; color:#1F6FB2; border-bottom:1px solid #ccc; padding-bottom:3px; margin-bottom:8px;">
+                        <span t-out="'Collect From' if is_collect else 'Consign To'"/>
+                    </div>
+
+                    <t t-set="loc" t-value="leg.from_location if is_collect else leg.to_location"/>
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:14px;">
+                        <colgroup>
+                            <col style="width:15%;"/>
+                            <col style="width:85%;"/>
+                        </colgroup>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Company</td>
+                            <td style="padding:3px 4px; vertical-align:top; font-weight:bold;">
+                                <span t-out="loc.name or ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Address</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="(leg.from_address if is_collect else leg.to_address) or ''"
+                                      style="white-space:pre-line;"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Town</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="(leg.from_town or (loc.city or '')) if is_collect else (leg.to_town or (loc.city or ''))"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">County</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="(leg.from_county.name if is_collect else leg.to_county.name) or ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Post Code</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="(leg.from_postcode if is_collect else leg.to_postcode) or ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Country</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="(leg.from_country.name if is_collect else leg.to_country.name) or ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Tel</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="((leg.from_tel or leg.from_mobile) if is_collect else (leg.to_tel or leg.to_mobile)) or ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Contact</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="(leg.from_contact if is_collect else leg.to_contact) or ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">EMail</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <span t-out="(leg.from_email if is_collect else leg.to_email) or ''"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Instructions</td>
+                            <td style="padding:3px 4px; vertical-align:top;">
+                                <!-- same precedence the GRN uses for Special Instructions -->
+                                <span t-out="(order.collect_note or leg.from_instructions or '') if is_collect else (order.deliver_note or leg.to_instructions or '')"
+                                      style="white-space:pre-line;"/>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- Proof of delivery: signed by hand on the printed page -->
+                    <table style="width:100%; border-collapse:collapse; margin-top:22px; margin-bottom:14px;">
+                        <tr>
+                            <td style="width:15%; padding:14px 4px 3px 4px; color:#1F6FB2; vertical-align:bottom;">
+                                <span t-out="'Collected Date' if is_collect else 'Delivered Date'"/>
+                            </td>
+                            <td style="width:35%; padding:14px 4px 3px 4px; border-bottom:1px solid #666;">&#160;</td>
+                            <td style="width:15%; padding:14px 4px 3px 12px; color:#1F6FB2; vertical-align:bottom;">Time</td>
+                            <td style="width:35%; padding:14px 4px 3px 4px; border-bottom:1px solid #666;">&#160;</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:20px 4px 3px 4px; color:#1F6FB2; vertical-align:bottom;">Signed</td>
+                            <td style="padding:20px 4px 3px 4px; border-bottom:1px solid #666;">&#160;</td>
+                            <td style="padding:20px 4px 3px 12px; color:#1F6FB2; vertical-align:bottom;">Name</td>
+                            <td style="padding:20px 4px 3px 4px; border-bottom:1px solid #666;">&#160;</td>
+                        </tr>
+                    </table>
+
+                    <!-- Legal blurb -->
+                    <div style="font-size:8px; color:#333; text-align:center; line-height:1.4; margin-top:10px;">
+                        <div style="text-align:justify;">
+                            By signing this delivery note, I hereby agree that the Consignment has been delivered to me
+                            with no damage apparent on normal visual inspection [and in accordance with the SAE Logistics'
+                            terms and conditions of supply]. Further, I hereby accept that SAE Logistics shall under no
+                            circumstances whatever be liable to me (or the supplier of the Consignment) in respect of any
+                            claim for damage to the Consignment, and I may not reject such Consignment on the basis of
+                            damage, where I have signed this delivery note without caveat.
+                        </div>
+                        <div style="margin-top:4px;">
+                            Data processed by SAE Logistics is used purely for contractual or operational reasons.
+                        </div>
+                        <div>
+                            Please refer to our Data Privacy Statement which can be viewed on our website
+                            www.saelogistics.com/privacy-statement
+                        </div>
+                    </div>
+
+                </div>
+                </t>
+                </t>
+            </t>
+        </t>
+    </template>
+
+</odoo>

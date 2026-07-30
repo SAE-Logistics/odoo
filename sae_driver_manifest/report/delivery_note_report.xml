@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Portrait paper format: the delivery note is a single-job A4 page.
+         Do NOT reuse paperformat_driver_manifest, which is Landscape. -->
+    <record id="paperformat_delivery_note" model="report.paperformat">
+        <field name="name">SAE Delivery Note (Portrait)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!--
+        Report action. Prints from the Transport Legs LIST, the same selection
+        used for the GRN: tick the run's legs -> Print -> Delivery Note.
+        One page per leg per copy.
+
+        Bound to sale.transport.leg rather than stock.picking on purpose:
+        Transport Orders have no picking, so a picking-scoped report would
+        produce nothing for them.
+
+        NOTE for deploy: binding_model_id ref points at the model record
+        for sale.transport.leg. If sale_goods_order declares the model under
+        a different module/xml-id, adjust the ref accordingly. Confirm with:
+          search ir.model where model = 'sale.transport.leg'.
+    -->
+    <record id="action_report_delivery_note" model="ir.actions.report">
+        <field name="name">Delivery Note</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">sae_driver_manifest.report_delivery_note</field>
+        <field name="report_file">sae_driver_manifest.report_delivery_note</field>
+        <field name="binding_model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_delivery_note"/>
+    </record>
+
+    <!--
+        Layout for the delivery note. Unlike external_layout_driver_manifest,
+        this one DOES carry the SAE letterhead (logo left, company address and
+        contact right), because the note is handed to the customer.
+
+        As everywhere in this module, all visual styling is inlined so the
+        output does not depend on the Odoo CSS bundle being applied by
+        wkhtmltopdf. The logo goes through image_data_uri(), not
+        t-field widget="image", which renders as a grey box here.
+    -->
+    <template id="external_layout_delivery_note">
+        <t t-if="not company">
+            <t t-set="company" t-value="res_company"/>
+        </t>
+        <div class="header"/>
+        <div class="article">
+            <div style="width:100%; margin-bottom:6px;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <td style="width:45%; vertical-align:top;">
+                            <img t-if="company and company.logo"
+                                 t-att-src="image_data_uri(company.logo)"
+                                 style="max-height:60px; max-width:200px;" alt="Logo"/>
+                        </td>
+                        <td style="width:55%; vertical-align:top; text-align:right; font-size:10px; line-height:1.45; color:#333;">
+                            <div t-if="company.street"><span t-out="company.street"/><t t-if="company.street2">, <span t-out="company.street2"/></t></div>
+                            <div>
+                                <t t-if="company.city"><span t-out="company.city"/></t>
+                                <t t-if="company.state_id">, <span t-out="company.state_id.name"/></t>
+                                <t t-if="company.zip"> <span t-out="company.zip"/></t>
+                            </div>
+                            <div style="margin-top:2px;">
+                                <t t-if="company.phone"><strong style="color:#1F6FB2;">T:</strong> <span t-out="company.phone"/></t>
+                                <t t-if="company.email"> &#160; <strong style="color:#1F6FB2;">E:</strong> <span t-out="company.email"/></t>
+                            </div>
+                            <div t-if="company.website" style="color:#1F6FB2; font-weight:bold;">
+                                <span t-out="company.website"/>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <t t-out="0"/>
+        </div>
+        <div class="footer">
+            <div class="o_footer_content text-end text-muted"
+                 style="border-top:1px solid #ccc; padding-top:6px;">
+                <div t-if="report_type == 'pdf'" class="text-nowrap">Page <span class="page"/> / <span class="topage"/></div>
+            </div>
+        </div>
+    </template>
+
+</odoo>
