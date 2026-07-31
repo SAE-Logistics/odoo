@@ -56,8 +56,36 @@
         </t>
         <div class="header"/>
         <div class="article">
+            <!--
+                This block MUST live inside .article. IrActionsReport._prepare_html
+                rebuilds the document from the .header / .footer / .article nodes only,
+                so a <style> placed outside them is silently dropped and never reaches
+                wkhtmltopdf.
+
+                The tables below are layout scaffolding and must print with no rules of
+                their own. They were coming out with a line around every cell, which a
+                plain border:0 on the cells did NOT remove — the lines were the gaps left
+                by border-spacing, because the inline border-collapse was not taking
+                effect under wkhtmltopdf. Forcing collapse here is what fixes it; the
+                border reset is kept as belt-and-braces and covers tr and the row groups.
+
+                Any rule the design does want inside a sae-plain table goes on a child
+                div, which this does not touch. The package details table deliberately
+                carries no class, so it keeps its own grid.
+            -->
+            <style>
+                table.sae-plain { border-collapse: collapse !important; border-spacing: 0 !important; }
+
+                table.sae-plain,
+                table.sae-plain > thead,
+                table.sae-plain > tbody,
+                table.sae-plain > tfoot,
+                table.sae-plain tr,
+                table.sae-plain th,
+                table.sae-plain td { border: 0 !important; outline: 0 !important; }
+            </style>
             <div style="width:100%; margin-bottom:6px;">
-                <table style="width:100%; border-collapse:collapse;">
+                <table class="sae-plain" style="width:100%; border-collapse:collapse;">
                     <tr>
                         <td style="width:45%; vertical-align:top;">
                             <img t-if="company and company.logo"
@@ -86,7 +114,7 @@
         </div>
         <div class="footer">
             <div class="o_footer_content text-end text-muted"
-                 style="border-top:1px solid #ccc; padding-top:6px;">
+                 style="padding-top:6px;">
                 <div t-if="report_type == 'pdf'" class="text-nowrap">Page <span class="page"/> / <span class="topage"/></div>
             </div>
         </div>

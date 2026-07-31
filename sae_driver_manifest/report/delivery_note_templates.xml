@@ -43,7 +43,7 @@
                     </div>
 
                     <!-- Job summary: label / value / label / value -->
-                    <table style="width:100%; border-collapse:collapse; margin-bottom:12px;">
+                    <table class="sae-plain" style="width:100%; border-collapse:collapse; margin-bottom:12px;">
                         <colgroup>
                             <col style="width:15%;"/>
                             <col style="width:37%;"/>
@@ -98,7 +98,8 @@
                     </table>
 
                     <!-- Package details -->
-                    <div style="color:#1F6FB2; border-bottom:1px solid #ccc; padding-bottom:2px; margin-bottom:5px;">Package Details</div>
+                    <!-- Sized to match the title bar and the Consign To heading (13px) -->
+                    <div style="color:#1F6FB2; font-size:13px; margin-bottom:5px;">Package Details</div>
                     <t t-if="pkg_lines">
                         <table style="width:100%; border-collapse:collapse; font-size:10px; margin-bottom:12px; border:1px solid #999;">
                             <thead>
@@ -144,12 +145,13 @@
                     </t>
 
                     <!-- Consign To / Collect From -->
-                    <div style="text-align:center; color:#1F6FB2; border-bottom:1px solid #ccc; padding-bottom:3px; margin-bottom:8px;">
+                    <!-- Sized to match the title bar above (13px), not the 11px page default -->
+                    <div style="text-align:center; color:#1F6FB2; font-size:13px; margin-bottom:8px;">
                         <span t-out="'Collect From' if is_collect else 'Consign To'"/>
                     </div>
 
                     <t t-set="loc" t-value="leg.from_location if is_collect else leg.to_location"/>
-                    <table style="width:100%; border-collapse:collapse; margin-bottom:14px;">
+                    <table class="sae-plain" style="width:100%; border-collapse:collapse; margin-bottom:14px;">
                         <colgroup>
                             <col style="width:15%;"/>
                             <col style="width:85%;"/>
@@ -220,20 +222,30 @@
                     </table>
 
                     <!-- Proof of delivery: signed by hand on the printed page -->
-                    <table style="width:100%; border-collapse:collapse; margin-top:22px; margin-bottom:14px;">
+                    <!-- The signature rules sit on inner divs, not on the cells: the
+                         borderless reset above clears cell borders, but not div ones. -->
+                    <table class="sae-plain" style="width:100%; border-collapse:collapse; margin-top:22px; margin-bottom:14px;">
                         <tr>
                             <td style="width:15%; padding:14px 4px 3px 4px; color:#1F6FB2; vertical-align:bottom;">
                                 <span t-out="'Collected Date' if is_collect else 'Delivered Date'"/>
                             </td>
-                            <td style="width:35%; padding:14px 4px 3px 4px; border-bottom:1px solid #666;">&#160;</td>
+                            <td style="width:35%; padding:14px 4px 3px 4px; vertical-align:bottom;">
+                                <div style="border-bottom:1px solid #666;">&#160;</div>
+                            </td>
                             <td style="width:15%; padding:14px 4px 3px 12px; color:#1F6FB2; vertical-align:bottom;">Time</td>
-                            <td style="width:35%; padding:14px 4px 3px 4px; border-bottom:1px solid #666;">&#160;</td>
+                            <td style="width:35%; padding:14px 4px 3px 4px; vertical-align:bottom;">
+                                <div style="border-bottom:1px solid #666;">&#160;</div>
+                            </td>
                         </tr>
                         <tr>
                             <td style="padding:20px 4px 3px 4px; color:#1F6FB2; vertical-align:bottom;">Signed</td>
-                            <td style="padding:20px 4px 3px 4px; border-bottom:1px solid #666;">&#160;</td>
+                            <td style="padding:20px 4px 3px 4px; vertical-align:bottom;">
+                                <div style="border-bottom:1px solid #666;">&#160;</div>
+                            </td>
                             <td style="padding:20px 4px 3px 12px; color:#1F6FB2; vertical-align:bottom;">Name</td>
-                            <td style="padding:20px 4px 3px 4px; border-bottom:1px solid #666;">&#160;</td>
+                            <td style="padding:20px 4px 3px 4px; vertical-align:bottom;">
+                                <div style="border-bottom:1px solid #666;">&#160;</div>
+                            </td>
                         </tr>
                     </table>
 

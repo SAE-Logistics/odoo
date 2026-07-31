@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "SAE Driver Manifest (GRN)",
-    "version": "18.0.1.6.0",
+    "version": "18.0.1.6.8",
     "summary": "Print a Goods Release Note / Driver Manifest and per-job Delivery Notes for selected internal transport legs.",
     "author": "eartisan",
     "website": "https://eartisan.co.uk",
