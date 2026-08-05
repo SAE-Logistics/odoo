@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Dated Cheque (PDC) Management</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+          crossorigin="anonymous">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.1/css/all.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <link rel="preload"
+          href="//apps.odoocdn.com/web/static/src/libs/fontawesome/fonts/fontawesome-webfont.woff2?v=4.7.0" as="font"
+          crossorigin="">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+          integrity="sha512-pap9y..." crossorigin="anonymous" referrerpolicy="no-referrer"/>
+</head>
+<body>
+<section>
+    <div class="container"
+         style="font-family: 'Inter', sans-serif !important;background-color: #fff !important;">
+        <div class="row">
+            <div class="col-sm-12 col-md-12 col-lg-12 d-flex justify-content-between flex-wrap align-items-sm-center"
+                 style="border-bottom:1px solid rgba(0, 0, 0, 0.22)">
+                <div class="my-3">
+                    <img src="assets/images/PY_SQUAD_1.png"
+                         style="width:auto !important; height:35px !important">
+                </div>
+                <div class="my-3 d-flex align-items-center">
+                    <div style="
+                        display:inline-block;
+                        padding:5px 15px;
+                        border-radius:50px;
+                        color:#fff;
+                        font-weight:500;
+                        font-size:0.8rem;
+                        margin-right:8px;
+                        background-color:#017E84;">
+                        Community
+                    </div>
+                    <div style="
+                        display:inline-block;
+                        padding:5px 15px;
+                        border-radius:50px;
+                        color:#fff;
+                        font-weight:500;
+                        font-size:0.8rem;
+                        background-color:#875A7B;">
+                        Enterprise
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="oe_container" style="padding:10px 0; text-align:center; font-family:'Inter', sans-serif;">
+            <div class="oe_row oe_spaced">
+                <div class="oe_span12">
+                    <!-- TITLE -->
+                    <h1 style="
+                    font-size:36px;
+                    font-weight:900;
+                    color:#1A202C;
+                    margin-bottom:15px;
+                ">
+                        <i class="fa fa-check-square" style="color:#00438B; margin-right:8px;"></i>
+                        Post Dated Cheque (PDC)
+                    </h1>
+
+                    <!-- SUBTEXT -->
+                    <p style="
+                    max-width:800px;
+                    margin:0 auto;
+                    margin-bottom:20px; /* reduced from 30px */
+                    color:#718096;
+                    font-size:16px;
+                    line-height:26px;
+                ">
+                        <strong>Post Dated Cheque (PDC) Management</strong> module enables businesses to register,
+                        track, and process post-dated cheques for customers and vendors with full accounting
+                        integration. It supports the complete PDC lifecycle from registration to deposit, clearance, or
+                        bounce, automatically creates journal entries, and reconciles invoices upon cheque clearance,
+                        ensuring accurate and controlled cheque-based payments.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="oe_container pb-5">
+        <div class="mt64 mb64">
+            <h2 class="text-center text-uppercase"
+                style="font-family: Montserrat, 'sans-serif' !important; font-size: 50px !important; color:#5154a5; font-weight: 900 !important;">
+                <span style="color:#00438B;">Top Features</span>
+            </h2>
+
+            <!-- ===== ROW 1 : 3 FEATURES ===== -->
+            <div class="row">
+                <!-- Feature 1 -->
+                <div class="col-md-4 col-sm-12 mt32">
+                    <div class="container shadow d-flex align-items-start justify-content-center"
+                         style="border-radius: 5px;padding: 33px 0;min-height: 180px;">
+                        <div class="col-md-9">
+                            <h3 style="color:#00438B;font-weight:700;font-size:1.5rem;">
+                                <i class="fa fa-file-text-o"></i> Google Places Autocomplete
+                            </h3>
+                            <p style="color:#717171;">
+                                Autocomplete address fields in the Contacts form using Google Places API.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="col-md-4 col-sm-12 mt32">
+                    <div class="container shadow d-flex align-items-start justify-content-center"
+                         style="border-radius: 5px;padding: 33px 0;min-height: 180px;">
+                        <div class="col-md-9">
+                            <h3 style="color:#00438B;font-weight:700;font-size:1.5rem;">
+                                <i class="fa fa-refresh"></i> Smart Address Mapping
+                            </h3>
+                            <p style="color:#717171;">
+                                Automatically fills City, ZIP, State, and Country.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="col-md-4 col-sm-12 mt32">
+                    <div class="container shadow d-flex align-items-start justify-content-center"
+                         style="border-radius: 5px;padding: 33px 0;min-height: 180px;">
+                        <div class="col-md-9">
+                            <h3 style="color:#00438B;font-weight:700;font-size:1.5rem;">
+                                <i class="fa fa-cubes"></i> Street vs Street2 Intelligence
+                            </h3>
+                            <p style="color:#717171;">
+                                Street → Full address<br/>
+                                Street2 → Only Street2
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== ROW 2 : CENTERED 2 FEATURES ===== -->
+            <div class="row justify-content-center">
+                <!-- Feature 4 -->
+                <div class="col-md-4 col-sm-12 mt32">
+                    <div class="container shadow d-flex align-items-start justify-content-center"
+                         style="border-radius: 5px;padding: 33px 0;min-height: 180px;">
+                        <div class="col-md-9">
+                            <h3 style="color:#00438B;font-weight:700;font-size:1.5rem;">
+                                <i class="fa fa-file-text"></i> Accurate Country–State Detection
+                            </h3>
+                            <p style="color:#717171;">
+                                Correct country and state mapping using Google address components.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="col-md-4 col-sm-12 mt32">
+                    <div class="container shadow d-flex align-items-start justify-content-center"
+                         style="border-radius: 5px;padding: 33px 0;min-height: 180px;">
+                        <div class="col-md-9">
+                            <h3 style="color:#00438B;font-weight:700;font-size:1.5rem;">
+                                <i class="fa fa-tasks"></i> Easy Configuration
+                            </h3>
+                            <p style="color:#717171;">
+                                Configure API key via System Parameters—no code required.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <div class="mb-4 bg-white"
+         style=" border: 1px solid #EBEEF2; border-radius: 6px; box-shadow: 0px 8px 20px -4px rgba(0, 0, 0, 0.10); border: 1px solid #EBEEF2;">
+        <style>
+            /* TAB NAVIGATION CUSTOM STYLES */
+            .parasut-nav-tabs .nav-link {
+                color: #00438B !important;
+                font-weight: 600;
+                font-size: 16px;
+                border-radius: 6px;
+                padding: 10px 20px;
+                border: 1px solid transparent;
+                transition: 0.25s ease-in-out;
+            }
+
+            .parasut-nav-tabs .nav-link:hover {
+                background-color: #00438B !important;
+                color: #ffffff !important;
+                border-color: #00438B !important;
+            }
+
+            .parasut-nav-tabs .nav-link.active {
+                background-color: #00438B !important;
+                color: #ffffff !important;
+                border-color: #00438B !important;
+                font-weight: 700;
+            }
+        </style>
+        <div>
+            <ul class="nav nav-tabs justify-content-center bg-white py-2 parasut-nav-tabs"
+                id="myTab" role="tablist"
+                style="border-radius: 6px 6px 0 0; border: 1px solid #ddd;">
+
+                <li class="nav-item">
+                    <a aria-controls="overview"
+                       class="nav-link active"
+                       data-bs-toggle="tab"
+                       href="#overview"
+                       id="overview-tab"
+                       role="tab"
+                       aria-controls="overview"
+                       aria-selected="true">
+                        Screenshots
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a aria-controls="faq"
+                       class="nav-link"
+                       data-bs-toggle="tab"
+                       href="#faq"
+                       id="faq-tab"
+                       role="tab"
+                       aria-controls="faq"
+                       aria-selected="false">
+                        FAQs
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="tab-content p-md-5 p-2 py-3" id="myTabContent Custom">
+            <div aria-labelledby="overview-tab"
+                 class="tab-pane fade show active" id="overview"
+                 role="tabpanel">
+                <div class="position-relative mb-4"
+                     style="border-radius:10px">
+                    <img alt="acc_bg"
+                         class="w-100 h-100 position-absolute img-fluid left_0"
+                         loading="lazy"
+                         src="//apps.odoocdn.com/apps/assets/17.0/ks_dashboard_ninja/ai-img/o3.png?007008f"
+                         style="">
+                </div>
+                <div class="position-relative mb-4"
+                     style="border-radius:10px; background-color:#f4f4f4">
+                    <div class="p-md-5 p-3 position-relative">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h1 style="font-weight:bold; font-size:calc(1.1rem + 1vw); line-height:120%; text-align:center; text-transform:capitalize; font-size: 40px;
+                              font-weight: 700;">
+                                      <span style="color:#121212; font-size:calc(1.1rem + 1vw)"> Configure Google API Key
+                                      </span>
+                                </h1>
+                            </div>
+                            <div class="col-md-12 mb-4">
+                                <p style="font-size:16px; text-align:center; color:#666;">
+                                    Go to <strong>Settings → Technical → System Parameters </strong> and add your Google
+                                    Places API key.<br/>
+                                    Key: ps_partner_address_autofill.google_api_key<br/>
+                                    Value: Your Google Places API Key
+                                </p></div>
+                            <div class="col-md-12 text-center">
+                                <div class="d-inline-block p-3 shadow-sm"
+                                     style="background-color:#fff; border-radius:10px">
+                                    <img alt="" class="img-fluid"
+                                         loading="lazy"
+                                         src="./assets/screenshots/1.png"
+                                         style="min-height: 1px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-relative mb-4"
+                     style="border-radius:10px; background-color:#f4f4f4">
+                    <div class="p-md-5 p-3 position-relative">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h1 style="font-weight:bold; font-size:calc(1.1rem + 1vw); line-height:120%; text-align:center; text-transform:capitalize; font-size: 40px;
+                              font-weight: 700;">
+                                    <span style="color:#121212">Search Address in Contacts</span>
+                                </h1>
+                            </div>
+                            <div class="col-md-12 mb-4">
+                                <p style="font-size:16px; text-align:center; color:#666;">
+                                    Open Contacts and start typing an address in the Street field.<br/>
+                                    The system will display real-time address suggestions fetched from Google Places.
+                                </p>
+                            </div>
+                            <div class="col-md-12 text-center">
+                                <div class="d-inline-block p-3 shadow-sm"
+                                     style="background-color:#fff; border-radius:10px">
+                                    <img alt="" class="img-fluid"
+                                         loading="lazy"
+                                         src="./assets/screenshots/2.png"
+                                         style="min-height: 1px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-relative mb-4"
+                     style="border-radius:10px; background-color:#f4f4f4">
+                    <div class="p-md-5 p-3 position-relative">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h1 style="font-weight:bold; font-size:calc(1.1rem + 1vw); line-height:120%; text-align:center; text-transform:capitalize; font-size: 40px;
+                              font-weight: 700;">
+                                    <span style="color:#121212">Auto-Fill Address Fields</span>
+                                </h1>
+                            </div>
+                            <div class="col-md-12 mb-4">
+                                <p style="font-size:16px; text-align:center; color:#666;">
+
+                                    When you select an address from the dropdown:<br/>
+                                    City is filled automatically<br/>
+                                    ZIP / Postal Code is set<br/>
+                                    State is correctly detected<br/>
+                                    Country is assigned accurately<br/>
+                                    All address fields are populated instantly with no manual input required.
+                            </div>
+                            <div class="col-md-12 text-center">
+                                <div class="d-inline-block p-3 shadow-sm"
+                                     style="background-color:#fff; border-radius:10px">
+                                    <img alt="" class="img-fluid"
+                                         loading="lazy"
+                                         src="./assets/screenshots/3.png"
+                                         style="min-height: 1px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div aria-labelledby="faq-tab"
+                 class="tab-pane fade show active" id="faq"
+                 role="tabpanel">
+                <div class="row"
+                     style=" background-color:#fff !important">
+                    <div class="col-md-12" aria-labelledby="faq-tab"
+                         id="faq faq-test" role="tabpanel">
+                        <div class="accordion mb-4" id="accordion6">
+                            <div style="background-color:#fff">
+                                <!-- accordian -->
+                                <div class="accordion" id="accordion_faq">
+                                    <h2 class="text-center text-uppercase"
+                                        style="font-family: Montserrat, sans-serif; font-size: 50px; color:#00438B; font-weight: 900;">
+                                        Frequently Asked Questions
+                                    </h2>
+                                    <div id="faq" class="py-1">
+
+                                        <!-- TAB HEADER -->
+                                        <h1 style="font-size:40px; font-weight:700; text-align:center; margin-bottom:30px;">
+                                            <span style="color:#121212">FAQs</span>
+                                        </h1>
+
+                                        <div class="row"
+                                             style=" background-color:#fff !important">
+                                            <div class="col-md-12" aria-labelledby="faq-tab"
+                                                 id="faq faq-test" role="tabpanel">
+                                                <div class="accordion mb-4" id="accordion6">
+                                                    <div style="background-color:#fff">
+                                                        <!-- accordian -->
+                                                        <div class="accordion" id="accordion_faq">
+                                                            <!-- FAQ 1 -->
+                                                            <div style="margin:1rem 0rem; border:1px solid #f8f8f8; border-radius:10px; background:#f8f8f8; padding:12px 24px;">
+                                                                <p style="font-size:18px; font-weight:500; color:#040f3a; margin-bottom:10px;">
+                                                                    1. What is this module used for?
+                                                                </p>
+                                                                <p style="font-size:16px; color:#888; margin:0;">
+                                                                    This module integrates Google Places Autocomplete
+                                                                    with Odoo Contacts, allowing users to search and
+                                                                    select addresses that automatically fill City, ZIP,
+                                                                    State, and Country fields.
+                                                                </p>
+                                                            </div>
+
+                                                            <!-- FAQ 2 -->
+                                                            <div style="margin:1rem 0rem; border:1px solid #f8f8f8; border-radius:10px; background:#f8f8f8; padding:12px 24px;">
+                                                                <p style="font-size:18px; font-weight:500; color:#040f3a; margin-bottom:10px;">
+                                                                    2. How do I configure the Google API key?
+                                                                </p>
+                                                                <p style="font-size:16px; color:#888; margin:0;">
+                                                                    Go to <strong>Settings → Technical → System
+                                                                    Parameters</strong> and
+                                                                    add:<br/>
+                                                                    Key: ps_partner_address_autofill.google_api_key<br/>
+                                                                    Value: Your Google Places API key
+                                                                </p>
+                                                            </div>
+
+                                                            <!-- FAQ 3 -->
+                                                            <div style="margin:1rem 0rem; border:1px solid #f8f8f8; border-radius:10px; background:#f8f8f8; padding:12px 24px;">
+                                                                <p style="font-size:18px; font-weight:500; color:#040f3a; margin-bottom:10px;">
+                                                                    3. Which address fields are auto-filled?
+                                                                </p>
+                                                                <p style="font-size:16px; color:#888; margin:0;">
+                                                                    When an address(i.e: street) is selected from the
+                                                                    dropdown, the
+                                                                    following fields are filled automatically:<br/>
+                                                                    City<br/>
+                                                                    ZIP / Postal Code<br/>
+                                                                    State<br/>
+                                                                    Country
+                                                                </p>
+                                                            </div>
+
+                                                            <!-- FAQ 4 -->
+                                                            <div style="margin:1rem 0rem; border:1px solid #f8f8f8; border-radius:10px; background:#f8f8f8; padding:12px 24px;">
+                                                                <p style="font-size:18px; font-weight:500; color:#040f3a; margin-bottom:10px;">
+                                                                    4. Does this module work for all countries?
+                                                                </p>
+                                                                <p style="font-size:16px; color:#888; margin:0;">
+                                                                    Yes. The module uses Google Places API, which
+                                                                    supports global address data. Country and state
+                                                                    detection is handled accurately based on Google
+                                                                    address components.
+                                                                </p>
+                                                            </div>
+
+                                                            <!-- FAQ 5 -->
+                                                            <div style="margin:1rem 0rem; border:1px solid #f8f8f8; border-radius:10px; background:#f8f8f8; padding:12px 24px;">
+                                                                <p style="font-size:18px; font-weight:500; color:#040f3a; margin-bottom:10px;">
+                                                                    5. What happens if I type in Street2?
+                                                                </p>
+                                                                <p style="font-size:16px; color:#888; margin:0;">
+                                                                    Street: Updates full address details (City, ZIP,
+                                                                    State, Country)<br/>
+                                                                    Street2: Updates only the Street2 field without
+                                                                    overwriting other address fields
+                                                                </p>
+                                                            </div>
+                                                            <!-- FAQ 6 -->
+                                                            <div style="margin:1rem 0rem; border:1px solid #f8f8f8; border-radius:10px; background:#f8f8f8; padding:12px 24px;">
+                                                                <p style="font-size:18px; font-weight:500; color:#040f3a; margin-bottom:10px;">
+                                                                    6. Does this module store Google data in Odoo?
+                                                                </p>
+                                                                <p style="font-size:16px; color:#888; margin:0;">
+                                                                    No. The module only uses Google Places API for address suggestions and mapping. All address data is saved directly in Odoo after selection.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="col-lg-12 d-flex flex-column justify-content-center align-items-center">
+            <div class="row" style="max-width:1540px">
+                <div class="col-lg-12 d-flex flex-column justify-content-center align-items-center">
+                    <h4 class="oe_slogan"
+                        style="font-family:'Montserrat', sans-serif !important; font-weight:600 !important; color:#000000 !important; font-size:2rem !important; margin-bottom:5px;">
+                        <b>For Support</b>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row d-flex justify-content-center">
+            <div class="col-lg-12">
+                <div style="
+                max-width: 1000px;
+                width: 100%;
+                margin: 0 auto; /* removed top/bottom margin */
+                padding: 25px 35px;
+                background-color: #f0f4f8;
+                border-left: 6px solid #00438B;
+                border-radius: 12px;
+                font-family: 'Inter', sans-serif;
+                color: #003366;
+                line-height: 1.6;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            ">
+                    <h3 style="
+                    font-size: 22px;
+                    font-weight: 700;
+                    margin-bottom: 12px;
+                ">
+                        30 Days Free Support Included!
+                    </h3>
+                    <p style="font-size:16px; font-weight:500; margin:0;">
+                        We care about your success. This module comes with <strong>30 days of free support</strong> for
+                        any bugs, issues, or technical problems.
+                        If something doesn’t work as expected, just reach out, and we’ll fix it quickly to ensure
+                        everything runs smoothly.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Footer Section -->
+    <div class="container mt-5"
+         style="background-color: #F9F9F9; padding: 30px; border-top: 1px solid #DADADA;">
+        <div class="row">
+            <!-- Company Info -->
+            <div class="col-md-4 d-flex flex-column align-items-start">
+                <img src="assets/images/PY_SQUAD_1.png" alt="Company Logo" style="width: auto; height: 30px;">
+                <br/>
+                <span
+                        style="color: #00438B;font-size: 24px;font-weight: 750;padding-bottom: 1rem;">Need
+                                        Help?</span>
+                <p class="m-0" style="color:#718096;">Got
+                    questions or need help? Get in touch.</p>
+                <div style="font-weight: 400;"></div>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="col-md-4 d-flex flex-column align-items-start">
+                <h3 style="font-size: 18px; color: #00438B; font-weight: 750;">Contact Us</h3>
+                <p style="font-size: 16px; color: #555;">
+                        <span><img src="assets/images/email_icon.png" alt="Email" width="18px"
+                                   style="margin-right: 8px;">Email:</span> solutions@pysquad.com
+                </p>
+                <p style="font-size: 16px; color: #555;">
+                        <span><img src="assets/images/phone.png" alt="Phone" width="14px"
+                                   style="margin-right: 8px;">Phone:</span>
+                    +91 8160395422
+                </p>
+                <p style="font-size: 16px; color: #555;">
+                        <span><img src="assets/images/watsapp.png" alt="WhatsApp" width="18px"
+                                   style="margin-right: 8px;">WhatsApp:</span> +91 8160395422
+                </p>
+            </div>
+
+            <!-- Social Media Links -->
+            <div class="col-md-4 d-flex flex-column align-items-canter">
+                <h3 style="font-size: 18px; color: #00438B; font-weight: 750;">Discover more at</h3>
+                <div class="d-block text-center mb-5" style="font-family: Inter, sans-serif;">
+                    <div class="btn-lg fw-bolder font-weight-bold d-inline-flex w-auto shadow-lg"
+                         style="padding: 0.3rem 1.4rem;
+            border-radius: 50px;
+            font-family: Inter, sans-serif;
+            background-color: #FAF9F6;
+            color: #000000;
+            border: 2px inset rgba(100, 100, 100, 0.3);
+            font-size: 0.95rem;">
+                        <p class="mb-0">www.pysquad.com/odoo-erp</p>
+                        <p class="mb-0">
+                            <img src="assets/images/copy.png" alt="Open link www.pysquad.com" class="ms-3 ml-3">
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

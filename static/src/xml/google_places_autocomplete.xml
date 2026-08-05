@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ps_partner_address_autofill.GooglePlacesAutocompleteField">
+        <div class="o_field_google_places position-relative w-100">
+            <span t-if="props.readonly" t-esc="value"/>
+            <t t-else="">
+                <!-- No `t-att-value`: OWL writes the DOM `value` property on
+                     every patch, which would wipe out in-progress typing.
+                     `syncInput()` pushes the record value in instead. -->
+                <input t-ref="input"
+                       type="text"
+                       class="o_input"
+                       autocomplete="off"
+                       t-att-id="props.id"
+                       t-att-placeholder="props.placeholder"
+                       t-on-input="onInput"
+                       t-on-change="onChange"
+                       t-on-keydown="onKeydown"
+                       t-on-blur="onBlur"/>
+                <div t-if="state.open" class="o_gplaces_dropdown dropdown-menu show w-100">
+                    <a t-foreach="state.suggestions"
+                       t-as="suggestion"
+                       t-key="suggestion_index"
+                       href="#"
+                       class="dropdown-item text-truncate"
+                       t-att-class="{ active: suggestion_index === state.activeIndex }"
+                       t-on-mousedown.prevent="() => {}"
+                       t-on-click.prevent="() => this.selectSuggestion(suggestion_index)">
+                        <span t-esc="suggestion.mainText"/>
+                        <span class="text-muted ms-1" t-esc="suggestion.secondaryText"/>
+                    </a>
+                    <div class="o_gplaces_credit text-muted small text-end px-3 pt-1">
+                        powered by Google
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

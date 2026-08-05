@@ -1,0 +1,19 @@
+.o_field_google_places {
+    .o_gplaces_dropdown {
+        top: 100%;
+        left: 0;
+        margin-top: 0;
+        max-height: 18rem;
+        overflow-y: auto;
+    }
+
+    .o_gplaces_credit {
+        pointer-events: none;
+    }
+}
+
+// Inside a dialog the modal body is the scroll container, so a tall dropdown
+// gets clipped at the bottom of the modal. Keep it short enough to fit.
+.modal .o_field_google_places .o_gplaces_dropdown {
+    max-height: 12rem;
+}
