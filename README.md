@@ -71,9 +71,16 @@ not publish it to the Odoo Apps store under that name.
 
 ## Installation
 
-1. Copy the module into your Odoo addons path.
-2. Update the apps list and install **Partner Address Autofill with Google
-   Places**.
+The repository is named `ps-partner-address-autocomplete`, but Odoo requires the
+addon directory to match the technical module name. Clone into the right name:
+
+```bash
+git clone https://github.com/eartisan-uk/ps-partner-address-autocomplete.git \
+    ps_partner_address_autofill
+```
+
+Then update the apps list and install **Partner Address Autofill with Google
+Places**.
 
 ## Configuration
 
