@@ -372,11 +372,19 @@ class SaleTransportLeg(models.Model):
             leg._fetch_service_carrier_options()
         return True
 
-    def _get_rate_location(self):
+    def _get_rate_locations(self):
+        """Return the (collection, delivery) partners for this leg.
+
+        The pickup end is always the collection and the drop-off end always the
+        delivery, whatever the order type: goods_in collects from the customer
+        into the warehouse, goods_out runs the other way, and transport legs
+        carry both explicitly. Each end falls back to the address held on the
+        sale order when the leg itself has none.
+        """
         self.ensure_one()
-        if self.rate_postcode_source == 'from_location':
-            return self.from_location or self.order_id.transport_from_id
-        return self.to_location or self.order_id.transport_to_id
+        collection = self.from_location or self.order_id.transport_from_id
+        delivery = self.to_location or self.order_id.transport_to_id
+        return collection, delivery
 
     def _get_rate_package_totals(self):
         self.ensure_one()
@@ -429,11 +437,24 @@ class SaleTransportLeg(models.Model):
         if not self.picking_id and not self.order_id:
             raise UserError(_('Please link the transport leg to a sale order or delivery before fetching rates.'))
 
-        location = self._get_rate_location()
-        if not location:
-            raise UserError(_('Please set the %s before fetching rates.') % dict(self._fields['rate_postcode_source'].selection)[self.rate_postcode_source])
-        if not location.zip:
-            raise UserError(_('Please set a postcode on %s before fetching rates.') % location.display_name)
+        # The pricing engine rates on the collection-to-delivery pair, so both
+        # ends are required. Each is reported separately so the user knows which
+        # address to go and fix.
+        collection, delivery = self._get_rate_locations()
+        if not collection:
+            raise UserError(_('Please set the Company (Pickup) before fetching rates.'))
+        if not collection.zip:
+            raise UserError(
+                _('Please set a postcode on the collection address %s before fetching rates.')
+                % collection.display_name
+            )
+        if not delivery:
+            raise UserError(_('Please set the Company (Drop Off) before fetching rates.'))
+        if not delivery.zip:
+            raise UserError(
+                _('Please set a postcode on the delivery address %s before fetching rates.')
+                % delivery.display_name
+            )
 
         totals = self._get_rate_package_totals()
         if totals['weight_kg'] <= 0:
@@ -443,8 +464,10 @@ class SaleTransportLeg(models.Model):
             ))
 
         payload = {
-            'postcode': location.zip,
-            'country_code': location.country_id.code or 'GB',
+            'collection_postcode': collection.zip,
+            'collection_country_code': collection.country_id.code or 'GB',
+            'delivery_postcode': delivery.zip,
+            'delivery_country_code': delivery.country_id.code or 'GB',
             'weight_kg': totals['weight_kg'],
             'pallet_qty': totals['pallet_qty'],
             # The rate API treats a consignment as palletised when
