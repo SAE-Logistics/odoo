@@ -375,9 +375,19 @@ class SaleTransportLeg(models.Model):
         invoiced, the rates copied onto it are the figures that were acted on
         commercially. Wiping them would silently change what was charged, so
         the reset is refused for those legs instead.
+
+        A leg that has been booked with a carrier is locked for a different
+        reason. transport_booking_core resolves the booking adapter through
+        carrier_code, which is related to carrier_service_id: drop the option
+        and the adapter no longer resolves, so cancelling the booking would
+        quietly skip the carrier's own cancel call and leave a live shipment
+        at DPD/APC with nothing in Odoo pointing at it. booking_state is
+        checked softly because that module is not a dependency of this one.
         """
         self.ensure_one()
         if self.state == 'completed':
+            return True
+        if self._fields.get('booking_state') and self.booking_state in ('pending', 'booked'):
             return True
         return bool(self.order_line_id and self.order_line_id.qty_invoiced)
 
