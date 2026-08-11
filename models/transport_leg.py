@@ -382,15 +382,30 @@ class SaleTransportLeg(models.Model):
         self.ensure_one()
         package_lines = self.picking_id.package_ids or self.order_line_id.package_ids
         if package_lines:
+            # Only pallet package types count towards the pallet quantity; a
+            # Carton or an Item must not be rated as a pallet. Per SAE, every
+            # pallet counts as one full pallet regardless of size, so a Half or
+            # Qtr Pallet is charged as a full one. Weight is still totalled
+            # across every package, as that is the chargeable weight.
+            pallet_lines = package_lines.filtered(lambda line: line.package_type_id.is_pallet)
             return {
                 'weight_kg': sum(package_lines.mapped('weight') or [0.0]),
-                'pallet_qty': sum(package_lines.mapped('quantity') or [0]),
+                'pallet_qty': max(int(sum(pallet_lines.mapped('quantity') or [0])), 0),
+                # Derived from the presence of pallet lines rather than from
+                # pallet_qty, because a pallet line whose quantity was left at
+                # 0 is still a pallet consignment.
+                'is_pallet': bool(pallet_lines),
             }
 
+        # No package details captured. Transport product lines describe goods, not
+        # packaging, so their qty is never a pallet count; fall back to the pallet
+        # count entered on the delivery.
+        pallet_qty = max(int(self.picking_id.pallet_qty or 0), 0)
         transport_product_lines = self.order_id.product_line_ids
         return {
             'weight_kg': sum(transport_product_lines.mapped('weight') or [0.0]),
-            'pallet_qty': sum(transport_product_lines.mapped('qty') or [0]),
+            'pallet_qty': pallet_qty,
+            'is_pallet': bool(pallet_qty),
         }
 
     def _get_carrier_rate_api_url(self):
@@ -431,7 +446,10 @@ class SaleTransportLeg(models.Model):
             'postcode': location.zip,
             'country_code': location.country_id.code or 'GB',
             'weight_kg': totals['weight_kg'],
-            'pallet_qty': totals['pallet_qty'] or 1,
+            'pallet_qty': totals['pallet_qty'],
+            # The rate API treats a consignment as palletised when
+            # is_pallet is true OR pallet_qty > 0.
+            'is_pallet': totals['is_pallet'],
             'order_reference': (
                 self.picking_id.name
                 or self.picking_id.origin
