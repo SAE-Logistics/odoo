@@ -1,0 +1,137 @@
+<!-- stock_materials_consumption/views/stock_picking_views.xml -->
+<odoo>
+    <record id="view_picking_form_inherit_materials" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.materials</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <!-- Boolean to mark materials picking -->
+            <xpath expr="//sheet/notebook" position="before">
+                <group string="Materials" invisible="1">
+                    <field name="is_material_picking"/>
+                    <field name="source_picking_id"
+                           invisible="is_material_picking == False"/>
+                </group>
+            </xpath>
+            <xpath expr="//sheet/notebook/page[@name='operations']" position="after">
+                <page string="Package Details" invisible="is_material_picking">
+                    <field name="package_ids" context="{'default_picking_id': id}" readonly="state in ('done', 'cancel')">
+                        <list editable="bottom">
+                            <field name="package_type_id"/>
+                            <field name="length"/>
+                            <field name="width"/>
+                            <field name="height"/>
+                            <field name="weight"/>
+                            <field name="quantity"/>
+                        </list>
+                    </field>
+                </page>
+                <!-- New page for Materials Consumption -->
+                <page string="Material Consumption">
+                    <button name="action_open_material_wizard"
+                            string="Add Materials"
+                            type="object"
+                            class="btn-primary"
+                            invisible="sale_id == False or picking_type_code == 'internal'"/>
+                    <group string="Material Pickings">
+                        <field name="material_consumption_ids">
+                            <list>
+                                <field name="name"/>
+                                <field name="picking_type_id"/>
+                                <field name="scheduled_date"/>
+                                <field name="state"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Consumed Products (Summary)">
+                        <field name="consumed_product_line_ids">
+                            <list>
+                                <field name="product_id"/>
+                                <field name="product_uom_id"/>
+                                <field name="quantity"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Consumed Moves">
+                        <field name="consumed_move_ids">
+                            <list>
+                                <field name="product_id"/>
+                                <field name="product_uom_qty"/>
+                                <field name="picking_id"/>
+                                <field name="state"/>
+                            </list>
+                        </field>
+                    </group>
+                </page>
+                <page string="Transport Legs"
+                      invisible="sale_id == False or sale_order_type not in ['goods_in', 'goods_out'] or sale_no_transport_needed or is_material_picking">
+                    <group>
+                        <div class="o_form_label">
+                            Transport legs will automatically attach to the existing transport charge line for the sale order, or create one if none exists.
+                        </div>
+                    </group>
+                    <field name="transport_leg_ids" context="{'default_picking_id': id}" readonly="state in ('done', 'cancel')">
+                        <list editable="bottom">
+                            <button name="action_open_form_view" type="object" string="View" icon="fa-external-link"/>
+                            <field name="order_id" string="Sales Order Number" optional="show"/>
+                            <field name="customer_id" optional="show"/>
+                            <field name="from_location"
+                                   string="From"
+                                   context="{'show_address': True, 'address_inline': True}"/>
+                            <field name="to_location"
+                                   string="To"
+                                   context="{'show_address': True, 'address_inline': True}"/>
+                            <field name="from_date" string="Collection Date" widget="remaining_days" optional="show"/>
+                            <field name="to_date" string="Delivery Date" widget="remaining_days" optional="show"/>
+                            <field name="is_internal" optional="show"/>
+                            <field name="driver_id" optional="show"/>
+                            <field name="fleet_id" optional="show"/>
+                            <field name="carrier_id" optional="show"/>
+                            <field name="carrier_code" optional="show"/>
+                            <field name="service_id" optional="show"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="base_buy_rate" optional="show"/>
+                            <field name="base_sell_rate" optional="show"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+
+            <xpath expr="//sheet/notebook/page[@name='operations']//button[@name='action_put_in_pack']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <xpath expr="//sheet/notebook/page[@name='extra']" position="before">
+                <xpath expr="//sheet/notebook/page[@name='note']" position="move"/>
+            </xpath>
+
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="sale_order_type" invisible="1"/>
+                <field name="sale_goods_customer_id" invisible="1"/>
+                <field name="collect_note"/>
+                <field name="deliver_note"/>
+            </xpath>
+
+            <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_id']" position="attributes">
+                <attribute name="domain">['|', ('goods_owner_customer_id', '=', parent.sale_goods_customer_id), ('goods_owner_customer_id', '=', False)] if parent.sale_order_type in ['goods_in', 'goods_out'] and parent.sale_goods_customer_id else []</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_packaging_id']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+                <attribute name="optional">hide</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_stock_move_line_operation_tree_inherit_lot_visible" model="ir.ui.view">
+        <field name="name">stock.move.line.operations.list.inherit.lot.visible</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.view_stock_move_line_operation_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='lot_id']" position="attributes">
+                <attribute name="string">Lot/Serial Number</attribute>
+                <attribute name="column_invisible">parent.has_tracking == 'none'</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
