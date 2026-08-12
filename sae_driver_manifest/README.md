@@ -12,11 +12,33 @@ on `staging.mysae.net` (Odoo 18). Built to pair with the A1 list-view tweak
 4. One landscape page per distinct driver in the selection: run header, job table,
    loading + driver sign-off block.
 
+## Excel version of the same run-sheet
+
+The PDF cannot be re-ordered, so the same selection is also available as a
+workbook: tick the legs, then **Actions > Driver Manifest (Excel)**. One sheet
+per driver, same nine columns, landscape/fit-to-width print setup with the
+header row repeated on every page, autofilter and frozen header so rows can be
+sorted or dragged into the order the run is actually driven.
+
+Notes:
+
+- The `Ord` column is a plain number, not a formula — retype it and sort by it.
+- Legs with no driver land on an `Unassigned` sheet rather than being dropped
+  (the PDF omits them).
+- Re-ordering in Excel does **not** feed back into Odoo. Sequencing the run
+  inside Odoo would be a `manifest_sequence` field plus a drag handle on the
+  leg list; deliberately not done yet.
+- Needs the `xlsxwriter` Python library on the Odoo server (ships with Odoo 18).
+  If it is missing, the action raises a clear `UserError` and the PDF still works.
+
 ## Files
 
 - `__manifest__.py`
 - `report/driver_manifest_report.xml` — paperformat + `ir.actions.report` (list binding)
 - `report/driver_manifest_templates.xml` — the QWeb run-sheet
+- `report/driver_manifest_xlsx_action.xml` — `ir.actions.server` for the Excel export
+- `models/sale_transport_leg.py` — row derivation + workbook builder. **Mirrors the
+  QWeb template's column logic; change both together.**
 
 ## Field bindings
 
