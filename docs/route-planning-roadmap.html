@@ -1,0 +1,599 @@
+<title>Run Sequencing Plan</title>
+
+<style>
+  :root {
+    --paper: #f4f6f5;
+    --surface: #ffffff;
+    --surface-sunk: #eaeeec;
+    --ink: #12242a;
+    --ink-soft: #46595e;
+    --ink-faint: #6f8286;
+    --rule: #d6dedc;
+    --rule-strong: #b9c6c3;
+    --accent: #0f5f6b;
+    --accent-soft: #e2edee;
+    --signal: #b85c12;
+    --signal-soft: #f6e9dc;
+    --shadow: 0 1px 2px rgba(18, 36, 42, .06), 0 8px 24px rgba(18, 36, 42, .05);
+
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #101a1d;
+      --surface: #162428;
+      --surface-sunk: #1c2e32;
+      --ink: #e7efed;
+      --ink-soft: #a9bcbd;
+      --ink-faint: #7e9497;
+      --rule: #2a3d41;
+      --rule-strong: #3d5559;
+      --accent: #5fbcc6;
+      --accent-soft: #1a3237;
+      --signal: #e0913f;
+      --signal-soft: #33261a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #101a1d;
+    --surface: #162428;
+    --surface-sunk: #1c2e32;
+    --ink: #e7efed;
+    --ink-soft: #a9bcbd;
+    --ink-faint: #7e9497;
+    --rule: #2a3d41;
+    --rule-strong: #3d5559;
+    --accent: #5fbcc6;
+    --accent-soft: #1a3237;
+    --signal: #e0913f;
+    --signal-soft: #33261a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+  }
+
+  /* ---- masthead ---- */
+  .masthead { display: flex; flex-direction: column; gap: 1rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(2.1rem, 6vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .standfirst {
+    font-size: 1.2rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 34rem;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: .74rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ---- generic blocks ---- */
+  section { display: flex; flex-direction: column; gap: 1.1rem; }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.65rem;
+    line-height: 1.25;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 0;
+    padding-bottom: .6rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 1.02rem;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  p { margin: 0; max-width: 40rem; }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible,
+  summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: .86em;
+    background: var(--surface-sunk);
+    padding: .1em .35em;
+    border-radius: 3px;
+  }
+
+  ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: .5rem; max-width: 40rem; }
+  li::marker { color: var(--ink-faint); }
+
+  /* ---- shipped band ---- */
+  .shipped {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 1.4rem 1.6rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+  }
+
+  .shipped-label {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  /* ---- verified facts ---- */
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .fact {
+    background: var(--surface);
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+  }
+
+  .fact-key {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .fact-value { font-size: .95rem; line-height: 1.45; color: var(--ink); }
+  .fact-value strong { font-weight: 600; }
+
+  /* ---- stage rail ---- */
+  .stages {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+  }
+
+  .stage {
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    gap: 1.2rem;
+    position: relative;
+  }
+
+  .stage::before {
+    content: "";
+    position: absolute;
+    left: 1.3rem;
+    top: 2.6rem;
+    bottom: -1.5rem;
+    width: 1px;
+    background: var(--rule-strong);
+  }
+
+  .stage:last-child::before { display: none; }
+
+  .stage-num {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 50%;
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-family: var(--mono);
+    font-size: .82rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .stage-body {
+    display: flex;
+    flex-direction: column;
+    gap: .7rem;
+    padding-bottom: .4rem;
+  }
+
+  .stage-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1rem; }
+
+  .stage-effort {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stage-note {
+    background: var(--surface-sunk);
+    border-radius: 3px;
+    padding: .7rem .9rem;
+    font-size: .92rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    max-width: 40rem;
+  }
+
+  .stage-note b { color: var(--ink); font-weight: 600; }
+
+  /* prerequisite stage uses the one warm accent in the palette */
+  .stage--gate .stage-num {
+    border-color: var(--signal);
+    background: var(--signal-soft);
+    color: var(--signal);
+  }
+
+  .stage--gate .stage-note { background: var(--signal-soft); }
+
+  /* ---- table ---- */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; background: var(--surface); }
+
+  th, td { text-align: left; padding: .7rem .9rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--surface-sunk);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-soft); }
+
+  /* ---- footer ---- */
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    font-size: .88rem;
+    color: var(--ink-faint);
+  }
+
+  footer code { background: none; padding: 0; color: var(--ink-soft); }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">SAE · Carrier Integrations</p>
+    <h1>Run Sequencing Plan</h1>
+    <p class="standfirst">
+      How to get driver manifests into the order the run is actually driven — inside Odoo, before the PDF prints.
+    </p>
+    <div class="meta">
+      <span>12 August 2026</span>
+      <span>Odoo 18 · Community</span>
+      <span>Findings verified on staging</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>The problem is the model, not the screen</h2>
+    <p>
+      A run does not exist as a record. <code>driver_id</code> and <code>fleet_id</code> are stamped onto
+      individual transport legs, and a run is an ad-hoc multi-select made at print time. There is no object
+      to hang an order on, no object to hang a status on, and nothing to reprint from.
+    </p>
+    <p>
+      That is why re-ordering has nowhere to live. A sequence field alone papers over it; a record for the
+      run itself is what actually fixes it.
+    </p>
+  </section>
+
+  <div class="shipped">
+    <span class="shipped-label">Already shipped — 12 Aug 2026</span>
+    <p>
+      The Excel export is live. Tick the legs, then <b>Actions → Driver Manifest (Excel)</b>: one sheet per
+      driver, same nine columns as the PDF, landscape fit-to-width with the header row repeated, autofilter
+      and frozen header. Rows can be re-ordered and printed from Excel.
+    </p>
+    <p>
+      It is a workaround, not the destination — the new order does not come back into Odoo. Everything below
+      is about closing that gap.
+    </p>
+  </div>
+
+  <section>
+    <h2>What the ground looks like</h2>
+    <p>Checked directly against the staging instance, because two of these rule out the obvious approaches.</p>
+    <div class="facts">
+      <div class="fact">
+        <span class="fact-key">Edition</span>
+        <span class="fact-value">
+          <strong>Community.</strong> No <code>web_gantt</code>, <code>web_map</code> or
+          <code>web_enterprise</code> installed; <code>planning</code> is <code>uninstallable</code>.
+          No Gantt dispatch board, no map view, no Planning app.
+        </span>
+      </div>
+      <div class="fact">
+        <span class="fact-key">Available today</span>
+        <span class="fact-value">
+          <code>fleet</code> installed. <code>base_geolocalize</code> present but uninstalled — there if
+          route optimisation is ever wanted.
+        </span>
+      </div>
+      <div class="fact">
+        <span class="fact-key">Data hygiene</span>
+        <span class="fact-value">
+          Of 11 internal legs, <strong>9 have no <code>from_date</code></strong> and 6 have no driver.
+          Grouping a run by driver and date needs that date populated.
+        </span>
+      </div>
+      <div class="fact">
+        <span class="fact-key">Ordering UI options</span>
+        <span class="fact-value">
+          List drag-handle, kanban drag, or custom OWL. Anything richer is built by hand on Community.
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Four stages, each gating the next</h2>
+    <p>
+      The order matters: every stage produces the knowledge the following one needs. Stage 0 is a
+      prerequisite, not an improvement — the rest sits on top of it.
+    </p>
+
+    <div class="stages">
+
+      <div class="stage stage--gate">
+        <div class="stage-num">0</div>
+        <div class="stage-body">
+          <div class="stage-head">
+            <h3>Populate <code>from_date</code> on internal legs</h3>
+            <span class="stage-effort">Hours</span>
+          </div>
+          <p>
+            Backfill the existing legs and make the field required, or default it, on the paths that create
+            them. Worth doing on its own merits, and every stage below groups runs by driver and date.
+          </p>
+          <div class="stage-note">
+            <b>Gate:</b> without a reliable date, runs cannot be formed automatically and the migration in
+            Stage 2 has nothing to group on.
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-num">1</div>
+        <div class="stage-body">
+          <div class="stage-head">
+            <h3>A <code>manifest_sequence</code> field on the leg</h3>
+            <span class="stage-effort">≈ 1 day</span>
+          </div>
+          <p>
+            An integer field with the <code>handle</code> widget on the Transport Legs list; the PDF and the
+            Excel export both sort by it. Drag rows into order, then print. Delivers the capability that was
+            asked for, with no new concepts to learn.
+          </p>
+          <div class="stage-note">
+            <b>Known weakness:</b> the sequence is global across all legs, so it only reads correctly when
+            the list is filtered to one driver and one date, and two dispatchers working different runs
+            interleave their numbers. Fine as an interim. Not the destination.
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-num">2</div>
+        <div class="stage-body">
+          <div class="stage-head">
+            <h3>A <code>sae_transport_run</code> module — the real fix</h3>
+            <span class="stage-effort">1–2 weeks</span>
+          </div>
+          <p>
+            A <code>sae.transport.run</code> record: reference, date, driver, vehicle, state
+            (draft → released → in progress → done), legs as a one2many with a per-run sequence, plus
+            computed totals for drops, weight and packages.
+          </p>
+          <ul>
+            <li>
+              Ordering lives on the run and is scoped to it. A drag handle inside the run form is standard
+              Odoo — no custom JavaScript.
+            </li>
+            <li>
+              Driver and vehicle move up to the run, but <code>driver_id</code> stays writable on the leg:
+              setting it moves the leg into that driver's run for its date, creating the run if needed. That
+              preserves the bulk-edit habit the list view was built around, and doubles as the migration —
+              existing legs group by driver and date into runs.
+            </li>
+            <li>
+              The manifest and delivery notes print from the run, one run to a page, with the current
+              leg-list binding kept for ad-hoc prints.
+            </li>
+            <li>
+              Run states give reprints, an audit trail, and a natural lock: a released run stops re-ordering.
+            </li>
+            <li>
+              Right moment to collapse the duplicated row logic the Excel export introduced — the QWeb
+              template and the Python builder derive the same nine columns twice today.
+            </li>
+          </ul>
+          <div class="stage-note">
+            <b>Scope boundary:</b> runs cover internal fleet legs only. Carrier-booked legs stay with the
+            booking framework — a DPD consignment is not part of a driver's run sheet.
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-num">3</div>
+        <div class="stage-body">
+          <div class="stage-head">
+            <h3>A dispatch board</h3>
+            <span class="stage-effort">≈ 1 week</span>
+          </div>
+          <p>
+            Start with no custom JavaScript at all: a leg kanban grouped by run (drag a card between columns
+            to assign it), a calendar view by date for the week, and the drag handle inside the run for
+            sequencing.
+          </p>
+          <div class="stage-note">
+            <b>Deliberately deferred:</b> a two-pane board — unassigned legs on the left, runs on the right —
+            is genuinely custom work on Community. Run the simple version for a month first, then decide with
+            real usage evidence.
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-num">4</div>
+        <div class="stage-body">
+          <div class="stage-head">
+            <h3>Route optimisation — optional</h3>
+            <span class="stage-effort">1–2 weeks</span>
+          </div>
+          <p>
+            Geocode the leg addresses, then nearest-neighbour plus 2-opt to <em>propose</em> a sequence the
+            dispatcher accepts or overrides, with distance and duration estimates and a capacity check
+            against the vehicle. Self-hosted OSRM or ORS for the distance matrix.
+          </p>
+          <div class="stage-note">
+            Worth structuring as a pluggable provider registry — the same shape as
+            <code>TransportBookingAdapter</code> in <code>transport_booking_core</code> — so a routing
+            provider is swappable the way a carrier already is.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Effort at a glance</h2>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Stage</th>
+            <th>Effort</th>
+            <th>Depends on</th>
+            <th>What it unlocks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>0 · Date backfill</td>
+            <td class="num">Hours</td>
+            <td>—</td>
+            <td>Runs can be formed and migrated</td>
+          </tr>
+          <tr>
+            <td>1 · Sequence field</td>
+            <td class="num">1 day</td>
+            <td>Stage 0</td>
+            <td>Re-order in Odoo, print ordered PDF</td>
+          </tr>
+          <tr>
+            <td>2 · Run module</td>
+            <td class="num">1–2 weeks</td>
+            <td>Stages 0–1 in live use</td>
+            <td>Scoped ordering, states, reprints, audit</td>
+          </tr>
+          <tr>
+            <td>3 · Dispatch board</td>
+            <td class="num">1 week</td>
+            <td>Stage 2</td>
+            <td>Assign and sequence visually</td>
+          </tr>
+          <tr>
+            <td>4 · Optimisation</td>
+            <td class="num">1–2 weeks</td>
+            <td>Stage 2</td>
+            <td>Proposed order, distance, capacity checks</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Recommended sequencing: fix the dates, ship Stage 1, then run it live for a few weeks to learn how SAE
+      actually sequences a day before committing to Stage 2. Stages 3 and 4 only once runs exist as records.
+    </p>
+  </section>
+
+  <footer>
+    <p>Related code in this repository:</p>
+    <p>
+      <code>sae_driver_manifest/models/sale_transport_leg.py</code> — Excel export and row derivation<br>
+      <code>sae_driver_manifest/report/driver_manifest_templates.xml</code> — the QWeb run-sheet<br>
+      <code>transport_booking_core/booking/adapter.py</code> — the provider-registry pattern Stage 4 would reuse
+    </p>
+  </footer>
+
+</div>
