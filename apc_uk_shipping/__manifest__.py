@@ -11,7 +11,7 @@
 
 {
     "name": "APC UK Shipping",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.0.1",
     "summary": """APC Overnight carrier integration for Odoo using the Hypaship
     API v3. Create domestic shipments (Goods Out, Goods In, Transport Order),
     generate labels (PDF/ZPL), and track parcels directly from Odoo.""",

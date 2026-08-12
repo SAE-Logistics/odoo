@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Transport Booking Core",
-    "version": "18.0.1.1.0",
+    "version": "18.0.1.2.0",
     "summary": "Carrier-agnostic per-leg shipment booking framework "
                "(adapter registry, booking state, per-leg action).",
     "description": """

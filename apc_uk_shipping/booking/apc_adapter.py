@@ -97,12 +97,12 @@ class ApcAdapter(TransportBookingAdapter):
                 return base64.b64decode(b64)
         return None
 
-    def _apc_fetch_label(self, carrier, waybill, picking=None):
+    def _apc_fetch_label(self, carrier, waybill, leg=None):
         """Fetch the label for a waybill with retry (KB p.34: retry is allowed).
 
         Waits 3s before the first attempt, then retries up to 3 times with a 2s
         backoff if the label has not been generated yet. Posts debug info to the
-        picking chatter when available.
+        leg chatter.
         """
         import time
         label_fmt = (carrier.apc_label_format or "pdf").upper()
@@ -127,10 +127,10 @@ class ApcAdapter(TransportBookingAdapter):
                 if label_bytes:
                     _logger.info("APC label fetched on attempt %s: %s bytes",
                                  attempt, len(label_bytes))
-                    if picking:
-                        picking.message_post(body=(
+                    if leg:
+                        leg._leg_post_log(
                             "APC label fetched on attempt %s (%s bytes)."
-                            % (attempt, len(label_bytes))))
+                            % (attempt, len(label_bytes)))
                     return label_bytes
                 _logger.info("APC label not yet generated (attempt %s); retrying",
                              attempt)
@@ -142,14 +142,11 @@ class ApcAdapter(TransportBookingAdapter):
             if attempt < 4:
                 time.sleep(2)
         # Post full debug to chatter so we can diagnose the failure.
-        if picking:
-            try:
-                picking.message_post(body=(
-                    "APC label retrieval failed after 4 attempts for waybill "
-                    "%s. Debug details:<br/><pre>%s</pre>"
-                    % (waybill, "\n\n".join(all_debug)[:6000])))
-            except Exception:
-                pass
+        if leg:
+            leg._leg_post_log(
+                "APC label retrieval failed after 4 attempts for waybill "
+                "%s. Debug details:<br/><pre>%s</pre>"
+                % (waybill, "\n\n".join(all_debug)[:6000]))
         return None
 
     def book(self, leg):
@@ -174,8 +171,7 @@ class ApcAdapter(TransportBookingAdapter):
             else f"label.{label_ext}")
 
         if waybill:
-            picking = leg.picking_id
-            label_bytes = self._apc_fetch_label(carrier, waybill, picking)
+            label_bytes = self._apc_fetch_label(carrier, waybill, leg)
             if not label_bytes:
                 _logger.warning(
                     "APC label could not be retrieved for waybill %s after "

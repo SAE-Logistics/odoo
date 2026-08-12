@@ -466,22 +466,17 @@ class DeliveryCarrier(models.Model):
             error_msg = str(exc)
             _log.warning("APC API call failed: %s", error_msg)
         _log.info("APC response: %s", json.dumps(response, default=str))
-        # Post payload AND response/error to picking chatter for debugging
-        picking = leg.picking_id
-        if picking:
-            try:
-                debug_body = (
-                    "APC payload sent:<br/><pre>%s</pre><br/>"
-                    "APC response:<br/><pre>%s</pre><br/>"
-                    "APC error:<br/><pre>%s</pre>"
-                ) % (
-                    json.dumps(payload, indent=2, default=str)[:3000],
-                    json.dumps(response, indent=2, default=str)[:3000],
-                    error_msg or "(none)",
-                )
-                picking.message_post(body=debug_body)
-            except Exception:
-                pass
+        # Post payload AND response/error to the leg chatter for debugging
+        debug_body = (
+            "APC payload sent:<br/><pre>%s</pre><br/>"
+            "APC response:<br/><pre>%s</pre><br/>"
+            "APC error:<br/><pre>%s</pre>"
+        ) % (
+            json.dumps(payload, indent=2, default=str)[:3000],
+            json.dumps(response, indent=2, default=str)[:3000],
+            error_msg or "(none)",
+        )
+        leg._leg_post_log(debug_body)
         if error_msg:
             raise ValidationError(error_msg)
         orders = response.get("Orders", [])
