@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="action_sale_order_all_confirmed" model="ir.actions.act_window">
+        <field name="name">All Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form,kanban,calendar,pivot,graph,activity</field>
+        <field name="search_view_id" ref="sale_order_search_inherit_order_type_filters"/>
+        <field name="context">{"ord_type":"all"}</field>
+        <field name="domain">[("state","in",["sale","done"])]</field>
+    </record>
+    <record id="action_sale_order_all_confirmed_list_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="sale_order_all_confirmed_list_view"/>
+        <field name="act_window_id" ref="action_sale_order_all_confirmed"/>
+    </record>
+    <menuitem id="menu_sale_order_all_confirmed" name="All Orders" parent="sale.menu_sale_order" sequence="24"
+              action="action_sale_order_all_confirmed"/>
+
     <record id="action_sale_order_goods" model="ir.actions.act_window">
         <field name="name">Goods Orders</field>
         <field name="res_model">sale.order</field>

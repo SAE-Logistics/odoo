@@ -10,7 +10,8 @@
                     <sheet>
                         <group>
                             <group>
-                                <field name="product_id"/>
+                                <field name="sale_commercial_partner_id" invisible="1"/>
+                                <field name="product_id" domain="['|', ('goods_owner_customer_id', '=', sale_commercial_partner_id), ('goods_owner_customer_id', '=', False)]"/>
                                 <field name="type"/>
                                 <field name="hs_code_id"/>
                                 <field name="country_of_origin_id"/>
@@ -36,9 +37,10 @@
             <field name="arch" type="xml">
                 <list editable="bottom">
                     <field name="sequence" widget="handle"/>
+                    <field name="sale_commercial_partner_id" column_invisible="1"/>
                     <field name="image" widget="image" class="oe_avatar"
                            options="{'preview_image': 'image'}"/>
-                    <field name="product_id"/>
+                    <field name="product_id" domain="['|', ('goods_owner_customer_id', '=', sale_commercial_partner_id), ('goods_owner_customer_id', '=', False)]"/>
                     <field name="type"/>
                     <field name="description"/>
                     <field name="hs_code_id"/>

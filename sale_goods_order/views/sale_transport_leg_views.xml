@@ -17,11 +17,12 @@
                         <group>
                             <field name="sequence"/>
                             <field name="currency_id" invisible="1"/>
+                            <field name="order_type" invisible="1"/>
                         </group>
                         <group>
                             <field name="order_id" readonly="1"/>
                             <field name="order_line_id"/>
-                            <field name="picking_id"/>
+                            <field name="picking_id" invisible="order_type == 'transport'"/>
                         </group>
                         <group>
                             <group string="From" name="pickup_from">
@@ -54,12 +55,27 @@
                         <group string="Service Details">
                             <group>
                                 <field name="service_id"/>
-                                <field name="carrier_id"/>
+                                <field name="carrier_id" invisible="1"/>
+                                <field name="carrier_code"/>
+                                <label for="tracking_code"/>
+                                <div class="o_row">
+                                    <field name="tracking_code"/>
+                                    <button name="action_open_tracking_url"
+                                            type="object"
+                                            icon="fa-external-link"
+                                            title="Track on carrier website"
+                                            invisible="not tracking_code"/>
+                                </div>
+                                <field name="rate_postcode_source"/>
+                                <field name="rate_carrier_id" invisible="1"/>
+                                <field name="rate_service_code" invisible="1"/>
                                 <field name="is_internal"/>
                                 <field name="fleet_id" invisible="not is_internal"/>
                                 <field name="driver_id" invisible="not is_internal"/>
                             </group>
                             <group>
+                                <field name="base_sell_rate"/>
+                                <field name="base_buy_rate"/>
                                 <field name="sell_rate"/>
                                 <field name="buy_rate"/>
                                 <field name="margin"/>
@@ -80,12 +96,43 @@
                                     </group>
                                 </group>
                                 <field name="carrier_service_option_ids">
-                                    <list>
-                                        <field name="carrier_id"/>
-                                        <field name="service_id"/>
-                                        <field name="currency_id" invisible="1"/>
+                                    <list editable="bottom">
+                                        <field name="carrier_id" column_invisible="1"/>
+                                        <field name="carrier_code"/>
+                                        <field name="service_id" column_invisible="1"/>
+                                        <field name="service_code" column_invisible="1"/>
+                                        <field name="service_name"/>
+                                        <field name="zone_code"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="base_buy_rate"/>
+                                        <field name="base_sell_rate"/>
                                         <field name="buy_rate"/>
+                                        <field name="sell_rate"/>
+                                        <field name="margin_amount"/>
+                                        <field name="margin_percent"/>
+                                        <field name="chargeable_weight"/>
+                                        <field name="pallet_quantity"/>
                                         <field name="is_selected"/>
+                                        <button name="action_select_option" type="object" string="Select" class="btn-primary"/>
+                                    </list>
+                                </field>
+                                <group string="Last API Exchange">
+                                    <field name="rate_queried_at" readonly="1"/>
+                                    <field name="rate_request_json" readonly="1"/>
+                                    <field name="rate_response_json" readonly="1"/>
+                                </group>
+                            </page>
+                            <page string="Surcharges">
+                                <field name="surcharge_line_ids">
+                                    <list editable="bottom">
+                                        <field name="name" column_invisible="1"/>
+                                        <field name="surcharge_product_id"
+                                               required="1"
+                                               domain="[('is_surcharge_product', '=', True)]"
+                                               context="{'default_type': 'service', 'default_categ_id': 1, 'default_is_surcharge_product': True}"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="buy_rate"/>
+                                        <field name="sell_rate"/>
                                     </list>
                                 </field>
                             </page>
@@ -100,6 +147,7 @@
                             </page>
                         </notebook>
                     </sheet>
+                    <chatter/>
                 </form>
             </field>
         </record>
@@ -109,25 +157,27 @@
             <field name="name">sale.transport.leg.list.view</field>
             <field name="model">sale.transport.leg</field>
             <field name="arch" type="xml">
-                <list string="Transport Legs" editable="bottom" open_form_view="True">
-                    <field name="sequence" widget="handle"/>
-                    <field name="order_id"/>
-                    <field name="picking_id"/>
-                    <field name="order_line_id"/>
-                    <field name="from_location" string="From"/>
-                    <field name="to_location" string="To"/>
-                    <field name="from_date" string="Pickup Date" widget="remaining_days"/>
-                    <field name="to_date" string="Dropoff Date" widget="remaining_days"/>
-                    <field name="carrier_id"/>
-                    <field name="service_id"/>
+                <list string="Transport Legs" editable="bottom">
+                    <button name="action_open_form_view" type="object" string="View" icon="fa-external-link"/>
+                    <field name="order_id" string="Sales Order Number" optional="show"/>
+                    <field name="customer_id" optional="show"/>
+                    <field name="from_location"
+                           string="From"
+                           context="{'show_address': True, 'address_inline': True}"/>
+                    <field name="to_location"
+                           string="To"
+                           context="{'show_address': True, 'address_inline': True}"/>
+                    <field name="from_date" string="Collection Date" widget="remaining_days" optional="show"/>
+                    <field name="to_date" string="Delivery Date" widget="remaining_days" optional="show"/>
+                    <field name="is_internal" optional="show"/>
+                    <field name="driver_id" optional="show"/>
+                    <field name="fleet_id" optional="show"/>
+                    <field name="carrier_id" optional="show"/>
+                    <field name="carrier_code" optional="show"/>
+                    <field name="service_id" optional="show"/>
                     <field name="currency_id" column_invisible="1"/>
-                    <field name="sell_rate"/>
-                    <field name="buy_rate"/>
-                    <field name="margin"/>
-                    <field name="fs_sell_rate"/>
-                    <field name="fs_buy_rate"/>
-                    <field name="fs_margin"/>
-                    <field name="state"/>
+                    <field name="base_buy_rate" optional="show"/>
+                    <field name="base_sell_rate" optional="show"/>
                 </list>
             </field>
         </record>

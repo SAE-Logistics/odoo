@@ -113,6 +113,14 @@
                             </div>
                         </div>
                     </setting>
+                    <setting id="carrier_rate_api" string="Carrier Rate API">
+                        <div class="content-group">
+                            <div class="row">
+                                <label string="Carrier Rate API URL" for="carrier_rate_api_url" class="col-lg-3 o_light_label"/>
+                                <field name="carrier_rate_api_url"/>
+                            </div>
+                        </div>
+                    </setting>
                 </block>
             </app>
         </field>

@@ -50,6 +50,11 @@ class StockPicking(models.Model):
         related='sale_id.order_type',
         string='Sale Order Type',
     )
+    sale_goods_customer_id = fields.Many2one(
+        'res.partner',
+        related='sale_id.commercial_partner_id',
+        string='Sale Customer',
+    )
     sale_no_transport_needed = fields.Boolean(
         related='sale_id.no_transport_needed',
         string='No Transport Needed',
@@ -95,12 +100,18 @@ class StockPicking(models.Model):
         incoming_pickings = self.filtered(lambda p: p.picking_type_code == 'incoming')
         incoming_pickings._route_incoming_to_rental_or_default()
 
-        return super().button_validate()
+        res = super().button_validate()
+        done_pickings = self.filtered(lambda p: p.state == 'done')
+        if done_pickings:
+            done_pickings._update_goods_order_metrics()
+        return res
 
 
     def write(self, vals):
         res = super().write(vals)
-        if self.filtered(lambda p: p.state == 'done') and 'move_line_ids' in vals:
+        if self.filtered(lambda p: p.state == 'done') and (
+            'move_line_ids' in vals or 'package_ids' in vals
+        ):
             self._update_goods_order_metrics()
         return res
 
@@ -123,6 +134,8 @@ class StockPicking(models.Model):
                 for key, qty in picking_metrics.items():
                     metrics[key] += qty
             self._apply_metrics_to_sale_order(sale, metrics)
+            self._clear_legacy_pallet_sale_lines(sale)
+            self._sync_package_sale_lines(sale, done_pickings)
 
     def _collect_metrics_from_picking(self, picking):
         metrics = defaultdict(float)
@@ -152,35 +165,10 @@ class StockPicking(models.Model):
         metrics['serial_count'] = len(serials)
         metrics['expiry_count'] = len(expiries)
         metrics['order_receipt'] = 1
-        metrics['pallets_in' if picking.picking_type_code == 'incoming' else 'pallets_out'] = max(int(picking.pallet_qty or 0), 0)
         return metrics
 
     def _apply_metrics_to_sale_order(self, sale, metrics):
         config = self.env['ir.config_parameter'].sudo()
-        default_container_type_id = config.get_param('sale_gto.default_container_type_id', False)
-        default_container_type = self.env['stock.package.type'].browse(int(default_container_type_id)) if default_container_type_id else self.env['stock.package.type']
-        default_container_product = default_container_type.product_id if default_container_type else self.env['product.product']
-        legacy_pallet_product_ids = {
-            int(product_id)
-            for product_id in (
-                config.get_param('sale_gto.product_pallets_in_id', False),
-                config.get_param('sale_gto.product_pallets_out_id', False),
-            )
-            if product_id
-        }
-        # mapping = {
-        #     'order_receipt': 'sale_goods_transport_orders.prod_go_order_receipt',
-        #     'sku_in': 'sale_goods_transport_orders.prod_gi_movements_sku',
-        #     'sku_out': 'sale_goods_transport_orders.prod_go_sku_picked',
-        #     'serial_count': 'sale_goods_transport_orders.prod_go_serial',
-        #     'lot_count': 'sale_goods_transport_orders.prod_go_lot',
-        #     'expiry_count': 'sale_goods_transport_orders.prod_go_expiry',
-        #     'cartons_in': 'sale_goods_transport_orders.prod_handling_cartons_in',
-        #     'cartons_out': 'sale_goods_transport_orders.prod_handling_cartons_out',
-        #     'pallets_in': 'sale_goods_transport_orders.prod_handling_pallets_in',
-        #     'pallets_out': 'sale_goods_transport_orders.prod_handling_pallets_out',
-        # }
-
         mapping = {
             'order_receipt': config.get_param('sale_gto.product_order_receipt_id', False),
             'sku_in': config.get_param('sale_gto.product_sku_in_id', False),
@@ -190,8 +178,6 @@ class StockPicking(models.Model):
             'serial_count': config.get_param('sale_gto.product_serial_id', False),
             'lot_count': config.get_param('sale_gto.product_lot_id', False),
             'expiry_count': config.get_param('sale_gto.product_expiry_id', False),
-            'pallets_in': default_container_product.id if default_container_product else False,
-            'pallets_out': default_container_product.id if default_container_product else False,
         }
 
         product_quantities = defaultdict(float)
@@ -215,12 +201,14 @@ class StockPicking(models.Model):
                     'product_uom_qty': qty,
                     'product_uom': product.uom_id.id,
                     'price_unit': product.lst_price,
+                    'invoice_service_type': 'warehouse',
                 })
             else:
                 line = line[0]
                 line.write({
                     'name': product.get_product_multiline_description_sale() or product.display_name,
                     'product_uom_qty': qty,
+                    'invoice_service_type': 'warehouse',
                 })
 
             if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
@@ -231,23 +219,119 @@ class StockPicking(models.Model):
             else:
                 line.qty_delivered = qty
 
-        if default_container_product:
-            for line in sale.order_line.filtered(
-                lambda l: (
-                    not l.display_type
-                    and l.product_id
-                    and l.product_id.id in legacy_pallet_product_ids
-                    and l.product_id != default_container_product
-                )
-            ):
-                vals = {'product_uom_qty': 0.0}
-                if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
-                    vals['qty_delivered_method'] = 'manual'
-                line.write(vals)
-                if hasattr(line, 'qty_delivered_manual'):
-                    line.qty_delivered_manual = 0.0
-                else:
-                    line.qty_delivered = 0.0
+    def _clear_legacy_pallet_sale_lines(self, sale):
+        config = self.env['ir.config_parameter'].sudo()
+        pallet_product_ids = {
+            int(product_id)
+            for product_id in (
+                config.get_param('sale_gto.product_pallets_in_id', False),
+                config.get_param('sale_gto.product_pallets_out_id', False),
+            )
+            if product_id
+        }
+        if not pallet_product_ids:
+            return
+
+        legacy_lines = sale.order_line.filtered(
+            lambda line: (
+                not line.display_type
+                and line.product_id
+                and line.product_id.id in pallet_product_ids
+                and not line.package_type_id
+            )
+        )
+        for line in legacy_lines:
+            vals = {'product_uom_qty': 0.0}
+            if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
+                vals['qty_delivered_method'] = 'manual'
+            line.write(vals)
+            if hasattr(line, 'qty_delivered_manual'):
+                line.qty_delivered_manual = 0.0
+            else:
+                line.qty_delivered = 0.0
+
+    def _sync_package_sale_lines(self, sale, done_pickings):
+        package_groups = {}
+        for package_line in done_pickings.mapped('package_ids').filtered('package_type_id'):
+            package_type = package_line.package_type_id
+            package_product = package_type.product_id
+            if not package_product:
+                continue
+            group = package_groups.setdefault(
+                package_type.id,
+                {
+                    'package_type': package_type,
+                    'product': package_product,
+                    'quantity': 0.0,
+                    'package_lines': self.env['sale.package.line'],
+                },
+            )
+            group['quantity'] += package_line.quantity or 0.0
+            group['package_lines'] |= package_line
+
+        managed_lines = sale.order_line.filtered(
+            lambda line: not line.display_type and line.container_charge_line and line.package_type_id
+        )
+        active_package_type_ids = set(package_groups)
+
+        for package_type_id, group in package_groups.items():
+            package_type = group['package_type']
+            product = group['product']
+            quantity = group['quantity']
+            package_lines = group['package_lines']
+            line = managed_lines.filtered(lambda sale_line: sale_line.package_type_id == package_type)[:1]
+
+            values = {
+                'order_id': sale.id,
+                'product_id': product.id,
+                'name': product.get_product_multiline_description_sale() or product.display_name,
+                'product_uom_qty': quantity,
+                'product_uom': product.uom_id.id,
+                'price_unit': product.lst_price,
+                'package_type_id': package_type.id,
+                'container_charge_line': True,
+                'invoice_service_type': 'warehouse',
+            }
+            if not line:
+                line = self.env['sale.order.line'].create(values)
+            else:
+                line.write(values)
+
+            delivered_vals = {}
+            if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
+                delivered_vals['qty_delivered_method'] = 'manual'
+            if delivered_vals:
+                line.write(delivered_vals)
+            if hasattr(line, 'qty_delivered_manual'):
+                line.qty_delivered_manual = quantity
+            else:
+                line.qty_delivered = quantity
+
+            package_lines.with_context(skip_goods_order_sync=True).write({
+                'order_line_id': line.id,
+            })
+            line._recompute_package_count_weight()
+
+        stale_lines = managed_lines.filtered(
+            lambda line: line.package_type_id.id not in active_package_type_ids
+        )
+        for line in stale_lines:
+            linked_packages = line.package_ids.filtered(
+                lambda package: package.picking_id in done_pickings
+            )
+            if linked_packages:
+                linked_packages.with_context(skip_goods_order_sync=True).write({
+                    'order_line_id': False,
+                })
+            vals = {'product_uom_qty': 0.0}
+            if hasattr(line, 'qty_delivered_method') and line.qty_delivered_method != 'manual':
+                vals['qty_delivered_method'] = 'manual'
+            line.write(vals)
+            if hasattr(line, 'qty_delivered_manual'):
+                line.qty_delivered_manual = 0.0
+            else:
+                line.qty_delivered = 0.0
+            line._recompute_package_count_weight()
 
     def _get_pallet_qty(self):
         self.ensure_one()

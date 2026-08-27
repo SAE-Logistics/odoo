@@ -22,18 +22,35 @@
                 </xpath>
 
                 <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
-                    <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')]
+                    <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')] if context.get('ord_type') == 'transport' else []
                     </attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='partner_shipping_id']" position="before">
+                    <xpath expr="//field[@name='sale_order_template_id']" position="move"/>
                 </xpath>
 
                 <xpath expr="//field[@name='partner_shipping_id']" position="attributes">
                     <attribute name="required">order_type == 'goods_out'</attribute>
+                    <attribute name="invisible">order_type in ['transport', 'goods_in']</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='partner_shipping_id']" position="before">
+                    <field name="collection_address_id"
+                           invisible="order_type != 'goods_in'"
+                           required="order_type == 'goods_in'"
+                           domain="[('commercial_partner_id', '=', commercial_partner_id), ('type', '=', 'delivery')]"
+                           context="{'default_parent_id': partner_id, 'default_type': 'delivery'}"/>
                 </xpath>
 
                 <xpath expr="//page[@name='other_information']/group/group[@name='sale_info']/field[@name='invoice_status']"
                        position="after">
                     <field name="collect_note"/>
                     <field name="deliver_note"/>
+                </xpath>
+
+                <xpath expr="//page[@name='optional_products']" position="attributes">
+                    <attribute name="invisible">1</attribute>
                 </xpath>
 
                 <xpath expr="//sheet//div[@name='button_box']" position="inside">
@@ -52,8 +69,8 @@
 
                 <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='product_id']" position="before">
                     <field name="order_type" column_invisible="1"/>
-                    <field name="package_type_id"/>
-                    <button name="add_view_package_details" type="object" icon="fa-archive"/>
+                    <field name="package_type_id" column_invisible="parent.order_type == 'transport'"/>
+                    <button name="add_view_package_details" type="object" icon="fa-archive" title="Package Details"/>
                     <field name="package_qty"/>
                     <field name="total_weight"/>
                 </xpath>
@@ -65,7 +82,7 @@
                     <attribute name="column_invisible">parent.order_type == 'transport'</attribute>
                 </xpath>
                 <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='product_uom_qty']" position="attributes">
-                    <attribute name="column_invisible">parent.order_type == 'transport'</attribute>
+                    <attribute name="column_invisible">False</attribute>
                 </xpath>
                 <xpath expr="//notebook/page[@name='order_lines']/field[@name='order_line']/list/field[@name='product_packaging_qty']" position="attributes">
                     <attribute name="column_invisible">parent.order_type == 'transport'</attribute>
@@ -85,10 +102,14 @@
                     <page string="Transport Products" name="product_lines" invisible="order_type != 'transport'">
                         <group>
                             <group>
-                                <field name="transport_from_id" options="{'no_create_edit': False}"/>
+                                <field name="transport_from_id"
+                                       options="{'no_create_edit': False}"
+                                       context="{'default_parent_id': partner_id, 'default_type': 'delivery'}"/>
                             </group>
                             <group>
-                                <field name="transport_to_id" options="{'no_create_edit': False}"/>
+                                <field name="transport_to_id"
+                                       options="{'no_create_edit': False}"
+                                       context="{'default_parent_id': partner_id, 'default_type': 'delivery'}"/>
                             </group>
                         </group>
                         <field name="product_line_ids">
@@ -129,6 +150,51 @@
 <!--                            </form>-->
                         </field>
                     </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="sale_order_list_inherit_transport_leg_status" model="ir.ui.view">
+            <field name="name">sale.order.list.inherit.transport.leg.status</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.sale_order_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="transport_leg_tag_ids"
+                           widget="many2many_tags"
+                           options="{'color_field': 'tag_color', 'no_create_edit': True}"
+                           optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="sale_order_all_confirmed_list_view" model="ir.ui.view">
+            <field name="name">sale.order.all.confirmed.list</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_tree"/>
+            <field name="mode">primary</field>
+            <field name="arch" type="xml">
+                <xpath expr="//list" position="attributes">
+                    <attribute name="create">1</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="sale_order_search_inherit_order_type_filters" model="ir.ui.view">
+            <field name="name">sale.order.search.inherit.order.type.filters</field>
+            <field name="model">sale.order</field>
+            <field name="mode">primary</field>
+            <field name="inherit_id" ref="sale.sale_order_view_search_inherit_sale"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='to_invoice']/preceding-sibling::separator[1]" position="before">
+                    <filter string="Goods In" name="goods_in_orders" domain="[('order_type', '=', 'goods_in')]"/>
+                    <filter string="Goods Out" name="goods_out_orders" domain="[('order_type', '=', 'goods_out')]"/>
+                    <filter string="Transport" name="transport_orders" domain="[('order_type', '=', 'transport')]"/>
+                    <separator/>
+                    <filter string="To Do" name="transport_status_to_do" domain="[('transport_leg_status', '=', 'to_do')]"/>
+                    <filter string="Missing" name="transport_status_missing" domain="[('transport_leg_status', '=', 'missing')]"/>
+                    <filter string="Not Needed" name="transport_status_not_needed" domain="[('transport_leg_status', '=', 'not_needed')]"/>
+                    <filter string="Completed" name="transport_status_completed" domain="[('transport_leg_status', '=', 'completed')]"/>
                 </xpath>
             </field>
         </record>

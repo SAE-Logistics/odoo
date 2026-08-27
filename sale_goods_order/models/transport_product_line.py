@@ -16,13 +16,18 @@ class TransportProductLine(models.Model):
         ondelete="cascade",
         index=True,
     )
+    sale_commercial_partner_id = fields.Many2one(
+        "res.partner",
+        related="sale_order_id.commercial_partner_id",
+        string="Customer",
+    )
 
     product_id = fields.Many2one("product.product", string="Product")
     image = fields.Binary(string="Image", attachment=True)
 
     type = fields.Selection([('consumable', 'Consumable')], string="Type")
 
-    categ_id = fields.Many2one(related="product_id.categ_id", string="Type")
+    categ_id = fields.Many2one(related="product_id.categ_id", string="Category")
 
     description = fields.Text(string="Description", required=True)
     hs_code_id = fields.Many2one('hs.code', string="HS Code")
@@ -37,6 +42,15 @@ class TransportProductLine(models.Model):
         store=True,
         readonly=True,
     )
+
+    @api.onchange("sale_order_id")
+    def _onchange_sale_order_id_product_domain(self):
+        customer = self.sale_order_id.commercial_partner_id
+        owner = self.product_id.goods_owner_customer_id
+        if self.product_id and owner and owner != customer:
+            self.product_id = False
+        domain = ["|", ("goods_owner_customer_id", "=", customer.id), ("goods_owner_customer_id", "=", False)] if customer else []
+        return {"domain": {"product_id": domain}}
 
     @api.onchange("product_id")
     def _onchange_product_id_fill_values(self):
@@ -75,3 +89,23 @@ class TransportProductLine(models.Model):
             # Price (you said user can alter; default from sale price)
             # Use list_price from template as a default
             line.price = tmpl.list_price or 0.0
+
+    def _check_customer_product_allowed(self):
+        for line in self:
+            customer = line.sale_order_id.commercial_partner_id
+            product = line.product_id
+            if not customer or not product:
+                continue
+            owner = product.goods_owner_customer_id
+            if owner and owner != customer:
+                raise ValidationError(_(
+                    "Product '%(product)s' is not allowed for customer '%(customer)s'. "
+                    "Configure the customer on the product category or one of its parent categories."
+                ) % {
+                    "product": product.display_name,
+                    "customer": customer.display_name,
+                })
+
+    @api.constrains("sale_order_id", "product_id")
+    def _constrain_customer_product_allowed(self):
+        self._check_customer_product_allowed()

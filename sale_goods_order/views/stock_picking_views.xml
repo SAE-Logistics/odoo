@@ -6,41 +6,15 @@
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
             <!-- Boolean to mark materials picking -->
-            <xpath expr="//sheet/notebook" position="inside">
-                <group string="Materials">
+            <xpath expr="//sheet/notebook" position="before">
+                <group string="Materials" invisible="1">
                     <field name="is_material_picking"/>
                     <field name="source_picking_id"
                            invisible="is_material_picking == False"/>
                 </group>
-                <page string="Transport Legs"
-                      invisible="sale_id == False or sale_order_type not in ['goods_in', 'goods_out'] or sale_no_transport_needed or is_material_picking">
-                    <group>
-                        <div class="o_form_label">
-                            Transport legs will automatically attach to the existing transport charge line for the sale order, or create one if none exists.
-                        </div>
-                    </group>
-                    <field name="transport_leg_ids" context="{'default_picking_id': id}" readonly="state in ('done', 'cancel')">
-                        <list editable="bottom" open_form_view="True">
-                            <field name="sequence" widget="handle"/>
-                            <field name="from_location"/>
-                            <field name="to_location"/>
-                            <field name="from_date"/>
-                            <field name="to_date"/>
-                            <field name="carrier_id"/>
-                            <field name="service_id"/>
-                            <field name="currency_id" column_invisible="1"/>
-                            <field name="sell_rate"/>
-                            <field name="buy_rate"/>
-                            <field name="fs_sell_rate"/>
-                            <field name="fs_buy_rate"/>
-                            <field name="state"/>
-                        </list>
-                    </field>
-                </page>
+            </xpath>
+            <xpath expr="//sheet/notebook/page[@name='operations']" position="after">
                 <page string="Package Details" invisible="is_material_picking">
-                    <group>
-                        <field name="pallet_qty" readonly="state in ('done', 'cancel')"/>
-                    </group>
                     <field name="package_ids" context="{'default_picking_id': id}" readonly="state in ('done', 'cancel')">
                         <list editable="bottom">
                             <field name="package_type_id"/>
@@ -53,7 +27,12 @@
                     </field>
                 </page>
                 <!-- New page for Materials Consumption -->
-                <page string="Materials Consumption">
+                <page string="Material Consumption">
+                    <button name="action_open_material_wizard"
+                            string="Add Materials"
+                            type="object"
+                            class="btn-primary"
+                            invisible="sale_id == False or picking_type_code == 'internal'"/>
                     <group string="Material Pickings">
                         <field name="material_consumption_ids">
                             <list>
@@ -84,25 +63,74 @@
                         </field>
                     </group>
                 </page>
+                <page string="Transport Legs"
+                      invisible="sale_id == False or sale_order_type not in ['goods_in', 'goods_out'] or sale_no_transport_needed or is_material_picking">
+                    <group>
+                        <div class="o_form_label">
+                            Transport legs will automatically attach to the existing transport charge line for the sale order, or create one if none exists.
+                        </div>
+                    </group>
+                    <field name="transport_leg_ids" context="{'default_picking_id': id}" readonly="state in ('done', 'cancel')">
+                        <list editable="bottom">
+                            <button name="action_open_form_view" type="object" string="View" icon="fa-external-link"/>
+                            <field name="order_id" string="Sales Order Number" optional="show"/>
+                            <field name="customer_id" optional="show"/>
+                            <field name="from_location"
+                                   string="From"
+                                   context="{'show_address': True, 'address_inline': True}"/>
+                            <field name="to_location"
+                                   string="To"
+                                   context="{'show_address': True, 'address_inline': True}"/>
+                            <field name="from_date" string="Collection Date" widget="remaining_days" optional="show"/>
+                            <field name="to_date" string="Delivery Date" widget="remaining_days" optional="show"/>
+                            <field name="is_internal" optional="show"/>
+                            <field name="driver_id" optional="show"/>
+                            <field name="fleet_id" optional="show"/>
+                            <field name="carrier_id" optional="show"/>
+                            <field name="carrier_code" optional="show"/>
+                            <field name="service_id" optional="show"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="base_buy_rate" optional="show"/>
+                            <field name="base_sell_rate" optional="show"/>
+                        </list>
+                    </field>
+                </page>
             </xpath>
 
-            <!-- Button in header -->
-            <xpath expr="//header" position="inside">
-                <button name="action_open_material_wizard"
-                        string="Add Materials"
-                        type="object"
-                        class="btn-primary"
-                        invisible="sale_id == False or picking_type_code == 'internal'"/>
+            <xpath expr="//sheet/notebook/page[@name='operations']//button[@name='action_put_in_pack']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+            <xpath expr="//sheet/notebook/page[@name='extra']" position="before">
+                <xpath expr="//sheet/notebook/page[@name='note']" position="move"/>
             </xpath>
 
             <xpath expr="//field[@name='origin']" position="after">
+                <field name="sale_order_type" invisible="1"/>
+                <field name="sale_goods_customer_id" invisible="1"/>
                 <field name="collect_note"/>
                 <field name="deliver_note"/>
+            </xpath>
+
+            <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_id']" position="attributes">
+                <attribute name="domain">['|', ('goods_owner_customer_id', '=', parent.sale_goods_customer_id), ('goods_owner_customer_id', '=', False)] if parent.sale_order_type in ['goods_in', 'goods_out'] and parent.sale_goods_customer_id else []</attribute>
             </xpath>
 
             <xpath expr="//field[@name='move_ids_without_package']//field[@name='product_packaging_id']" position="attributes">
                 <attribute name="column_invisible">True</attribute>
                 <attribute name="optional">hide</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_stock_move_line_operation_tree_inherit_lot_visible" model="ir.ui.view">
+        <field name="name">stock.move.line.operations.list.inherit.lot.visible</field>
+        <field name="model">stock.move.line</field>
+        <field name="inherit_id" ref="stock.view_stock_move_line_operation_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='lot_id']" position="attributes">
+                <attribute name="string">Lot/Serial Number</attribute>
+                <attribute name="column_invisible">parent.has_tracking == 'none'</attribute>
             </xpath>
         </field>
     </record>

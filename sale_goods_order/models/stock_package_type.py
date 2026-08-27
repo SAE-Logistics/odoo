@@ -59,6 +59,16 @@ class SalePackageLine(models.Model):
     weight = fields.Float(string='Weight')
     quantity = fields.Integer(string='Quantity')
 
+    @api.onchange('package_type_id')
+    def _onchange_package_type_id_set_dimensions(self):
+        for record in self:
+            package_type = record.package_type_id
+            if not package_type:
+                continue
+            record.length = package_type.packaging_length
+            record.width = package_type.width
+            record.height = package_type.height
+
     @api.depends('order_line_id.order_id', 'picking_id.sale_id')
     def _compute_order_id(self):
         for record in self:
@@ -66,24 +76,45 @@ class SalePackageLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            package_type_id = vals.get('package_type_id')
+            if not package_type_id:
+                continue
+            package_type = self.env['stock.package.type'].browse(package_type_id)
+            if 'length' not in vals:
+                vals['length'] = package_type.packaging_length
+            if 'width' not in vals:
+                vals['width'] = package_type.width
+            if 'height' not in vals:
+                vals['height'] = package_type.height
         records = super().create(vals_list)
         lines = records.mapped('order_line_id').filtered(lambda line: line)
         if lines:
             lines._recompute_package_count_weight()
+        done_pickings = records.mapped('picking_id').filtered(lambda picking: picking.state == 'done')
+        if done_pickings and not self.env.context.get('skip_goods_order_sync'):
+            done_pickings._update_goods_order_metrics()
         return records
 
     def write(self, vals):
         lines_before = self.mapped('order_line_id').filtered(lambda line: line)
+        done_pickings = self.mapped('picking_id').filtered(lambda picking: picking.state == 'done')
         res = super().write(vals)
         lines_after = self.mapped('order_line_id').filtered(lambda line: line)
 
         # If sale_line_id changed, recompute both old and new lines
         (lines_before | lines_after)._recompute_package_count_weight()
+        done_pickings |= self.mapped('picking_id').filtered(lambda picking: picking.state == 'done')
+        if done_pickings and not self.env.context.get('skip_goods_order_sync'):
+            done_pickings._update_goods_order_metrics()
         return res
 
     def unlink(self):
         lines = self.mapped('order_line_id').filtered(lambda line: line)
+        done_pickings = self.mapped('picking_id').filtered(lambda picking: picking.state == 'done')
         res = super().unlink()
         if lines:
             lines._recompute_package_count_weight()
+        if done_pickings and not self.env.context.get('skip_goods_order_sync'):
+            done_pickings._update_goods_order_metrics()
         return res
