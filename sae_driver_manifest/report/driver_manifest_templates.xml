@@ -12,7 +12,7 @@
                 <!-- Rows are grouped per job: jobs ordered by their pickup postcode, then legs in
                      their own sequence so a job's collection always prints above its delivery -->
                 <t t-set="run_legs"
-                   t-value="docs.filtered(lambda l: l.driver_id.id == driver.id).sorted(key=lambda l: (l.order_id.transport_from_id.zip or l.from_postcode or l.to_postcode or '', l.order_id.id, l.sequence, l.id))"/>
+                   t-value="docs.filtered(lambda l: l.driver_id.id == driver.id).sorted(key=lambda l: (l.manifest_sequence or 0, l.order_id.transport_from_id.zip or l.from_postcode or l.to_postcode or '', l.order_id.id, l.sequence, l.id))"/>
                 <t t-set="first" t-value="run_legs[:1]"/>
                 <!-- Date = today's date (the date we print these) -->
                 <t t-set="print_date" t-value="time.strftime('%d/%m/%Y')"/>

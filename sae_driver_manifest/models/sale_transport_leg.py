@@ -47,13 +47,22 @@ _INVALID_SHEET_CHARS = re.compile(r"[\[\]:*?/\\]")
 class SaleTransportLeg(models.Model):
     _inherit = "sale.transport.leg"
 
+    # Manual run order. Drag the handle on the Transport Legs list (filtered
+    # to one driver) to set it; the PDF and Excel run-sheets both lead their
+    # sort with this. Global across all legs, so it only reads correctly with
+    # the list filtered to a single driver - see the run-sequencing roadmap.
+    manifest_sequence = fields.Integer(
+        string="Run Order", default=10, index=True)
+
     # ------------------------------------------------------------------
     # Row derivation (mirrors report_driver_manifest)
     # ------------------------------------------------------------------
     def _manifest_sorted_run(self):
-        """Legs in run order: jobs by pickup postcode, then each job's own
-        leg sequence so a collection prints above its delivery."""
+        """Legs in run order: the manual ``manifest_sequence`` first, then
+        jobs by pickup postcode and each job's own leg sequence so an
+        untouched run still prints collection-above-delivery."""
         return self.sorted(key=lambda l: (
+            l.manifest_sequence or 0,
             (l.order_id.transport_from_id.zip if l.order_id else "")
             or l.from_postcode or l.to_postcode or "",
             l.order_id.id or 0,

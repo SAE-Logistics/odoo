@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Manual run ordering for the Driver Manifest.
+
+        Filter the Transport Legs list to one driver, then drag the handle to
+        set the run order. Both run-sheets (PDF and Excel) lead their sort with
+        manifest_sequence. The default_order override is what makes the drag
+        stick visually. See docs/route-planning-roadmap - Stage 1.
+    -->
+    <record id="view_sale_transport_leg_list_manifest_sequence"
+            model="ir.ui.view">
+        <field name="name">sale.transport.leg.list.manifest.sequence</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="inherit_id"
+               ref="sale_goods_order.sale_transport_leg_list_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="default_order">manifest_sequence, id</attribute>
+            </xpath>
+            <xpath expr="//list/field[1]" position="before">
+                <field name="manifest_sequence" widget="handle"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

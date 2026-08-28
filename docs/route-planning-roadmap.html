@@ -435,16 +435,18 @@
         <div class="stage-body">
           <div class="stage-head">
             <h3>A <code>manifest_sequence</code> field on the leg</h3>
-            <span class="stage-effort">≈ 1 day</span>
+            <span class="stage-effort">Shipped — 28 Aug 2026</span>
           </div>
           <p>
-            An integer field with the <code>handle</code> widget on the Transport Legs list; the PDF and the
-            Excel export both sort by it. Drag rows into order, then print. Delivers the capability that was
-            asked for, with no new concepts to learn.
+            <b>Done.</b> <code>manifest_sequence</code> integer with the <code>handle</code> widget as the
+            first column of the Transport Legs list (<code>sae_driver_manifest/views/sale_transport_leg_views.xml</code>),
+            list <code>default_order</code> set to it. The PDF and the Excel export both lead their sort with
+            it, falling back to the pickup-postcode order for an untouched run. Filter the list to one driver,
+            drag rows into order, print. Stage 0 turned out not to be a prerequisite — filter by driver, not date.
           </p>
           <div class="stage-note">
             <b>Known weakness:</b> the sequence is global across all legs, so it only reads correctly when
-            the list is filtered to one driver and one date, and two dispatchers working different runs
+            the list is filtered to one driver, and two dispatchers working different runs
             interleave their numbers. Fine as an interim. Not the destination.
           </div>
         </div>
@@ -556,8 +558,8 @@
           </tr>
           <tr>
             <td>1 · Sequence field</td>
-            <td class="num">1 day</td>
-            <td>Stage 0</td>
+            <td class="num">Shipped</td>
+            <td>—</td>
             <td>Re-order in Odoo, print ordered PDF</td>
           </tr>
           <tr>
