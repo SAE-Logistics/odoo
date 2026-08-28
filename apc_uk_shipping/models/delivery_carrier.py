@@ -54,6 +54,13 @@ class DeliveryCarrier(models.Model):
         help="Default ClosedAt time in HH:MM format (e.g. 17:00).",
         default="17:00",
     )
+    apc_tracking_polled_at = fields.Datetime(
+        string="APC Tracking Last Polled",
+        help="Start time of the last successful APC tracking poll. The next "
+             "poll asks APC for updates from this point (minus a day's "
+             "overlap). Cleared value means poll the last 8 days.",
+        copy=False,
+    )
     apc_safeplace_default = fields.Selection(
         [("Allowed", "Allowed"), ("NotAllowed", "Not Allowed"),
          ("ConsigneeChoice", "Consignee Choice")],
