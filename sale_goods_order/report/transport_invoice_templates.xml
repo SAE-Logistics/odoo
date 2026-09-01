@@ -244,26 +244,38 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="rows" t-as="row"
-                                    t-att-class="'surcharge-row' if row.get('row_type') == 'surcharge' else ''">
-                                    <td class="nowrap"><span t-esc="row.get('date').strftime('%d-%b-%y') if row.get('date') else ''"/></td>
-                                    <td><span t-esc="row.get('client_ref') or ''"/></td>
-                                    <td class="nowrap"><span t-esc="row.get('job_no') or ''"/></td>
-                                    <td><span t-esc="row.get('service') or ''"/></td>
-                                    <td><span t-esc="row.get('description') or ''"/></td>
-                                    <td class="text-right nowrap">
-                                        <span t-if="row.get('weight')" t-esc="'%g Kg' % row.get('weight')"/>
-                                    </td>
-                                    <td><span t-esc="row.get('from_postcode') or ''"/></td>
-                                    <td><span t-esc="row.get('to_postcode') or ''"/></td>
-                                    <td><span t-esc="row.get('consignee') or ''"/></td>
-                                    <td class="text-right nowrap">
-                                        <span t-out="row.get('value', 0.0)" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                    </td>
-                                    <td class="text-right nowrap">
-                                        <span t-if="row.get('fuel_charge')" t-out="row.get('fuel_charge')" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
-                                    </td>
-                                </tr>
+                                <t t-foreach="rows" t-as="row">
+                                    <tr t-if="row.get('row_type') == 'surcharge'" class="surcharge-row">
+                                        <td class="nowrap"><span t-esc="row.get('date').strftime('%d-%b-%y') if row.get('date') else ''"/></td>
+                                        <td colspan="8">
+                                            <strong>Additional Charges:</strong>
+                                            <span t-esc="row.get('service') or ''"/>
+                                        </td>
+                                        <td class="text-right nowrap">
+                                            <span t-out="row.get('value', 0.0)" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                    <tr t-else="">
+                                        <td class="nowrap"><span t-esc="row.get('date').strftime('%d-%b-%y') if row.get('date') else ''"/></td>
+                                        <td><span t-esc="row.get('client_ref') or ''"/></td>
+                                        <td class="nowrap"><span t-esc="row.get('job_no') or ''"/></td>
+                                        <td><span t-esc="row.get('service') or ''"/></td>
+                                        <td><span t-esc="row.get('description') or ''"/></td>
+                                        <td class="text-right nowrap">
+                                            <span t-if="row.get('weight')" t-esc="'%g Kg' % row.get('weight')"/>
+                                        </td>
+                                        <td><span t-esc="row.get('from_postcode') or ''"/></td>
+                                        <td><span t-esc="row.get('to_postcode') or ''"/></td>
+                                        <td><span t-esc="row.get('consignee') or ''"/></td>
+                                        <td class="text-right nowrap">
+                                            <span t-out="row.get('value', 0.0)" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                        <td class="text-right nowrap">
+                                            <span t-if="row.get('fuel_charge')" t-out="row.get('fuel_charge')" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/>
+                                        </td>
+                                    </tr>
+                                </t>
                                 <tr t-if="not rows">
                                     <td colspan="11">No transport legs are linked to the invoiced lines.</td>
                                 </tr>

@@ -25,7 +25,12 @@ class AccountMove(models.Model):
 
     def _get_report_product_invoice_lines(self):
         self.ensure_one()
-        return self.invoice_line_ids.filtered(lambda line: line.display_type == "product" or not line.display_type)
+        return self.invoice_line_ids.filtered(
+            lambda line: (
+                (line.display_type == "product" or not line.display_type)
+                and not self.currency_id.is_zero(line.price_subtotal)
+            )
+        )
 
     def _get_sale_orders_from_origin(self, order_types):
         self.ensure_one()
@@ -136,8 +141,7 @@ class AccountMove(models.Model):
     def _format_transport_location(self, partner):
         if not partner:
             return ""
-        locality = ", ".join(filter(None, [partner.city, partner.state_id.name]))
-        return " ".join(filter(None, [locality, partner.zip])) or partner.display_name
+        return ", ".join(filter(None, [partner.city, partner.zip]))
 
     def _prepare_transport_row(self, invoice_line=False, sale_line=False, legs=False):
         order = sale_line.order_id if sale_line else False
@@ -161,8 +165,14 @@ class AccountMove(models.Model):
             )
         description = ""
         if sale_line:
+            package_descriptions = list(
+                dict.fromkeys(
+                    filter(None, sale_line.package_ids.mapped("package_type_id.name"))
+                )
+            )
             description = (
-                sale_line.package_type_id.name
+                ", ".join(package_descriptions)
+                or sale_line.package_type_id.name
                 or invoice_description
                 or sale_line.name
             )
@@ -193,8 +203,8 @@ class AccountMove(models.Model):
             ),
             "description": description,
             "weight": sale_line.total_weight if sale_line else 0.0,
-            "from_postcode": partner_from.zip if partner_from else "",
-            "to_postcode": partner_to.zip if partner_to else "",
+            "from_postcode": self._format_transport_location(partner_from),
+            "to_postcode": self._format_transport_location(partner_to),
             "consignee": partner_to.name if partner_to else invoice_line.partner_id.display_name if invoice_line else self.partner_id.display_name,
             "value": sum((leg.base_sell_rate or leg.sell_rate or 0.0) for leg in legs),
             "fuel_charge": 0.0,
