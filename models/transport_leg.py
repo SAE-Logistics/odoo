@@ -186,6 +186,7 @@ class SaleTransportLeg(models.Model):
             'product_uom_qty': 1.0,
             'price_unit': 0.0,
             'goods_delivery_transport_charge_line': True,
+            'invoice_service_type': 'transport',
         }
         if product:
             line_vals.update({
