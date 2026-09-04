@@ -50,6 +50,14 @@ class SaleTransportLeg(models.Model):
     to_contact = fields.Char(string='Contact (Drop Off)')
     to_email = fields.Char(string='Email (Drop Off)')
     to_instructions = fields.Text(string='Instructions (Drop Off)')
+    from_town_postcode = fields.Char(
+        string='From',
+        compute='_compute_town_postcode',
+    )
+    to_town_postcode = fields.Char(
+        string='To',
+        compute='_compute_town_postcode',
+    )
     # service_id = fields.Many2one('sale.transport.service', string='Service')
     carrier_service_option_ids = fields.One2many('sale.carrier.service.option', 'transport_leg_id', string='Carrier Option')
     surcharge_line_ids = fields.One2many('sale.transport.leg.surcharge.line', 'transport_leg_id', string='Surcharges')
@@ -293,6 +301,12 @@ class SaleTransportLeg(models.Model):
         }
         for record in self:
             record.tag_color = color_by_state.get(record.state, 0)
+
+    @api.depends('from_town', 'from_postcode', 'to_town', 'to_postcode')
+    def _compute_town_postcode(self):
+        for record in self:
+            record.from_town_postcode = ', '.join(p for p in (record.from_town, record.from_postcode) if p)
+            record.to_town_postcode = ', '.join(p for p in (record.to_town, record.to_postcode) if p)
 
     @api.depends('from_location.zip', 'to_location.zip')
     def _compute_display_name(self):

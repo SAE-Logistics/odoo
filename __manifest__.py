@@ -33,6 +33,12 @@
         "report/goods_invoice_report.xml",
         "report/goods_invoice_templates.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "sale_goods_order/static/src/js/partner_town_postcode_link.js",
+            "sale_goods_order/static/src/xml/partner_town_postcode_link.xml",
+        ],
+    },
     "installable": True,
     "application": False,
 }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="sale_goods_order.PartnerTownPostcodeLink">
+        <span class="o_field_partner_town_postcode_link">
+            <a t-if="partnerId"
+               href="#"
+               class="o_form_uri"
+               t-on-click="openPartner"
+               t-esc="displayText"/>
+            <t t-else="" t-esc="displayText"/>
+        </span>
+    </t>
+</templates>
