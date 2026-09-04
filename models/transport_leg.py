@@ -368,6 +368,48 @@ class SaleTransportLeg(models.Model):
         elif self.state == 'in_transit':
             self.write({'state': 'scheduled'})
 
+    def _is_carrier_rate_locked(self):
+        """Whether the carrier figures on this leg must not be cleared.
+
+        Once a leg is completed, or the sale order line it feeds has been
+        invoiced, the rates copied onto it are the figures that were acted on
+        commercially. Wiping them would silently change what was charged, so
+        the reset is refused for those legs instead.
+
+        A leg that has been booked with a carrier is locked for a different
+        reason. transport_booking_core resolves the booking adapter through
+        carrier_code, which is related to carrier_service_id: drop the option
+        and the adapter no longer resolves, so cancelling the booking would
+        quietly skip the carrier's own cancel call and leave a live shipment
+        at DPD/APC with nothing in Odoo pointing at it. booking_state is
+        checked softly because that module is not a dependency of this one.
+        """
+        self.ensure_one()
+        if self.state == 'completed':
+            return True
+        if self._fields.get('booking_state') and self.booking_state in ('pending', 'booked'):
+            return True
+        return bool(self.order_line_id and self.order_line_id.qty_invoiced)
+
+    def _clear_selected_carrier_rates(self):
+        """Take the selected carrier's figures back off the leg.
+
+        _select_option() copies the rates down onto the leg, and nothing put
+        them back before this: deselecting an option or refetching rates left
+        the old prices behind with no carrier attached to explain them.
+        """
+        for leg in self:
+            if leg._is_carrier_rate_locked():
+                continue
+            leg.surcharge_line_ids.unlink()
+            leg.write({
+                'carrier_service_id': False,
+                'base_buy_rate': 0.0,
+                'base_sell_rate': 0.0,
+                'buy_rate': 0.0,
+                'sell_rate': 0.0,
+            })
+
     def action_fetch_service_carrier_options(self):
         for leg in self:
             leg._fetch_service_carrier_options()
@@ -512,7 +554,9 @@ class SaleTransportLeg(models.Model):
             raise UserError(_('No rates returned: %s') % (result.get('error') or _('Unknown error')))
 
         self.carrier_service_option_ids.unlink()
-        self.surcharge_line_ids.unlink()
+        # Unlinking the options nulls carrier_service_id on its own, but the
+        # rates copied onto the leg would otherwise survive the refetch.
+        self._clear_selected_carrier_rates()
         carrier_rows = self._filter_rate_response_carriers(result.get('carriers', []), payload)
         option_vals = [
             self._prepare_carrier_option_values(carrier_data)
@@ -833,7 +877,11 @@ class SaleCarrierServiceOption(models.Model):
             return
         other_options = leg.carrier_service_option_ids - self
         if other_options:
-            other_options.write({'is_selected': False})
+            # Skip the deselect handler: this is a switch, not a reset, and the
+            # leg is about to be rewritten with this option's figures below.
+            other_options.with_context(skip_carrier_option_select=True).write(
+                {'is_selected': False}
+            )
         if not self.carrier_id and self.carrier_code:
             carrier = leg._find_delivery_carrier(self.carrier_code)
             if carrier:
@@ -876,9 +924,19 @@ class SaleCarrierServiceOption(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if vals.get('is_selected') and not self.env.context.get('skip_carrier_option_select'):
+        if self.env.context.get('skip_carrier_option_select'):
+            return res
+        if vals.get('is_selected'):
             for option in self:
                 option.with_context(skip_carrier_option_select=True)._select_option()
+        elif 'is_selected' in vals:
+            # Deselecting the option that is currently on the leg has to take
+            # its figures with it, otherwise the leg keeps a price with no
+            # carrier behind it.
+            for option in self:
+                leg = option.transport_leg_id
+                if leg and leg.carrier_service_id == option:
+                    leg._clear_selected_carrier_rates()
         return res
 
 
