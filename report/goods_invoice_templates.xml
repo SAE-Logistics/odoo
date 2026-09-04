@@ -207,6 +207,10 @@
                                             <td class="value"><span t-esc="o.name if o.name and o.name != '/' else 'Draft'"/></td>
                                         </tr>
                                         <tr>
+                                            <td class="label">Customer Reference</td>
+                                            <td class="value"><span t-esc="o.cost_centre_id.display_name or o.ref or ''"/></td>
+                                        </tr>
+                                        <tr>
                                             <td class="label">Reference</td>
                                             <td class="value">Warehouse</td>
                                         </tr>
