@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
     "name": "SAE Driver Manifest (GRN)",
-    "version": "18.0.1.5.2",
-    "summary": "Print a Goods Release Note / Driver Manifest for selected internal transport legs.",
+    "version": "18.0.1.8.0",
+    "summary": "Print a Goods Release Note / Driver Manifest (PDF or Excel) and per-job Delivery Notes for selected internal transport legs.",
     "author": "eartisan",
     "website": "https://eartisan.co.uk",
     "license": "LGPL-3",
@@ -12,8 +12,12 @@
         "web",
     ],
     "data": [
+        "views/sale_transport_leg_views.xml",
         "report/driver_manifest_report.xml",
         "report/driver_manifest_templates.xml",
+        "report/driver_manifest_xlsx_action.xml",
+        "report/delivery_note_report.xml",
+        "report/delivery_note_templates.xml",
     ],
     "installable": True,
     "application": False,

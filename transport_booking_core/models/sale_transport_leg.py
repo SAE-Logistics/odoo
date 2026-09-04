@@ -98,9 +98,32 @@ class SaleTransportLeg(models.Model):
             filename = result.label_filename or ("label-%s.bin" % self.id)
             self._leg_store_label(filename, result.label)
 
+    def _leg_post_log(self, body, attachment_ids=None):
+        """Post carrier booking output to this leg's own chatter.
+
+        Legs carry their own chatter, so booking logs/labels stay on the leg
+        that produced them - Transport Order legs have no picking, and Goods
+        Out pickings with several legs used to mix every leg's output into
+        one thread. Falls back to the picking only when the leg model has no
+        chatter (older base module). Never raises: a chatter problem must not
+        fail a booking that the carrier already accepted.
+        """
+        self.ensure_one()
+        target = self if hasattr(self, "message_post") else self.picking_id
+        if not target or not hasattr(target, "message_post"):
+            return False
+        try:
+            target.message_post(
+                body=body, attachment_ids=attachment_ids or [])
+        except Exception:
+            _logger.exception(
+                "Could not post booking log to chatter for leg %s", self.id)
+            return False
+        return True
+
     def _leg_store_label(self, filename, content):
-        """Persist label bytes as an attachment on the leg (and post to the
-        picking chatter when available)."""
+        """Persist label bytes as an attachment on the leg and post it to the
+        leg chatter."""
         self.ensure_one()
         import base64
         attachment = self.env["ir.attachment"].create({
@@ -109,12 +132,10 @@ class SaleTransportLeg(models.Model):
             "res_model": self._name,
             "res_id": self.id,
         })
-        picking = self.picking_id
-        if picking and hasattr(picking, "message_post"):
-            picking.message_post(
-                body=_("Shipping label for leg %s") % self.display_name,
-                attachment_ids=[attachment.id],
-            )
+        self._leg_post_log(
+            _("Shipping label for leg %s") % self.display_name,
+            attachment_ids=[attachment.id],
+        )
         return attachment
 
     def _leg_mark_dispatched(self):

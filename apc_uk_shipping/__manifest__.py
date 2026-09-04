@@ -11,7 +11,7 @@
 
 {
     "name": "APC UK Shipping",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.1.0",
     "summary": """APC Overnight carrier integration for Odoo using the Hypaship
     API v3. Create domestic shipments (Goods Out, Goods In, Transport Order),
     generate labels (PDF/ZPL), and track parcels directly from Odoo.""",
@@ -27,6 +27,8 @@ Delivery carrier integration for APC Overnight built against the Hypaship API v3
 - Weekday PUR cut-off enforced (20:00 for next working day).
 - Label formats: PDF (testing), ZPL (thermal production).
 - Tracking via account-wide Tracks endpoint with pagination.
+- Scheduled poll advances leg Booking Status and movement Status
+  (Scheduled -> In Transit -> Completed) from APC scans; forward-only.
 - Amend and cancel supported pre-manifest.
 
 This adapter registers under the transport_booking_core framework.

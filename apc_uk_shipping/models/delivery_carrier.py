@@ -54,6 +54,13 @@ class DeliveryCarrier(models.Model):
         help="Default ClosedAt time in HH:MM format (e.g. 17:00).",
         default="17:00",
     )
+    apc_tracking_polled_at = fields.Datetime(
+        string="APC Tracking Last Polled",
+        help="Start time of the last successful APC tracking poll. The next "
+             "poll asks APC for updates from this point (minus a day's "
+             "overlap). Cleared value means poll the last 8 days.",
+        copy=False,
+    )
     apc_safeplace_default = fields.Selection(
         [("Allowed", "Allowed"), ("NotAllowed", "Not Allowed"),
          ("ConsigneeChoice", "Consignee Choice")],
@@ -466,24 +473,31 @@ class DeliveryCarrier(models.Model):
             error_msg = str(exc)
             _log.warning("APC API call failed: %s", error_msg)
         _log.info("APC response: %s", json.dumps(response, default=str))
-        # Post payload AND response/error to picking chatter for debugging
-        picking = leg.picking_id
-        if picking:
-            try:
-                debug_body = (
-                    "APC payload sent:<br/><pre>%s</pre><br/>"
-                    "APC response:<br/><pre>%s</pre><br/>"
-                    "APC error:<br/><pre>%s</pre>"
-                ) % (
-                    json.dumps(payload, indent=2, default=str)[:3000],
-                    json.dumps(response, indent=2, default=str)[:3000],
-                    error_msg or "(none)",
-                )
-                picking.message_post(body=debug_body)
-            except Exception:
-                pass
+        # Post payload AND response/error to the leg chatter for debugging
+        debug_body = (
+            "APC payload sent:<br/><pre>%s</pre><br/>"
+            "APC response:<br/><pre>%s</pre><br/>"
+            "APC error:<br/><pre>%s</pre>"
+        ) % (
+            json.dumps(payload, indent=2, default=str)[:3000],
+            json.dumps(response, indent=2, default=str)[:3000],
+            error_msg or "(none)",
+        )
+        leg._leg_post_log(debug_body)
         if error_msg:
             raise ValidationError(error_msg)
+        orders = response.get("Orders", [])
+        if isinstance(orders, list):
+            orders = orders[0] if orders else {}
+        order_entry = (
+            orders.get("Order", orders) if isinstance(orders, dict) else {})
+        if isinstance(order_entry, list):
+            order_entry = order_entry[0] if order_entry else {}
+        waybill = order_entry.get("WayBill", "") if isinstance(
+            order_entry, dict) else ""
+        if not waybill:
+            raise ValidationError(
+                _("APC did not return a waybill number."))
         return {
             "payload": payload,
             "response": response,

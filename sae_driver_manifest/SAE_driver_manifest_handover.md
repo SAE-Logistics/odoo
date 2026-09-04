@@ -242,6 +242,22 @@ report needs a custom layout (not the standard company header), prefer
 inline styles over relying on the standard layout CSS classes — they only
 reliably apply inside the standard `web.external_layout_*` chain.
 
+- **v1.8.0** — Manual run ordering inside Odoo (roadmap Stage 1). New
+  `manifest_sequence` integer ("Run Order") on `sale.transport.leg`; new view
+  `views/sale_transport_leg_views.xml` puts it as the first list column with
+  `widget="handle"` and sets the list `default_order` to it. Both run-sheets
+  (`_manifest_sorted_run` and the QWeb `sorted()` key) now lead with
+  `manifest_sequence`, then fall back to the old pickup-postcode / job /
+  leg-sequence tuple so untouched runs print exactly as before. Operator filters
+  the list to one driver, drags rows, prints. Replaces the Excel-only reorder
+  workaround for in-Odoo sequencing.
+
+**Lesson (v1.8.0):** the `handle` widget only reorders visually if the list's
+`default_order` is that field — set it via an `<xpath expr="//list"
+position="attributes">` override in the inheriting view. `manifest_sequence` is
+global across all legs, acceptable only with the list filtered to one driver;
+the per-run `sae.transport.run` record (Stage 2) is the real scoping fix.
+
 ---
 
 ## 6. Current state / immediate next step
