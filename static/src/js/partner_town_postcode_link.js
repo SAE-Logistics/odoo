@@ -17,18 +17,17 @@ import { Component } from "@odoo/owl";
  */
 export class PartnerTownPostcodeLink extends Component {
     static template = "sale_goods_order.PartnerTownPostcodeLink";
-    static props = { ...standardFieldProps };
+    static props = {
+        ...standardFieldProps,
+        textFieldName: { type: String, optional: true },
+    };
 
     setup() {
         this.actionService = useService("action");
     }
 
-    get textFieldName() {
-        return this.props.options && this.props.options.text_field;
-    }
-
     get displayText() {
-        const fieldName = this.textFieldName;
+        const fieldName = this.props.textFieldName;
         return (fieldName && this.props.record.data[fieldName]) || "";
     }
 
@@ -54,4 +53,7 @@ export class PartnerTownPostcodeLink extends Component {
 
 registry.category("fields").add("partner_town_postcode_link", {
     component: PartnerTownPostcodeLink,
+    extractProps: ({ options }) => ({
+        textFieldName: options.text_field,
+    }),
 });
