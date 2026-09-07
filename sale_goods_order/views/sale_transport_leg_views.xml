@@ -161,12 +161,16 @@
                     <button name="action_open_form_view" type="object" string="View" icon="fa-external-link"/>
                     <field name="order_id" string="Sales Order Number" optional="show"/>
                     <field name="customer_id" optional="show"/>
+                    <field name="from_town_postcode" column_invisible="1"/>
+                    <field name="to_town_postcode" column_invisible="1"/>
                     <field name="from_location"
                            string="From"
-                           context="{'show_address': True, 'address_inline': True}"/>
+                           widget="partner_town_postcode_link"
+                           options="{'text_field': 'from_town_postcode'}"/>
                     <field name="to_location"
                            string="To"
-                           context="{'show_address': True, 'address_inline': True}"/>
+                           widget="partner_town_postcode_link"
+                           options="{'text_field': 'to_town_postcode'}"/>
                     <field name="from_date" string="Collection Date" widget="remaining_days" optional="show"/>
                     <field name="to_date" string="Delivery Date" widget="remaining_days" optional="show"/>
                     <field name="is_internal" optional="show"/>
