@@ -16,12 +16,8 @@ _LEG_STATE_RANK = {"scheduled": 0, "in_transit": 1, "completed": 2}
 class SaleTransportLeg(models.Model):
     _inherit = "sale.transport.leg"
 
-    to_email = fields.Char(string="Delivery Email")
-    to_tel = fields.Char(string="Delivery Phone")
-    to_mobile = fields.Char(string="Delivery Mobile")
-    from_email = fields.Char(string="Collection Email")
-    from_tel = fields.Char(string="Collection Phone")
-    from_mobile = fields.Char(string="Collection Mobile")
+    to_mobile = fields.Char(related="to_location.mobile", string="Delivery Mobile", readonly=True)
+    from_mobile = fields.Char(related="from_location.mobile", string="Collection Mobile", readonly=True)
 
     apc_order_number = fields.Char(
         string="APC Order Number",

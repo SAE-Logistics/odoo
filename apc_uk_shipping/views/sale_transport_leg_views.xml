@@ -11,15 +11,11 @@
                 <field name="apc_status_description"/>
                 <field name="apc_label_attachment_id"/>
             </field>
-            <xpath expr="//field[@name='to_location']" position="after">
-                <field name="to_email" placeholder="Delivery contact email"/>
-                <field name="to_tel" placeholder="Delivery contact phone"/>
-                <field name="to_mobile" placeholder="Delivery contact mobile"/>
+            <xpath expr="//field[@name='to_email']" position="after">
+                <field name="to_mobile"/>
             </xpath>
-            <xpath expr="//field[@name='from_location']" position="after">
-                <field name="from_email" placeholder="Collection contact email"/>
-                <field name="from_tel" placeholder="Collection contact phone"/>
-                <field name="from_mobile" placeholder="Collection contact mobile"/>
+            <xpath expr="//field[@name='from_email']" position="after">
+                <field name="from_mobile"/>
             </xpath>
         </field>
     </record>
