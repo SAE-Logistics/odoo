@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Delivery product -->
+        <record id="product_product_delivery_dpd_local" model="product.product">
+            <field name="name">Delivery by DPD Local</field>
+            <field name="default_code">DELIVERY-DPD-LOCAL</field>
+            <field name="type">service</field>
+            <field name="list_price">10.0</field>
+            <field name="standard_price">10.0</field>
+        </record>
+
+        <!-- Default package type -->
+        <record id="package_type_dpd_local" model="stock.package.type">
+            <field name="package_carrier_type">dpd_local</field>
+            <field name="name">Default DPD Local Package</field>
+            <field name="shipper_package_code">dpd_local_default</field>
+            <field name="height">10</field>
+            <field name="width">10</field>
+            <field name="packaging_length">10</field>
+            <field name="max_weight">40</field>
+        </record>
+
+        <!-- Carrier (fill in your API key/secret before use) -->
+        <record id="delivery_carrier_dpd_local" model="delivery.carrier">
+            <field name="name">DPD Local</field>
+            <field name="delivery_type">dpd_local</field>
+            <field name="product_id" ref="product_product_delivery_dpd_local"/>
+            <field name="dpd_local_environment">sandbox</field>
+            <field name="dpd_local_service_id" ref="dpd_local_service_2_12"/>
+            <field name="dpd_local_label_format">pdf</field>
+            <field name="dpd_local_label_dpi">203</field>
+            <field name="dpd_local_default_package_type_id"
+                   ref="package_type_dpd_local"/>
+            <field name="transport_carrier_code">DPD</field>
+            <field name="transport_booking_mode">api</field>
+            <field name="transport_provider">dpd_local</field>
+        </record>
+
+    </data>
+</odoo>

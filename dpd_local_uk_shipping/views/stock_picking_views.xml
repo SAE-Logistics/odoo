@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_picking_form_dpd_local" model="ir.ui.view">
+        <field name="name">stock.picking.form.dpd.local</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <field name="carrier_tracking_ref" position="after">
+                <field name="dpd_local_shipment_id" readonly="1"/>
+                <field name="dpd_local_consignment_number" readonly="1"/>
+                <field name="dpd_local_collection_reference" readonly="1"/>
+                <field name="dpd_local_collection_date" readonly="1"/>
+                <field name="dpd_local_collection_state" readonly="1"/>
+                <field name="dpd_local_can_book_collection" invisible="1"/>
+                <field name="dpd_local_can_cancel_collection" invisible="1"/>
+            </field>
+            <xpath expr="//header" position="inside">
+                <button name="action_dpd_local_book_collection"
+                        type="object"
+                        string="Book DPD Collection"
+                        invisible="not dpd_local_can_book_collection"/>
+                <button name="action_dpd_local_cancel_collection"
+                        type="object"
+                        string="Cancel DPD Collection"
+                        confirm="Cancel the booked DPD Local collection?"
+                        invisible="not dpd_local_can_cancel_collection"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

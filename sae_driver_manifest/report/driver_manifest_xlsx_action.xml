@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Excel version of the run-sheet, offered next to the PDF report:
+        tick the run's legs in the Transport Legs list -> Actions ->
+        Driver Manifest (Excel). One sheet per driver, so SAE can re-order
+        the rows and print the run from Excel.
+
+        Same binding_model_id ref as the PDF report action - adjust both
+        together if sale_goods_order ever moves the model's xml-id.
+    -->
+    <record id="action_driver_manifest_xlsx" model="ir.actions.server">
+        <field name="name">Driver Manifest (Excel)</field>
+        <field name="model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_manifest_export_xlsx()</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="ir_cron_apc_tracking_poll" model="ir.cron">
+            <field name="name">APC Tracking Poll</field>
+            <field name="model_id" ref="model_sale_transport_leg"/>
+            <field name="state">code</field>
+            <field name="code">
+                <![CDATA[
+model = env['sale.transport.leg']
+model._apc_poll_tracking()
+                ]]>
+            </field>
+            <field name="active">True</field>
+            <field name="interval_number">30</field>
+            <field name="interval_type">minutes</field>
+        </record>
+    </data>
+</odoo>

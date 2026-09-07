@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dpd_local_service_user,dpd.local.service.user,model_dpd_local_service,base.group_user,1,0,0,0
+access_dpd_local_service_manager,dpd.local.service.manager,model_dpd_local_service,stock.group_stock_manager,1,1,1,1
+access_dpd_local_collection_wizard,dpd.local.collection.wizard,model_dpd_local_collection_wizard,base.group_user,1,1,1,1

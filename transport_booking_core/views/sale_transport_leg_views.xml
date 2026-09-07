@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_transport_leg_form_booking"
+            model="ir.ui.view">
+        <field name="name">sale.transport.leg.form.booking</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="inherit_id"
+               ref="sale_goods_order.sale_transport_leg_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <field name="carrier_service_id" invisible="1"/>
+                <button name="action_leg_send_to_shipper"
+                        type="object"
+                        string="Send to Shipper"
+                        class="oe_highlight"
+                        invisible="booking_state == 'booked' or not carrier_service_id"/>
+                <button name="action_leg_cancel_booking"
+                        type="object"
+                        string="Cancel Booking"
+                        confirm="Cancel this leg's booking?"
+                        invisible="booking_state != 'booked'"/>
+                <button name="action_leg_reset_booking"
+                        type="object"
+                        string="Reset Booking"
+                        invisible="booking_state != 'booked'"/>
+                <field name="booking_state" widget="statusbar"
+                       statusbar_visible="none,pending,booked"/>
+            </xpath>
+            <field name="is_internal" position="after">
+                <field name="booking_ref" readonly="1"/>
+                <field name="booking_message" readonly="1"
+                       invisible="booking_state != 'failed'"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_sale_transport_leg_list_carrier_code"
+            model="ir.ui.view">
+        <field name="name">sale.transport.leg.list.carrier.code</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="inherit_id"
+               ref="sale_goods_order.sale_transport_leg_list_view"/>
+        <field name="arch" type="xml">
+            <!-- carrier_id is blank whenever the selected rate's carrier
+                 code (e.g. 'CX') has no matching delivery.carrier record.
+                 Show the raw code too, so the leg's assigned carrier is
+                 always visible even when unlinked. -->
+            <field name="carrier_id" position="after">
+                <field name="carrier_code" string="Carrier Code"
+                       optional="show"/>
+            </field>
+        </field>
+    </record>
+</odoo>

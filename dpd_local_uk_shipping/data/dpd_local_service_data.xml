@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+      Seed of common domestic services. 'code' is DPD's networkKey (e.g. 2^12).
+      Network prefix: 1 = DPD, 2 = DPD Local. Edit / extend to match the
+      services enabled on your account (confirm via Validate Outbound Services).
+    -->
+    <data noupdate="1">
+
+        <!-- DPD Local (network 2) - PARCEL -->
+        <record id="dpd_local_service_2_12" model="dpd.local.service">
+            <field name="name">DPD Local - Next Day</field>
+            <field name="code">2^12</field>
+            <field name="transport_service_code">NEXT_DAY,ECONOMY</field>
+            <field name="network_code">2</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="dpd_local_service_2_11" model="dpd.local.service">
+            <field name="name">DPD Local - Two Day</field>
+            <field name="code">2^11</field>
+            <field name="network_code">2</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">11</field>
+        </record>
+        <record id="dpd_local_service_2_13" model="dpd.local.service">
+            <field name="name">DPD Local - DPD 12</field>
+            <field name="code">2^13</field>
+            <field name="transport_service_code">BY_1200</field>
+            <field name="network_code">2</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">12</field>
+        </record>
+        <record id="dpd_local_service_2_14" model="dpd.local.service">
+            <field name="name">DPD Local - DPD 10.30</field>
+            <field name="code">2^14</field>
+            <field name="transport_service_code">BY_1030</field>
+            <field name="network_code">2</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">13</field>
+        </record>
+        <record id="dpd_local_service_2_16" model="dpd.local.service">
+            <field name="name">DPD Local - Saturday</field>
+            <field name="code">2^16</field>
+            <field name="network_code">2</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">14</field>
+        </record>
+        <record id="dpd_local_service_2_01" model="dpd.local.service">
+            <field name="name">DPD Local - Sunday</field>
+            <field name="code">2^01</field>
+            <field name="network_code">2</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">15</field>
+        </record>
+        <record id="dpd_local_service_2_91" model="dpd.local.service">
+            <field name="name">DPD Local - Ship2Shop</field>
+            <field name="code">2^91</field>
+            <field name="network_code">2</field>
+            <field name="product_line">SHIP2SHOP</field>
+            <field name="category">domestic</field>
+            <field name="sequence">16</field>
+        </record>
+        <record id="dpd_local_service_2_32" model="dpd.local.service">
+            <field name="name">DPD Local - Next Day (ExpressPak)</field>
+            <field name="code">2^32</field>
+            <field name="network_code">2</field>
+            <field name="product_line">EXPRESSPAK</field>
+            <field name="category">domestic</field>
+            <field name="sequence">17</field>
+        </record>
+
+        <!-- DPD (network 1) - PARCEL -->
+        <record id="dpd_uk_service_1_12" model="dpd.local.service">
+            <field name="name">DPD - Next Day</field>
+            <field name="code">1^12</field>
+            <field name="network_code">1</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="dpd_uk_service_1_11" model="dpd.local.service">
+            <field name="name">DPD - Two Day</field>
+            <field name="code">1^11</field>
+            <field name="network_code">1</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">21</field>
+        </record>
+        <record id="dpd_uk_service_1_13" model="dpd.local.service">
+            <field name="name">DPD - DPD 12</field>
+            <field name="code">1^13</field>
+            <field name="network_code">1</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">22</field>
+        </record>
+        <record id="dpd_uk_service_1_14" model="dpd.local.service">
+            <field name="name">DPD - DPD 10.30</field>
+            <field name="code">1^14</field>
+            <field name="network_code">1</field>
+            <field name="product_line">PARCEL</field>
+            <field name="category">domestic</field>
+            <field name="sequence">23</field>
+        </record>
+
+    </data>
+</odoo>

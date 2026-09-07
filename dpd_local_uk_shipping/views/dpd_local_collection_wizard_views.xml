@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_dpd_local_collection_wizard_form" model="ir.ui.view">
+        <field name="name">dpd.local.collection.wizard.form</field>
+        <field name="model">dpd.local.collection.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Book DPD Local Collection">
+                <group>
+                    <group>
+                        <field name="picking_id"/>
+                        <field name="carrier_id"/>
+                        <field name="collection_date"/>
+                        <field name="ready_time"/>
+                        <field name="close_time"/>
+                        <field name="collection_information"/>
+                    </group>
+                    <group string="Available Dates">
+                        <field name="available_dates_info" nolabel="1"
+                               readonly="1"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_book" type="object"
+                            string="Book Collection" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary"
+                            special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

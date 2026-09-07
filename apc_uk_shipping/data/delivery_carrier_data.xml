@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Delivery product -->
+        <record id="product_product_delivery_apc" model="product.product">
+            <field name="name">Delivery by APC Overnight</field>
+            <field name="default_code">DELIVERY-APC</field>
+            <field name="type">service</field>
+            <field name="list_price">10.0</field>
+            <field name="standard_price">10.0</field>
+        </record>
+
+        <!-- Carrier -->
+        <record id="delivery_carrier_apc" model="delivery.carrier">
+            <field name="name">APC Overnight</field>
+            <field name="delivery_type">apc</field>
+            <field name="product_id" ref="product_product_delivery_apc"/>
+            <field name="apc_environment">training</field>
+            <field name="apc_label_format">pdf</field>
+            <field name="apc_default_ready_at">09:00</field>
+            <field name="apc_default_closed_at">17:00</field>
+            <field name="apc_safeplace_default">NotAllowed</field>
+            <field name="transport_carrier_code">APC</field>
+            <field name="transport_booking_mode">api</field>
+            <field name="transport_provider">apc</field>
+        </record>
+
+    </data>
+</odoo>

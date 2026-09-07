@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_dpd_local_service_list" model="ir.ui.view">
+        <field name="name">dpd.local.service.list</field>
+        <field name="model">dpd.local.service</field>
+        <field name="arch" type="xml">
+            <list string="DPD Local Services" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="transport_service_code"/>
+                <field name="network_code"/>
+                <field name="product_line"/>
+                <field name="category"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_dpd_local_service_form" model="ir.ui.view">
+        <field name="name">dpd.local.service.form</field>
+        <field name="model">dpd.local.service</field>
+        <field name="arch" type="xml">
+            <form string="DPD Local Service">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="transport_service_code"/>
+                            <field name="network_code"/>
+                        </group>
+                        <group>
+                            <field name="product_line"/>
+                            <field name="category"/>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_dpd_local_service" model="ir.actions.act_window">
+        <field name="name">DPD Local Services</field>
+        <field name="res_model">dpd.local.service</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_dpd_local_service"
+              name="DPD Local Services"
+              parent="stock.menu_delivery"
+              action="action_dpd_local_service"
+              sequence="20"/>
+
+</odoo>

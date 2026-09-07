@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Landscape paper format: the GRN run-sheet is wide -->
+    <record id="paperformat_driver_manifest" model="report.paperformat">
+        <field name="name">SAE Driver Manifest (Landscape)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">8</field>
+        <field name="margin_bottom">8</field>
+        <field name="margin_left">6</field>
+        <field name="margin_right">6</field>
+        <field name="header_spacing">8</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!--
+        Report action. Prints from the Transport Legs LIST:
+        tick the run's legs -> Print -> Driver Manifest (GRN).
+        One page per distinct driver in the selection.
+
+        NOTE for deploy: binding_model_id ref points at the model record
+        for sale.transport.leg. If sale_goods_order declares the model under
+        a different module/xml-id, adjust the ref accordingly. Confirm with:
+          search ir.model where model = 'sale.transport.leg'.
+    -->
+    <record id="action_report_driver_manifest" model="ir.actions.report">
+        <field name="name">Driver Manifest (GRN)</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">sae_driver_manifest.report_driver_manifest</field>
+        <field name="report_file">sae_driver_manifest.report_driver_manifest</field>
+        <field name="binding_model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_driver_manifest"/>
+    </record>
+
+    <!--
+        Minimal layout for the manifest: no SAE company header, no SAE footer
+        contact line. All visual styling is inlined in the report template
+        (driver_manifest_templates.xml) so the output does not depend on the
+        Odoo CSS bundle being applied by wkhtmltopdf for this report.
+
+        This scaffold only provides:
+          - an empty .header div (keeps the standard page spacing)
+          - an .article wrapper around the calling template's content
+          - a .footer with a thin border-top and the Page X / Y counter
+    -->
+    <template id="external_layout_driver_manifest">
+        <t t-if="not company">
+            <t t-set="company" t-value="res_company"/>
+        </t>
+        <div class="header"/>
+        <div class="article">
+            <t t-out="0"/>
+        </div>
+        <div class="footer">
+            <div class="o_footer_content text-end text-muted"
+                 style="border-top:1px solid #ccc; padding-top:6px;">
+                <div t-if="report_type == 'pdf'" class="text-nowrap">Page <span class="page"/> / <span class="topage"/></div>
+            </div>
+        </div>
+    </template>
+
+</odoo>

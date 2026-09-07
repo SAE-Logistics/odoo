@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_delivery_carrier_form_apc" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.apc</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page name="apc" string="APC Overnight Configuration"
+                      invisible="delivery_type != 'apc'">
+                    <group>
+                        <group string="Credentials">
+                            <field name="apc_environment"/>
+                            <field name="apc_email"/>
+                            <field name="apc_password" password="True"/>
+                            <button name="action_apc_test_connection"
+                                    type="object"
+                                    string="Test Connection"
+                                    class="btn-secondary"/>
+                        </group>
+                        <group string="Shipment Defaults">
+                            <field name="apc_default_ready_at"/>
+                            <field name="apc_default_closed_at"/>
+                            <field name="apc_safeplace_default"/>
+                            <field name="apc_tracking_polled_at" readonly="1"/>
+                        </group>
+                        <group string="Label">
+                            <field name="apc_label_format"/>
+                        </group>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+</odoo>

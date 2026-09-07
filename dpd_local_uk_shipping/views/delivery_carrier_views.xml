@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_delivery_carrier_form_dpd_local" model="ir.ui.view">
+        <field name="name">delivery.carrier.form.dpd.local</field>
+        <field name="model">delivery.carrier</field>
+        <field name="inherit_id" ref="delivery.view_delivery_carrier_form"/>
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page name="dpd_local"
+                      string="DPD Local Configuration"
+                      invisible="delivery_type != 'dpd_local'">
+                    <group>
+                        <group string="Credentials">
+                            <field name="dpd_local_environment"/>
+                            <field name="dpd_local_api_key"/>
+                            <field name="dpd_local_api_secret" password="True"/>
+                            <field name="dpd_local_account_number"/>
+                            <button name="action_dpd_local_test_connection"
+                                    type="object"
+                                    string="Test Connection"
+                                    class="btn-secondary"/>
+                        </group>
+                        <group string="Shipment Defaults">
+                            <field name="dpd_local_service_id"/>
+                            <field name="dpd_local_delivery_term"/>
+                            <field name="dpd_local_invoice_type"/>
+                            <field name="dpd_local_eori_number"/>
+                            <field name="dpd_local_ioss_number"/>
+                            <field name="dpd_local_default_package_type_id"/>
+                        </group>
+                        <group string="Label">
+                            <field name="dpd_local_label_format"/>
+                            <field name="dpd_local_label_dpi"
+                                   invisible="dpd_local_label_format != 'zpl'"/>
+                        </group>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+
+# Odoo
+*.pyc
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local render/debug artefacts
+_label_preview*.png
+*.tmp
+
+# Project-local documentation and scratch folders
+apc_kb/
+archive/
+dpd_api_kb/
+.claude/
+.opencode-mem-project
+sale_goods_order/
