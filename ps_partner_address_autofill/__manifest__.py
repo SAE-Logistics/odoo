@@ -43,7 +43,7 @@
     # This is a modified fork; see README.md for the list of changes.
     'author': "PySquad Informatics LLP, Pradeep Maheepala (eartisan)",
     'maintainer': "Pradeep Maheepala (eartisan)",
-    'website': 'https://github.com/eartisan-uk/ps-partner-address-autocomplete',
+    'website': 'https://github.com/SAE-Logistics/odoo',
 
     # Dependencies
     'depends': ['web', 'base', 'contacts'],

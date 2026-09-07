@@ -18,6 +18,7 @@ are no other repositories for these modules.
 | `reports_designer_commercial_invoice` | SAE | XLSX commercial-invoice report templates for goods and transport orders |
 | `sae_driver_manifest` | SAE | Driver manifest report |
 | `partner_cost_centre` | SAE | Cost centres on partners, surfaced on invoices |
+| `ps_partner_address_autofill` | SAE (LGPL-3 fork of PySquad module) | Google Places autocomplete on the partner address; API key in system parameters |
 | `partner_identification` | OCA (`partner-contact`) | Partner identification numbers |
 | `partner_identification_eori` | OCA (`partner-contact`) | EORI number category for `partner_identification` |
 | `product_harmonized_system` | OCA (`intrastat-extrastat`) | Harmonised System (commodity) codes on products |
@@ -32,8 +33,9 @@ are no other repositories for these modules.
 3. One approval required. Force-push and branch deletion are blocked.
 4. Direct pushes to `main` are rejected — always go through a PR.
 
-Do not push work to any other repository. The former `sae-sale-goods-order` and
-`sae-delivery-integrations` repos are archived and read-only.
+Do not push work to any other repository. The former `sae-sale-goods-order`,
+`sae-delivery-integrations`, `odoo-hide-chatter` and `ps-partner-address-autocomplete`
+repos are archived and read-only.
 
 ## History
 
