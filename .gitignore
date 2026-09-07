@@ -1,26 +1,66 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-*.egg
+# --- Secrets / local config (NEVER commit) ---
+.mcp.json
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+odoo.conf
+*.conf.local
+.odoorc
 
-# Odoo
-*.pyc
-
-# Editors / OS
+# --- Claude Code / editor local state ---
+.claude/
+.opencode-mem-project
 .idea/
 .vscode/
-.DS_Store
-Thumbs.db
+*.swp
+*.swo
+*~
 
-# Local render/debug artefacts
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Odoo runtime artefacts ---
+*.log
+filestore/
+sessions/
+*.sql
+*.dump
+*.zip
+
+# --- Generated / debug / sample artefacts (may contain customer data) ---
+Printouts/
+*.pdf
 _label_preview*.png
 *.tmp
 
-# Project-local documentation and scratch folders
+# --- Project-local scratch / knowledge folders (not shipped) ---
 apc_kb/
-archive/
 dpd_api_kb/
-.claude/
-.opencode-mem-project
-sale_goods_order/
+archive/
+
+# --- OS ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
