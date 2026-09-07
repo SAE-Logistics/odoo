@@ -61,6 +61,7 @@ class SaleBulkInvoiceWizard(models.TransientModel):
             key = (
                 order.company_id.id,
                 order.commercial_partner_id.id,
+                order.cost_centre_id.id or False,
                 family,
             )
             buckets[key] |= order
@@ -110,7 +111,11 @@ class SaleBulkInvoiceWizard(models.TransientModel):
         invoice_vals.update({
             "invoice_date": self.invoice_date,
             "invoice_origin": ", ".join(orders.mapped("name")),
-            "ref": ", ".join(filter(None, orders.mapped("client_order_ref")))[:2000],
+            "cost_centre_id": base_order.cost_centre_id.id or False,
+            "ref": (
+                base_order.cost_centre_id.display_name
+                or ", ".join(filter(None, orders.mapped("client_order_ref")))[:2000]
+            ),
             "invoice_period_start": self.date_from,
             "invoice_period_end": self.date_to,
             "invoice_line_ids": [Command.create(vals) for vals in invoice_line_vals + storage_line_vals],

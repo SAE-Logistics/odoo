@@ -15,6 +15,7 @@
         "views/res_config_settings_views.xml",
         "views/delivery_carrier_views.xml",
         "views/sale_order_views.xml",
+        "views/account_move_views.xml",
         "views/menu.xml",
         "views/product_views.xml",
         "views/product_category_views.xml",

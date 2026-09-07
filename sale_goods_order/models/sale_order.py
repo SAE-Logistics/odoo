@@ -30,6 +30,14 @@ class SaleOrder(models.Model):
     collect_note = fields.Text(string='Collection Note')
     deliver_note = fields.Text(string='Delivery Note')
 
+    def _prepare_invoice(self):
+        self.ensure_one()
+        invoice_vals = super()._prepare_invoice()
+        invoice_vals["cost_centre_id"] = self.cost_centre_id.id or False
+        if self.order_type in ("goods_in", "goods_out", "transport") and self.cost_centre_id:
+            invoice_vals["ref"] = self.cost_centre_id.display_name
+        return invoice_vals
+
     product_line_ids = fields.One2many(
         "transport.product.line",
         "sale_order_id",

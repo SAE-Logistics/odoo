@@ -20,6 +20,13 @@ class AccountMoveLine(models.Model):
 class AccountMove(models.Model):
     _inherit = "account.move"
 
+    cost_centre_id = fields.Many2one(
+        "partner.cost.centre",
+        string="Cost Centre",
+        copy=True,
+        index=True,
+        ondelete="restrict",
+    )
     invoice_period_start = fields.Date(copy=False)
     invoice_period_end = fields.Date(copy=False)
 
@@ -81,6 +88,8 @@ class AccountMove(models.Model):
 
     def _get_transport_invoice_customer_order(self):
         self.ensure_one()
+        if self.cost_centre_id:
+            return self.cost_centre_id.display_name
         sale_orders = self._get_transport_sale_orders()
         return ", ".join(
             filter(None, sale_orders.mapped("client_order_ref") or sale_orders.mapped("name"))
@@ -180,7 +189,11 @@ class AccountMove(models.Model):
             description = invoice_description
         customer_ref = ""
         if order:
-            customer_ref = order.client_order_ref or order.cost_centre_id.display_name or order.partner_id.ref or ""
+            customer_ref = (
+                order.client_order_ref
+                or order.partner_id.ref
+                or ""
+            )
         row_date = (
             first_leg.from_date
             if first_leg and first_leg.from_date
@@ -677,7 +690,15 @@ class AccountMove(models.Model):
                 else order.date_order.date() if order and order.date_order
                 else self.invoice_date
             ),
-            "client_ref": order.client_order_ref or order.partner_id.ref if order else "",
+            "client_ref": (
+                (
+                    order.client_order_ref
+                    or order.partner_id.ref
+                    or ""
+                )
+                if order
+                else ""
+            ),
             "job_no": picking.name if picking else order.name if order else self.invoice_origin or self.name,
             "description": description,
             "to": destination,
