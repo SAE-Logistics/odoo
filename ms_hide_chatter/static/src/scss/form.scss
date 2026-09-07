@@ -1,0 +1,47 @@
+.o_form_view {
+    .o_chatter_toggle_wrapper {
+        position: relative;
+        z-index: 10;
+    }
+
+    .o_chatter_toggle_btn {
+        position: absolute;
+        left: -24px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 100;
+        width: 24px;
+        height: 45px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px 0 0 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+
+        &:hover {
+            background: #e9ecef;
+        }
+
+        .fa {
+            font-size: 16px;
+            color: #6c757d;
+        }
+    }
+
+    .o-mail-Form-chatter {
+        transition: all 0.3s ease;
+        max-width: 30%;
+        flex-shrink: 0;
+
+        &:not(.o-aside) {
+            display: none;
+        }
+    }
+
+    &:not(.o_form_editable) .o_form_sheet_bg {
+        transition: width 0.3s ease;
+    }
+}

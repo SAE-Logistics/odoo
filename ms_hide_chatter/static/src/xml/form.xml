@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="ms_hide_chatter.ChatterToggleButton">
+        <div t-ref="root" class="o_chatter_toggle_btn position-absolute" t-on-click.prevent="() => __comp__.toggleChatter()">
+            <i t-attf-class="fa {{ __comp__.chatterState.isChatterVisible ? 'fa-chevron-right' : 'fa-chevron-left' }}"/>
+        </div>
+    </t>
+</templates>
