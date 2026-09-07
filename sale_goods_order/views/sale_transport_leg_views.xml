@@ -27,28 +27,28 @@
                         <group>
                             <group string="From" name="pickup_from">
                                 <field name="from_location"/>
+                                <field name="from_tel"/>
+                                <field name="from_email"/>
                                 <field name="from_date"/>
                                 <field name="from_postcode"/>
                                 <field name="from_address"/>
                                 <field name="from_town"/>
                                 <field name="from_county"/>
                                 <field name="from_country"/>
-                                <field name="from_tel"/>
                                 <field name="from_contact"/>
-                                <field name="from_email"/>
                                 <field name="from_instructions"/>
                             </group>
                             <group string="To" name="dropoff_to">
                                 <field name="to_location"/>
+                                <field name="to_tel"/>
+                                <field name="to_email"/>
                                 <field name="to_date"/>
                                 <field name="to_postcode"/>
                                 <field name="to_address"/>
                                 <field name="to_town"/>
                                 <field name="to_county"/>
                                 <field name="to_country"/>
-                                <field name="to_tel"/>
                                 <field name="to_contact"/>
-                                <field name="to_email"/>
                                 <field name="to_instructions"/>
                             </group>
                         </group>

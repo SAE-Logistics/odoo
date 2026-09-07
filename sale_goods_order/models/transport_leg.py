@@ -34,9 +34,9 @@ class SaleTransportLeg(models.Model):
     from_town = fields.Char(string='Town (Pickup)')
     from_county = fields.Many2one(related='from_location.state_id', string='County (Pickup)')
     from_country = fields.Many2one(related='from_location.country_id', string='Country (Pickup)')
-    from_tel = fields.Char(string='Telephone (Pickup)')
+    from_tel = fields.Char(related='from_location.phone', string='Collection Phone', readonly=True)
     from_contact = fields.Char(string='Contact (Pickup)')
-    from_email = fields.Char(string='Email (Pickup)')
+    from_email = fields.Char(related='from_location.email', string='Collection Email', readonly=True)
     from_instructions = fields.Text(string='Instructions (Pickup)')
 
     to_location = fields.Many2one('res.partner', string='Company (Drop Off)')
@@ -46,9 +46,9 @@ class SaleTransportLeg(models.Model):
     to_town = fields.Char(string='Town (Drop Off)')
     to_county = fields.Many2one(related='to_location.state_id', string='County (Drop Off)')
     to_country = fields.Many2one(related='to_location.country_id', string='Country (Drop Off)')
-    to_tel = fields.Char(string='Telephone (Drop Off)')
+    to_tel = fields.Char(related='to_location.phone', string='Delivery Phone', readonly=True)
     to_contact = fields.Char(string='Contact (Drop Off)')
-    to_email = fields.Char(string='Email (Drop Off)')
+    to_email = fields.Char(related='to_location.email', string='Delivery Email', readonly=True)
     to_instructions = fields.Text(string='Instructions (Drop Off)')
     from_town_postcode = fields.Char(
         string='From',
