@@ -173,10 +173,16 @@ class AccountMove(models.Model):
                 invoice_line.product_id.display_name if invoice_line.product_id else invoice_line.name or ""
             )
         description = ""
+        package_lines = self.env["sale.package.line"]
         if sale_line:
+            package_lines = sale_line.package_ids
+            if order.order_type in ("goods_in", "goods_out"):
+                transfer_package_lines = legs.mapped("picking_id.package_ids")
+                if transfer_package_lines:
+                    package_lines = transfer_package_lines
             package_descriptions = list(
                 dict.fromkeys(
-                    filter(None, sale_line.package_ids.mapped("package_type_id.name"))
+                    filter(None, package_lines.mapped("package_type_id.name"))
                 )
             )
             description = (
@@ -215,7 +221,12 @@ class AccountMove(models.Model):
                 else ""
             ),
             "description": description,
-            "weight": sale_line.total_weight if sale_line else 0.0,
+            "weight": (
+                sum(package_lines.mapped("weight"))
+                if package_lines
+                else sale_line.total_weight if sale_line
+                else 0.0
+            ),
             "from_postcode": self._format_transport_location(partner_from),
             "to_postcode": self._format_transport_location(partner_to),
             "consignee": partner_to.name if partner_to else invoice_line.partner_id.display_name if invoice_line else self.partner_id.display_name,
