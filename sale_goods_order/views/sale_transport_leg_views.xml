@@ -158,9 +158,9 @@
             <field name="model">sale.transport.leg</field>
             <field name="arch" type="xml">
                 <list string="Transport Legs" editable="bottom">
-                    <button name="action_open_form_view" type="object" string="View" icon="fa-external-link"/>
-                    <field name="order_id" string="Sales Order Number" optional="show"/>
-                    <field name="customer_id" optional="show"/>
+                    <button name="action_open_form_view" type="object" icon="fa-external-link"/>
+                    <field name="order_id" string="Order No" optional="show"/>
+                    <field name="customer_id" string="Company" optional="show"/>
                     <field name="from_town_postcode" column_invisible="1"/>
                     <field name="to_town_postcode" column_invisible="1"/>
                     <field name="from_location"
@@ -176,8 +176,8 @@
                     <field name="is_internal" optional="show"/>
                     <field name="driver_id" optional="show"/>
                     <field name="fleet_id" optional="show"/>
-                    <field name="carrier_id" optional="show"/>
-                    <field name="carrier_code" optional="show"/>
+                    <field name="carrier_id" string="Carrier Name" optional="show"/>
+                    <field name="carrier_code" string="Carrier" optional="show"/>
                     <field name="service_id" optional="show"/>
                     <field name="currency_id" column_invisible="1"/>
                     <field name="base_buy_rate" optional="show"/>
