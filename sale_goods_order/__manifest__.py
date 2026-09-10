@@ -37,6 +37,7 @@
         "web.assets_backend": [
             "sale_goods_order/static/src/js/partner_town_postcode_link.js",
             "sale_goods_order/static/src/xml/partner_town_postcode_link.xml",
+            "sale_goods_order/static/src/scss/transport_leg_list.scss",
         ],
     },
     "installable": True,

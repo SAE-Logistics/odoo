@@ -158,7 +158,7 @@
             <field name="model">sale.transport.leg</field>
             <field name="arch" type="xml">
                 <list string="Transport Legs" editable="bottom">
-                    <button name="action_open_form_view" type="object" icon="fa-external-link"/>
+                    <button name="action_open_form_view" type="object" icon="fa-external-link" class="o_tleg_open_btn"/>
                     <field name="order_id" string="Order No" optional="show"/>
                     <field name="customer_id" string="Company" optional="show"/>
                     <field name="from_town_postcode" column_invisible="1"/>
