@@ -1,22 +1,18 @@
-// Transport Legs list view: the first column holds only an icon-only "open form"
-// button (class o_tleg_open_btn). Stock Odoo's list width calc reserves
-// label-width space and an icon end-margin, leaving dead space where the "View"
-// text used to be. Pin that first button column to icon width.
+// Transport Legs list view: the o_tleg_open_btn column holds only an icon-only
+// "open form" button. Odoo's JS column-width calc still reserves label-width
+// space on the <th> (inline style, e.g. "width: 89px"), leaving dead space
+// where the "View" text used to be.
 //
-// Odoo 18 sets column widths via inline styles from JS, so !important is needed
-// to win. The button column is always the first cell of this list (the
-// sae_driver_manifest handle column is inserted after it), so :first-child is
-// a safe anchor and keeps the rule from touching other list views.
+// The button column is NOT the first cell of the row -- the row-selector
+// checkbox column (o_list_record_selector) comes first -- so anchor on that
+// sibling relationship instead of :first-child (previous attempt matched
+// nothing because of this). !important is needed to beat the inline width.
 
 .o_list_renderer .o_list_table {
-    thead th.o_list_button:first-child,
-    tbody td.o_list_button:first-child {
-        width: 42px !important;
-        min-width: 42px !important;
-        max-width: 42px !important;
-    }
-
-    td.o_list_button button.o_tleg_open_btn > .o_button_icon {
-        margin: 0;
+    thead th.o_list_record_selector + th.o_list_button,
+    tbody td.o_list_record_selector + td.o_list_button {
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
     }
 }
