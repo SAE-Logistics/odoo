@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sae_client_report_internal,sae.client.report.internal,model_sae_client_report,base.group_user,1,1,1,1
+access_sae_client_report_portal,sae.client.report.portal,model_sae_client_report,base.group_portal,1,0,0,0
