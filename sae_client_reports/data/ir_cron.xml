@@ -7,7 +7,6 @@
         <field name="code">model._cron_generate_monthly_cost_breakdown()</field>
         <field name="interval_number">1</field>
         <field name="interval_type">months</field>
-        <field name="numbercall">-1</field>
         <!-- Left inactive: the generation method currently raises
              NotImplementedError pending confirmation of the reports_designer
              call (see models/sae_client_report.py). Activate once that's
