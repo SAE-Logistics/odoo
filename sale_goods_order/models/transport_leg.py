@@ -30,7 +30,9 @@ class SaleTransportLeg(models.Model):
     from_location = fields.Many2one('res.partner', string='Company (Pickup)')
     from_date = fields.Date(string='Date (Pickup)')
     from_postcode = fields.Char(related='from_location.zip', string='Post Code (Pickup)')
-    from_address = fields.Char(string='Address (Pickup)')
+    from_street = fields.Char(related='from_location.street', string='Street (Pickup)', readonly=True)
+    from_street2 = fields.Char(related='from_location.street2', string='Street 2 (Pickup)', readonly=True)
+    from_address = fields.Char(string='Address (Pickup)', compute='_compute_from_address', store=True)
     from_town = fields.Char(related='from_location.city', string='Collection Town', readonly=True)
     from_county = fields.Many2one(related='from_location.state_id', string='County (Pickup)')
     from_country = fields.Many2one(related='from_location.country_id', string='Country (Pickup)')
@@ -42,7 +44,9 @@ class SaleTransportLeg(models.Model):
     to_location = fields.Many2one('res.partner', string='Company (Drop Off)')
     to_date = fields.Date(string='Date (Drop Off)')
     to_postcode = fields.Char(related='to_location.zip', string='Post Code (Drop Off)')
-    to_address = fields.Char(string='Address (Drop Off)')
+    to_street = fields.Char(related='to_location.street', string='Street (Drop Off)', readonly=True)
+    to_street2 = fields.Char(related='to_location.street2', string='Street 2 (Drop Off)', readonly=True)
+    to_address = fields.Char(string='Address (Drop Off)', compute='_compute_to_address', store=True)
     to_town = fields.Char(related='to_location.city', string='Delivery Town', readonly=True)
     to_county = fields.Many2one(related='to_location.state_id', string='County (Drop Off)')
     to_country = fields.Many2one(related='to_location.country_id', string='Country (Drop Off)')
@@ -307,6 +311,16 @@ class SaleTransportLeg(models.Model):
         for record in self:
             record.from_town_postcode = ', '.join(p for p in (record.from_town, record.from_postcode) if p)
             record.to_town_postcode = ', '.join(p for p in (record.to_town, record.to_postcode) if p)
+
+    @api.depends('from_street', 'from_street2')
+    def _compute_from_address(self):
+        for record in self:
+            record.from_address = ', '.join(p for p in (record.from_street, record.from_street2) if p)
+
+    @api.depends('to_street', 'to_street2')
+    def _compute_to_address(self):
+        for record in self:
+            record.to_address = ', '.join(p for p in (record.to_street, record.to_street2) if p)
 
     @api.depends('from_location.zip', 'to_location.zip')
     def _compute_display_name(self):
