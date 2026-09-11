@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Adds a "Reports" tile to the portal home page (/my/home) -->
+    <template id="portal_my_home_reports" inherit_id="portal.portal_my_home" name="Reports link">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-if="report_count is not None">
+                <t t-call="portal.portal_docs_entry">
+                    <t t-set="title">Reports</t>
+                    <t t-set="url" t-value="'/my/reports'"/>
+                    <t t-set="count" t-value="report_count"/>
+                </t>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_reports" name="My Reports">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Reports</t>
+            </t>
+
+            <t t-if="not reports">
+                <p class="text-muted">No reports are available yet.</p>
+            </t>
+
+            <t t-else="">
+                <table class="table table-hover o_portal_my_doc_table">
+                    <thead>
+                        <tr class="active">
+                            <th>Report</th>
+                            <th>Period</th>
+                            <th>Generated</th>
+                            <th/>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="reports" t-as="report">
+                            <td>
+                                <span t-field="report.display_name"/>
+                            </td>
+                            <td>
+                                <span t-esc="report.period_start.strftime('%B %Y')"/>
+                            </td>
+                            <td>
+                                <span t-field="report.generated_date"/>
+                            </td>
+                            <td class="text-end">
+                                <a t-attf-href="/my/reports/#{report.id}/download"
+                                   class="btn btn-sm btn-primary">
+                                    <i class="fa fa-download"/> Download
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </t>
+        </t>
+    </template>
+
+</odoo>

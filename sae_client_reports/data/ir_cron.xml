@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="ir_cron_monthly_cost_breakdown" model="ir.cron">
+        <field name="name">SAE: Generate Monthly Cost Breakdown Reports</field>
+        <field name="model_id" ref="model_sae_client_report"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_generate_monthly_cost_breakdown()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">months</field>
+        <field name="numbercall">-1</field>
+        <!-- Left inactive: the generation method currently raises
+             NotImplementedError pending confirmation of the reports_designer
+             call (see models/sae_client_report.py). Activate once that's
+             wired up and tested manually against one real client/period. -->
+        <field name="active" eval="False"/>
+    </record>
+</odoo>
