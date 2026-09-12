@@ -12,6 +12,7 @@ odoo.conf
 
 # --- Claude Code / editor local state ---
 .claude/
+CLAUDE.md
 .opencode-mem-project
 .idea/
 .vscode/
