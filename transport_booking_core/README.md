@@ -66,12 +66,21 @@ One button (`action_leg_send_to_shipper`), tier-dispatches by carrier type:
 
 ```
 action_leg_send_to_shipper()
+├─ picking not validated?       → raise UserError (validate the delivery first)
 ├─ already booked?              → raise UserError (reset first)
 ├─ leg.is_internal              → _leg_mark_dispatched()       (booking_state = booked, no API call)
 ├─ carrier.transport_booking_mode == "api"
 │                                → _leg_book_api(carrier)      (calls the registered adapter)
 └─ else (manual carrier)        → _leg_mark_booked_manual()    (requires tracking_code first)
 ```
+
+The picking-validated guard exists because booking a leg (carrier API call,
+manual booking, or internal dispatch) commits to a shipment before the stock
+move backing it has actually happened. A delivery that never gets validated
+after its leg is booked leaves a live carrier booking with no matching stock
+movement — a real incident (GO00077 / MEDTR/OUT/00094 / leg 190). The same
+check applies to `sale_goods_order`'s bulk "Mark In Transit / Completed"
+actions for internal legs.
 
 `action_leg_reset_booking` / `action_leg_cancel_booking` put a leg back to
 `none`; cancel also calls the adapter's `cancel()` when one is registered.

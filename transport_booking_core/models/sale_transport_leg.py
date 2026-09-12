@@ -90,6 +90,11 @@ class SaleTransportLeg(models.Model):
     # ------------------------------------------------------------------
     def action_leg_send_to_shipper(self):
         self.ensure_one()
+        if self.picking_id and self.picking_id.state != "done":
+            raise UserError(_(
+                "Validate delivery %s before booking this leg. Booking "
+                "against an unvalidated delivery risks a stock/booking "
+                "mismatch.") % (self.picking_id.name or ""))
         if self.booking_state == "booked":
             raise UserError(_(
                 "This leg is already booked. Reset the booking before "
