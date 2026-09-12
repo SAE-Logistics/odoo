@@ -390,6 +390,49 @@ class SaleTransportLeg(models.Model):
     def action_completed(self):
         self.write({'state': 'completed'})
 
+    def _bulk_mark_status(self, target_state, action_label):
+        """Bulk status change from the Transport Legs list (Action menu).
+
+        Restricted to internal (SAE own-fleet) legs: external-carrier legs
+        already have their progress tracked through booking_state/tracking
+        code, so flipping their physical state by hand here would just mask
+        a missing carrier update instead of fixing it. Non-internal legs in
+        the selection are silently skipped and reported back via notification
+        rather than raising, so a mixed selection still updates the legs it
+        can.
+        """
+        internal_legs = self.filtered('is_internal')
+        skipped = self - internal_legs
+        if target_state == 'in_transit':
+            internal_legs.action_in_transit()
+        else:
+            internal_legs.action_completed()
+        if skipped:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'type': 'warning',
+                    'title': _('Some legs were skipped'),
+                    'message': _(
+                        '%(count)s leg(s) were not marked as %(label)s '
+                        'because they are not internal (SAE) jobs: %(names)s'
+                    ) % {
+                        'count': len(skipped),
+                        'label': action_label,
+                        'names': ', '.join(skipped.mapped('display_name')),
+                    },
+                    'sticky': False,
+                },
+            }
+        return True
+
+    def action_bulk_mark_in_transit(self):
+        return self._bulk_mark_status('in_transit', _('In Transit'))
+
+    def action_bulk_mark_completed(self):
+        return self._bulk_mark_status('completed', _('Completed'))
+
     def action_back(self):
         if self.state == 'completed':
             self.write({'state': 'in_transit'})

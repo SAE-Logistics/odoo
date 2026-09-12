@@ -27,6 +27,7 @@
         "views/transport_product_line_views.xml",
         "views/stock_warehouse_views.xml",
         "views/sale_transport_leg_views.xml",
+        "views/sale_transport_leg_bulk_actions.xml",
         "views/stock_package_type_views.xml",
         "report/transport_invoice_report.xml",
         "report/transport_invoice_templates.xml",
