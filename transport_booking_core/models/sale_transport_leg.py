@@ -36,6 +36,40 @@ class SaleTransportLeg(models.Model):
     )
 
     # ------------------------------------------------------------------
+    # Internal-leg booking/state sync
+    # ------------------------------------------------------------------
+    # For internal (SAE own-fleet) legs, booking_state is just a
+    # dispatched/not-dispatched flag - there's no real carrier call behind
+    # it. Keep it in step with the physical `state` (from sale_goods_order)
+    # so the two statusbars on the form don't show contradictory things
+    # (e.g. "In Transit" in the middle, "Not Started" on the right) when a
+    # leg is moved via the Transport Legs list bulk actions or the form
+    # buttons without ever going through "Send to Shipper". External-carrier
+    # legs are untouched here - their booking_state is only ever driven by
+    # the real booking flow (API/manual) or an explicit reset/cancel.
+    def action_in_transit(self):
+        res = super().action_in_transit()
+        self.filtered(
+            lambda leg: leg.is_internal and leg.booking_state != 'booked'
+        ).write({'booking_state': 'booked', 'booking_message': False})
+        return res
+
+    def action_completed(self):
+        res = super().action_completed()
+        self.filtered(
+            lambda leg: leg.is_internal and leg.booking_state != 'booked'
+        ).write({'booking_state': 'booked', 'booking_message': False})
+        return res
+
+    def action_back(self):
+        self.ensure_one()
+        prev_state = self.state
+        res = super().action_back()
+        if self.is_internal and prev_state == 'in_transit' and self.state == 'scheduled':
+            self.write({'booking_state': 'none', 'booking_message': False})
+        return res
+
+    # ------------------------------------------------------------------
     # Carrier + adapter resolution
     # ------------------------------------------------------------------
     def _leg_find_delivery_carrier(self):

@@ -15,8 +15,9 @@ in any combination of the two.
 | Middle of form | `state` (in `sale_goods_order`) | Scheduled → In Transit → Completed | **Physical movement** — has the freight actually left, is it moving, has it arrived. |
 | Right of form | `booking_state` (this module) | Not Started → Pending → Booked / Failed | **Carrier paperwork** — has this leg been booked with a shipper (API call, manual booking, or internal dispatch). |
 
-Why they're kept separate (not merged into one field): they don't move in
-lockstep.
+Why they're kept separate (not merged into one field): they don't always move
+in lockstep, even though — for internal legs only — this module keeps them
+loosely synced (see below).
 
 - A leg can be **booked ahead of time** while still `scheduled` (booking
   confirmed, truck hasn't left yet).
@@ -40,6 +41,24 @@ simpler.
 | `pending` | Pending | API booking submitted, adapter working (rarely visible — most adapters resolve synchronously). |
 | `booked` | Booked | Booking confirmed (API), manual tracking code entered, or internal leg marked dispatched. |
 | `failed` | Failed | API booking raised `TransportBookingError`; see `booking_message` for the carrier's error. |
+
+### Internal-leg auto-sync
+
+`action_in_transit` / `action_completed` / `action_back` (defined on
+`sale_goods_order`, driving physical `state`) are overridden here to keep
+`booking_state` in step **for internal legs only**:
+
+- Marking an internal leg In Transit or Completed sets `booking_state =
+  booked` if it wasn't already — this covers legs moved via the Transport
+  Legs list bulk actions or the form buttons without ever clicking "Send to
+  Shipper".
+- Reverting an internal leg from In Transit back to Scheduled resets
+  `booking_state` to `none` ("Not Started").
+
+External-carrier legs are untouched by this sync — their `booking_state` is
+only ever driven by the real booking flow (API/manual) or an explicit
+Reset/Cancel Booking. There's no adapter call involved for internal legs
+either way, just a field write, so this is safe to do unconditionally.
 
 ## The "Send to Shipper" action
 
