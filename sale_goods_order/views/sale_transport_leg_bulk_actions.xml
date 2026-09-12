@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Bulk status change for internal (SAE own-fleet) legs: tick rows in
+        the Transport Legs list -> Action menu. External-carrier legs in the
+        selection are skipped (see _bulk_mark_status) - their status is
+        tracked through booking_state/tracking instead.
+    -->
+    <record id="action_transport_leg_bulk_in_transit" model="ir.actions.server">
+        <field name="name">Mark In Transit (Internal)</field>
+        <field name="model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_bulk_mark_in_transit()</field>
+    </record>
+
+    <record id="action_transport_leg_bulk_completed" model="ir.actions.server">
+        <field name="name">Mark Completed (Internal)</field>
+        <field name="model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_bulk_mark_completed()</field>
+    </record>
+
+</odoo>
