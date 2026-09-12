@@ -16,7 +16,7 @@ class SaleTransportLeg(models.Model):
     # Booking axis - independent of physical movement ``state``.
     booking_state = fields.Selection(
         [
-            ("none", "Not Required"),
+            ("none", "Not Started"),
             ("pending", "Pending"),
             ("booked", "Booked"),
             ("failed", "Failed"),
