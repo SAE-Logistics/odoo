@@ -392,6 +392,7 @@ class SaleTransportLeg(models.Model):
         orders._sync_transport_surcharge_sale_lines()
         return res
     def action_in_transit(self):
+        self._check_picking_validated_for_state_change(_('In Transit'))
         self.write({'state': 'in_transit'})
 
     def action_open_form_view(self):
@@ -407,7 +408,26 @@ class SaleTransportLeg(models.Model):
         }
 
     def action_completed(self):
+        self._check_picking_validated_for_state_change(_('Completed'))
         self.write({'state': 'completed'})
+
+    def _check_picking_validated_for_state_change(self, target_label):
+        """Refuse to move a leg's physical state forward while its delivery
+        is still unvalidated - moving freight in Odoo before the stock move
+        backing it has been confirmed risks a stock/booking mismatch (see
+        the picking-validated guard on action_leg_send_to_shipper in
+        transport_booking_core).
+        """
+        unvalidated = self.filtered(
+            lambda leg: leg.picking_id and leg.picking_id.state != 'done')
+        if unvalidated:
+            raise UserError(_(
+                'Validate the delivery before marking %(names)s as '
+                '%(label)s.'
+            ) % {
+                'names': ', '.join(unvalidated.mapped('display_name')),
+                'label': target_label,
+            })
 
     def _bulk_mark_status(self, target_state, action_label):
         """Bulk status change from the Transport Legs list (Action menu).

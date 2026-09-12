@@ -79,8 +79,11 @@ manual booking, or internal dispatch) commits to a shipment before the stock
 move backing it has actually happened. A delivery that never gets validated
 after its leg is booked leaves a live carrier booking with no matching stock
 movement — a real incident (GO00077 / MEDTR/OUT/00094 / leg 190). The same
-check applies to `sale_goods_order`'s bulk "Mark In Transit / Completed"
-actions for internal legs.
+check guards the physical `state` transitions too —
+`action_in_transit` / `action_completed` (`sale_goods_order`) raise via
+`_check_picking_validated_for_state_change` before moving a leg to In
+Transit / Completed, whether triggered from the single-leg form buttons or
+the Transport Legs list bulk actions.
 
 `action_leg_reset_booking` / `action_leg_cancel_booking` put a leg back to
 `none`; cancel also calls the adapter's `cancel()` when one is registered.
