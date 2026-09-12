@@ -10,7 +10,7 @@
                     <header>
                         <button name="action_in_transit" string="In Transit" class="oe_highlight" invisible="state not in ['scheduled']" type="object"/>
                         <button name="action_completed" string="Mark Completed" class="oe_highlight" invisible="state not in ['in_transit']" type="object"/>
-                        <button name="action_back" string="Back" invisible="state in ['scheduled']" type="object"/>
+                        <button name="action_back" string="Revert" invisible="state in ['scheduled']" type="object"/>
                         <field name="state" widget="statusbar" statusbar_visible="scheduled,in_transit,completed"/>
                     </header>
                     <sheet>
