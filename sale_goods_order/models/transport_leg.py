@@ -425,7 +425,7 @@ class SaleTransportLeg(models.Model):
                     'sticky': False,
                 },
             }
-        return True
+        return False
 
     def action_bulk_mark_in_transit(self):
         return self._bulk_mark_status('in_transit', _('In Transit'))
