@@ -329,6 +329,23 @@ class SaleTransportLeg(models.Model):
             destination = record.to_location.zip or '-'
             record.display_name = '%s -> %s' % (source, destination)
 
+    @api.onchange('fleet_id', 'driver_id')
+    def _onchange_fleet_driver_set_internal(self):
+        if self.fleet_id or self.driver_id:
+            self.is_internal = True
+
+    @api.model
+    def _force_internal_on_vals(self, vals):
+        """A leg with a vehicle or driver assigned is, by definition, an
+        internal (SAE own-fleet) job - Is Internal drives real behaviour
+        elsewhere (transport_booking_core skips the carrier API/adapter
+        entirely for internal legs), so this can't be left to the user to
+        remember to tick. Force it rather than validate-and-reject: it's
+        the same outcome with one less step, and fixes the mistake instead
+        of just blocking it."""
+        if vals.get('fleet_id') or vals.get('driver_id'):
+            vals['is_internal'] = True
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -339,6 +356,7 @@ class SaleTransportLeg(models.Model):
                     vals['from_location'] = defaults['from_location']
                 if defaults.get('to_location') and not vals.get('to_location'):
                     vals['to_location'] = defaults['to_location']
+            self._force_internal_on_vals(vals)
         self._check_no_transport_needed_on_vals(vals_list)
         records = super().create(vals_list)
         records.filtered('surcharge_line_ids')._write_surcharge_totals_from_lines()
@@ -349,6 +367,7 @@ class SaleTransportLeg(models.Model):
         return records
 
     def write(self, vals):
+        self._force_internal_on_vals(vals)
         self._check_no_transport_needed_on_records(vals=vals)
         lines_before = self.mapped('order_line_id')
         orders_before = self.mapped('order_id')
