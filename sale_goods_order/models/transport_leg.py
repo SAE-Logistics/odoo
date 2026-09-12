@@ -421,26 +421,41 @@ class SaleTransportLeg(models.Model):
         can.
         """
         internal_legs = self.filtered('is_internal')
-        skipped = self - internal_legs
+        not_internal = self - internal_legs
+        unvalidated = internal_legs.filtered(
+            lambda leg: leg.picking_id and leg.picking_id.state != 'done')
+        internal_legs -= unvalidated
         if target_state == 'in_transit':
             internal_legs.action_in_transit()
         else:
             internal_legs.action_completed()
-        if skipped:
+        messages = []
+        if not_internal:
+            messages.append(_(
+                '%(count)s leg(s) were not marked as %(label)s because they '
+                'are not internal (SAE) jobs: %(names)s'
+            ) % {
+                'count': len(not_internal),
+                'label': action_label,
+                'names': ', '.join(not_internal.mapped('display_name')),
+            })
+        if unvalidated:
+            messages.append(_(
+                '%(count)s leg(s) were not marked as %(label)s because '
+                'their delivery has not been validated: %(names)s'
+            ) % {
+                'count': len(unvalidated),
+                'label': action_label,
+                'names': ', '.join(unvalidated.mapped('display_name')),
+            })
+        if messages:
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
                     'type': 'warning',
                     'title': _('Some legs were skipped'),
-                    'message': _(
-                        '%(count)s leg(s) were not marked as %(label)s '
-                        'because they are not internal (SAE) jobs: %(names)s'
-                    ) % {
-                        'count': len(skipped),
-                        'label': action_label,
-                        'names': ', '.join(skipped.mapped('display_name')),
-                    },
+                    'message': '\n'.join(messages),
                     'sticky': False,
                 },
             }
