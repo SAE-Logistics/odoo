@@ -16,7 +16,7 @@ in any combination of the two.
 | Right of form | `booking_state` (this module) | Not Started → Pending → Booked / Failed | **Carrier paperwork** — has this leg been booked with a shipper (API call, manual booking, or internal dispatch). |
 
 Why they're kept separate (not merged into one field): they don't always move
-in lockstep, even though — for internal legs only — this module keeps them
+in lockstep, even though — for non-API-booked legs — this module keeps them
 loosely synced (see below).
 
 - A leg can be **booked ahead of time** while still `scheduled` (booking
@@ -42,23 +42,26 @@ simpler.
 | `booked` | Booked | Booking confirmed (API), manual tracking code entered, or internal leg marked dispatched. |
 | `failed` | Failed | API booking raised `TransportBookingError`; see `booking_message` for the carrier's error. |
 
-### Internal-leg auto-sync
+### Non-API-leg auto-sync
 
 `action_in_transit` / `action_completed` / `action_back` (defined on
 `sale_goods_order`, driving physical `state`) are overridden here to keep
-`booking_state` in step **for internal legs only**:
+`booking_state` in step for any leg with **no live carrier API behind it**
+(`_leg_is_manual_booking`): internal (SAE own-fleet) legs, and external
+carriers with `transport_booking_mode != 'api'` or no registered
+`delivery.carrier` at all (Palletworks, Courier Exchange, ...):
 
-- Marking an internal leg In Transit or Completed sets `booking_state =
-  booked` if it wasn't already — this covers legs moved via the Transport
-  Legs list bulk actions or the form buttons without ever clicking "Send to
-  Shipper".
-- Reverting an internal leg from In Transit back to Scheduled resets
-  `booking_state` to `none` ("Not Started").
+- Marking such a leg In Transit or Completed sets `booking_state = booked`
+  if it wasn't already — this covers legs moved via the Transport Legs list
+  bulk actions or the form buttons without ever clicking "Send to Shipper".
+- Reverting one from In Transit back to Scheduled resets `booking_state` to
+  `none` ("Not Started").
 
-External-carrier legs are untouched by this sync — their `booking_state` is
-only ever driven by the real booking flow (API/manual) or an explicit
-Reset/Cancel Booking. There's no adapter call involved for internal legs
-either way, just a field write, so this is safe to do unconditionally.
+**API-booked legs are excluded** (DPD, APC, ...) — their `booking_state`
+must only ever reflect what the adapter actually did. Forcing it to
+"Booked" just because someone clicked "In Transit" would misrepresent a
+booking that was never made, or that failed. Their `booking_state` stays
+driven only by the real booking flow or an explicit Reset/Cancel Booking.
 
 ## The "Send to Shipper" action
 

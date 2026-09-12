@@ -36,36 +36,51 @@ class SaleTransportLeg(models.Model):
     )
 
     # ------------------------------------------------------------------
-    # Internal-leg booking/state sync
+    # Non-API-leg booking/state sync
     # ------------------------------------------------------------------
-    # For internal (SAE own-fleet) legs, booking_state is just a
-    # dispatched/not-dispatched flag - there's no real carrier call behind
-    # it. Keep it in step with the physical `state` (from sale_goods_order)
-    # so the two statusbars on the form don't show contradictory things
-    # (e.g. "In Transit" in the middle, "Not Started" on the right) when a
-    # leg is moved via the Transport Legs list bulk actions or the form
-    # buttons without ever going through "Send to Shipper". External-carrier
-    # legs are untouched here - their booking_state is only ever driven by
-    # the real booking flow (API/manual) or an explicit reset/cancel.
+    # For any leg that isn't booked through a live carrier API - internal
+    # (SAE own-fleet) legs, and manual external carriers with no adapter
+    # (Palletworks, Courier Exchange, ...) - booking_state is really just a
+    # "has this actually gone out" flag entered by hand, same as `state`
+    # itself. Keep the two in step so the form's two statusbars don't
+    # contradict each other (e.g. "In Transit" in the middle, "Not Started"
+    # on the right) when a leg is moved via the Transport Legs list bulk
+    # actions or the form buttons without ever clicking "Send to Shipper".
+    #
+    # API-booked legs (DPD, APC, ...) are excluded: their booking_state must
+    # only ever reflect what the adapter actually did - forcing it to
+    # "Booked" just because someone clicked "In Transit" would misrepresent
+    # a booking that was never made (or that failed).
+    def _leg_is_manual_booking(self):
+        """True when this leg has no live carrier API behind it, so its
+        booking_state is just a manually-entered flag (internal fleet, or
+        an external carrier with no registered/API booking mode)."""
+        self.ensure_one()
+        if self.is_internal:
+            return True
+        carrier = self._leg_find_delivery_carrier()
+        return not carrier or carrier.transport_booking_mode != "api"
+
     def action_in_transit(self):
         res = super().action_in_transit()
         self.filtered(
-            lambda leg: leg.is_internal and leg.booking_state != 'booked'
+            lambda leg: leg._leg_is_manual_booking() and leg.booking_state != 'booked'
         ).write({'booking_state': 'booked', 'booking_message': False})
         return res
 
     def action_completed(self):
         res = super().action_completed()
         self.filtered(
-            lambda leg: leg.is_internal and leg.booking_state != 'booked'
+            lambda leg: leg._leg_is_manual_booking() and leg.booking_state != 'booked'
         ).write({'booking_state': 'booked', 'booking_message': False})
         return res
 
     def action_back(self):
         self.ensure_one()
         prev_state = self.state
+        is_manual = self._leg_is_manual_booking()
         res = super().action_back()
-        if self.is_internal and prev_state == 'in_transit' and self.state == 'scheduled':
+        if is_manual and prev_state == 'in_transit' and self.state == 'scheduled':
             self.write({'booking_state': 'none', 'booking_message': False})
         return res
 
