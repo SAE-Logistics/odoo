@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_transport_leg_merge_wizard_form" model="ir.ui.view">
+        <field name="name">sale.transport.leg.merge.wizard.form</field>
+        <field name="model">sale.transport.leg.merge.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Merge Transport Legs">
+                <group>
+                    <field name="eligible_leg_ids" invisible="1"/>
+                    <field name="leg_1_id" options="{'no_open': True}"/>
+                    <field name="leg_2_id" options="{'no_open': True}"/>
+                    <field name="retained_leg_id"
+                           options="{'no_create': True, 'no_open': True}"/>
+                </group>
+                <div class="alert alert-warning" role="alert">
+                    The retained record will use the first leg's pickup and the second leg's drop-off. The other leg will be deleted.
+                </div>
+                <footer>
+                    <button name="action_merge"
+                            string="Merge Legs"
+                            type="object"
+                            class="btn-primary"
+                            confirm="Merge these transport legs and delete the other leg?"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
