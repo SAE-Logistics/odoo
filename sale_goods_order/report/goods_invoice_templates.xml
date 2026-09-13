@@ -234,7 +234,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr t-foreach="rows" t-as="row">
+                                <tr t-foreach="rows" t-as="row"
+                                    t-if="o._warehouse_report_row_has_value(row)">
                                     <td class="description"><span t-esc="row.get('description')"/></td>
                                     <td class="quantity nowrap"><span t-esc="'%.2f' % row.get('quantity')"/></td>
                                     <td class="unit-price nowrap">
