@@ -487,6 +487,112 @@ class SaleTransportLeg(models.Model):
     def action_bulk_mark_completed(self):
         return self._bulk_mark_status('completed', _('Completed'))
 
+    def _validate_merge_candidates(self):
+        """Validate two legs and return them in route order."""
+        legs = self.exists()
+        if len(legs) != 2:
+            raise UserError(_('Select exactly two transport legs to merge.'))
+
+        if any(not leg.order_id for leg in legs) or len(legs.mapped('order_id')) != 1:
+            raise UserError(_('The selected transport legs must belong to the same sale order.'))
+
+        unsafe_states = legs.filtered(lambda leg: leg.state != 'scheduled')
+        if unsafe_states:
+            raise UserError(_(
+                'Only scheduled transport legs can be merged. Revert these legs first: %(legs)s'
+            ) % {'legs': ', '.join(unsafe_states.mapped('display_name'))})
+
+        if 'booking_state' in self._fields:
+            booked_legs = legs.filtered(
+                lambda leg: leg.booking_state in ('pending', 'booked')
+            )
+            if booked_legs:
+                raise UserError(_(
+                    'Pending or booked transport legs cannot be merged: %(legs)s'
+                ) % {'legs': ', '.join(booked_legs.mapped('display_name'))})
+
+        referenced_legs = legs.filtered(
+            lambda leg: leg.tracking_code
+            or ('booking_ref' in self._fields and leg.booking_ref)
+        )
+        if referenced_legs:
+            raise UserError(_(
+                'Transport legs with a tracking or booking reference cannot be merged: %(legs)s'
+            ) % {'legs': ', '.join(referenced_legs.mapped('display_name'))})
+
+        attached_leg_ids = self.env['ir.attachment'].sudo().search([
+            ('res_model', '=', self._name),
+            ('res_id', 'in', legs.ids),
+        ]).mapped('res_id')
+        attached_legs = legs.filtered(lambda leg: leg.id in attached_leg_ids)
+        if attached_legs:
+            raise UserError(_(
+                'Transport legs with attachments (including shipping labels) cannot be merged: %(legs)s'
+            ) % {'legs': ', '.join(attached_legs.mapped('display_name'))})
+
+        leg_a, leg_b = legs
+        a_then_b = leg_a.to_location and leg_a.to_location == leg_b.from_location
+        b_then_a = leg_b.to_location and leg_b.to_location == leg_a.from_location
+        if not a_then_b and not b_then_a:
+            raise UserError(_(
+                'The selected legs are not consecutive. The destination of one leg must be the pickup location of the other.'
+            ))
+        if a_then_b and b_then_a:
+            ordered = legs.sorted(key=lambda leg: (leg.sequence, leg.id))
+            return ordered[0], ordered[1]
+        return (leg_a, leg_b) if a_then_b else (leg_b, leg_a)
+
+    def action_open_merge_wizard(self):
+        first_leg, second_leg = self._validate_merge_candidates()
+        wizard = self.env['sale.transport.leg.merge.wizard'].create({
+            'leg_1_id': first_leg.id,
+            'leg_2_id': second_leg.id,
+            'eligible_leg_ids': [(6, 0, self.ids)],
+            'retained_leg_id': first_leg.id,
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Merge Transport Legs'),
+            'res_model': 'sale.transport.leg.merge.wizard',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
+    def merge_transport_legs(self, retained_leg):
+        """Merge this pair into ``retained_leg`` and remove the other one."""
+        first_leg, second_leg = self._validate_merge_candidates()
+        if len(retained_leg) != 1 or retained_leg not in self:
+            raise UserError(_('The retained leg must be one of the two selected legs.'))
+
+        removed_leg = self - retained_leg
+        removed_name = removed_leg.display_name
+        if retained_leg == first_leg:
+            merge_values = {
+                'to_location': second_leg.to_location.id,
+                'to_date': second_leg.to_date,
+                'to_contact': second_leg.to_contact,
+                'to_instructions': second_leg.to_instructions,
+            }
+        else:
+            merge_values = {
+                'sequence': first_leg.sequence,
+                'from_location': first_leg.from_location.id,
+                'from_date': first_leg.from_date,
+                'from_contact': first_leg.from_contact,
+                'from_instructions': first_leg.from_instructions,
+            }
+
+        retained_leg.write(merge_values)
+        removed_leg.unlink()
+        retained_leg.message_post(body=_(
+            'Merged transport leg %(removed_leg)s into this leg. The resulting route is %(route)s.'
+        ) % {
+            'removed_leg': removed_name,
+            'route': retained_leg.display_name,
+        })
+        return retained_leg
+
     def action_back(self):
         if self.state == 'completed':
             self.write({'state': 'in_transit'})

@@ -16,3 +16,4 @@ access_sale_package_line_user,sale.package.line.user,model_sale_package_line,bas
 access_stock_picking_container_user,stock.picking.container.user,model_stock_picking_container,base.group_user,1,1,1,1
 access_stock_container_report_wizard_user,stock.container.report.wizard.user,model_stock_container_report_wizard,base.group_user,1,1,1,1
 access_stock_container_report_line_user,stock.container.report.line.user,model_stock_container_report_line,base.group_user,1,1,1,1
+access_sale_transport_leg_merge_wizard_user,sale.transport.leg.merge.wizard.user,model_sale_transport_leg_merge_wizard,base.group_user,1,1,1,1

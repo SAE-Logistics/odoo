@@ -25,4 +25,13 @@
         <field name="code">action = records.action_bulk_mark_completed()</field>
     </record>
 
+    <record id="action_transport_leg_merge" model="ir.actions.server">
+        <field name="name">Merge Transport Legs</field>
+        <field name="model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_open_merge_wizard()</field>
+    </record>
+
 </odoo>

@@ -39,6 +39,20 @@ class AccountMove(models.Model):
             )
         )
 
+    def _report_row_has_nonzero_value(self, row, value_fields):
+        """Return whether a report row has a monetary value worth printing."""
+        self.ensure_one()
+        return any(
+            not self.currency_id.is_zero(row.get(field_name, 0.0) or 0.0)
+            for field_name in value_fields
+        )
+
+    def _transport_report_row_has_value(self, row):
+        return self._report_row_has_nonzero_value(row, ('value', 'fuel_charge'))
+
+    def _warehouse_report_row_has_value(self, row):
+        return self._report_row_has_nonzero_value(row, ('subtotal',))
+
     def _get_sale_orders_from_origin(self, order_types):
         self.ensure_one()
         origins = [
@@ -145,7 +159,7 @@ class AccountMove(models.Model):
                             surcharge_group["value"],
                         )
                     )
-        return rows
+        return [row for row in rows if self._transport_report_row_has_value(row)]
 
     def _format_transport_location(self, partner):
         if not partner:
@@ -318,6 +332,10 @@ class AccountMove(models.Model):
             row["subtotal"] += invoice_line.price_subtotal
             row["total"] += invoice_line.price_total
 
+        grouped_rows = [
+            row for row in grouped_rows
+            if self._warehouse_report_row_has_value(row)
+        ]
         for row in grouped_rows:
             row["unit_price"] = (
                 row["subtotal"] / row["quantity"]

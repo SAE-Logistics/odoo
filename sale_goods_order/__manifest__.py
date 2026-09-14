@@ -1,7 +1,7 @@
 {
     "name": "Sales: Goods & Transport Orders",
     "summary": "Adds 'Goods Orders' and 'Transport Orders' to Sales with context-driven behavior and billing automation.",
-    "version": "18.0.1.1.0",
+    "version": "18.0.1.3.0",
     "category": "Sales",
     "author": "rahways",
     "license": "LGPL-3",
@@ -22,6 +22,7 @@
         "data/product_data.xml",
         "views/material_template_views.xml",
         "views/material_picking_wizard_views.xml",
+        "views/transport_leg_merge_wizard_views.xml",
         "views/stock_location_views.xml",
         "views/stock_picking_views.xml",
         "views/transport_product_line_views.xml",
