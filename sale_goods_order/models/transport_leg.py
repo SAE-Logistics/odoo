@@ -392,6 +392,7 @@ class SaleTransportLeg(models.Model):
         orders._sync_transport_surcharge_sale_lines()
         return res
     def action_in_transit(self):
+        self._check_order_confirmed_for_state_change(_('In Transit'))
         self._check_picking_validated_for_state_change(_('In Transit'))
         self.write({'state': 'in_transit'})
 
@@ -408,18 +409,38 @@ class SaleTransportLeg(models.Model):
         }
 
     def action_completed(self):
+        self._check_order_confirmed_for_state_change(_('Completed'))
         self._check_picking_validated_for_state_change(_('Completed'))
         self.write({'state': 'completed'})
+
+    def _check_order_confirmed_for_state_change(self, target_label):
+        """Refuse to move a leg's physical state forward while its sale
+        order is not confirmed - applies to every order type, including
+        Transport Orders which have no picking to gate on.
+        """
+        unconfirmed = self.filtered(
+            lambda leg: leg.order_id and leg.order_id.state != 'sale')
+        if unconfirmed:
+            raise UserError(_(
+                'Confirm the sale order before marking %(names)s as '
+                '%(label)s.'
+            ) % {
+                'names': ', '.join(unconfirmed.mapped('display_name')),
+                'label': target_label,
+            })
 
     def _check_picking_validated_for_state_change(self, target_label):
         """Refuse to move a leg's physical state forward while its delivery
         is still unvalidated - moving freight in Odoo before the stock move
         backing it has been confirmed risks a stock/booking mismatch (see
         the picking-validated guard on action_leg_send_to_shipper in
-        transport_booking_core).
+        transport_booking_core). Only applies to Goods Out legs - Goods In
+        pickings move stock the other way and Transport Order legs have no
+        picking at all.
         """
         unvalidated = self.filtered(
-            lambda leg: leg.picking_id and leg.picking_id.state != 'done')
+            lambda leg: leg.picking_id and leg.order_type == 'goods_out'
+            and leg.picking_id.state != 'done')
         if unvalidated:
             raise UserError(_(
                 'Validate the delivery before marking %(names)s as '
@@ -442,8 +463,12 @@ class SaleTransportLeg(models.Model):
         """
         internal_legs = self.filtered('is_internal')
         not_internal = self - internal_legs
+        unconfirmed = internal_legs.filtered(
+            lambda leg: leg.order_id and leg.order_id.state != 'sale')
+        internal_legs -= unconfirmed
         unvalidated = internal_legs.filtered(
-            lambda leg: leg.picking_id and leg.picking_id.state != 'done')
+            lambda leg: leg.picking_id and leg.order_type == 'goods_out'
+            and leg.picking_id.state != 'done')
         internal_legs -= unvalidated
         if target_state == 'in_transit':
             internal_legs.action_in_transit()
@@ -458,6 +483,15 @@ class SaleTransportLeg(models.Model):
                 'count': len(not_internal),
                 'label': action_label,
                 'names': ', '.join(not_internal.mapped('display_name')),
+            })
+        if unconfirmed:
+            messages.append(_(
+                '%(count)s leg(s) were not marked as %(label)s because '
+                'their sale order is not confirmed: %(names)s'
+            ) % {
+                'count': len(unconfirmed),
+                'label': action_label,
+                'names': ', '.join(unconfirmed.mapped('display_name')),
             })
         if unvalidated:
             messages.append(_(
