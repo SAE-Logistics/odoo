@@ -105,7 +105,12 @@ class SaleTransportLeg(models.Model):
     # ------------------------------------------------------------------
     def action_leg_send_to_shipper(self):
         self.ensure_one()
-        if self.picking_id and self.picking_id.state != "done":
+        if self.order_id and self.order_id.state != "sale":
+            raise UserError(_(
+                "Confirm sale order %s before booking this leg.")
+                % (self.order_id.name or ""))
+        if (self.picking_id and self.order_type == "goods_out"
+                and self.picking_id.state != "done"):
             raise UserError(_(
                 "Validate delivery %s before booking this leg. Booking "
                 "against an unvalidated delivery risks a stock/booking "
