@@ -29,13 +29,13 @@ class SaleTransportLeg(models.Model):
     customer_id = fields.Many2one(related='order_id.partner_id', string='Company Name')
     from_location = fields.Many2one('res.partner', string='Company (Pickup)')
     from_date = fields.Date(string='Date (Pickup)')
-    from_postcode = fields.Char(related='from_location.zip', string='Post Code (Pickup)')
-    from_street = fields.Char(related='from_location.street', string='Street (Pickup)', readonly=True)
-    from_street2 = fields.Char(related='from_location.street2', string='Street 2 (Pickup)', readonly=True)
+    from_postcode = fields.Char(string='Post Code (Pickup)', compute='_compute_from_partner_address', store=True, readonly=True)
+    from_street = fields.Char(string='Street (Pickup)', compute='_compute_from_partner_address', store=True, readonly=True)
+    from_street2 = fields.Char(string='Street 2 (Pickup)', compute='_compute_from_partner_address', store=True, readonly=True)
     from_address = fields.Char(string='Address (Pickup)', compute='_compute_from_address', store=True)
-    from_town = fields.Char(related='from_location.city', string='Collection Town', readonly=True)
-    from_county = fields.Many2one(related='from_location.state_id', string='County (Pickup)')
-    from_country = fields.Many2one(related='from_location.country_id', string='Country (Pickup)')
+    from_town = fields.Char(string='Collection Town', compute='_compute_from_partner_address', store=True, readonly=True)
+    from_county = fields.Many2one('res.country.state', string='County (Pickup)', compute='_compute_from_partner_address', store=True, readonly=True)
+    from_country = fields.Many2one('res.country', string='Country (Pickup)', compute='_compute_from_partner_address', store=True, readonly=True)
     from_tel = fields.Char(related='from_location.phone', string='Collection Phone', readonly=True)
     from_contact = fields.Char(string='Contact (Pickup)')
     from_email = fields.Char(related='from_location.email', string='Collection Email', readonly=True)
@@ -43,13 +43,13 @@ class SaleTransportLeg(models.Model):
 
     to_location = fields.Many2one('res.partner', string='Company (Drop Off)')
     to_date = fields.Date(string='Date (Drop Off)')
-    to_postcode = fields.Char(related='to_location.zip', string='Post Code (Drop Off)')
-    to_street = fields.Char(related='to_location.street', string='Street (Drop Off)', readonly=True)
-    to_street2 = fields.Char(related='to_location.street2', string='Street 2 (Drop Off)', readonly=True)
+    to_postcode = fields.Char(string='Post Code (Drop Off)', compute='_compute_to_partner_address', store=True, readonly=True)
+    to_street = fields.Char(string='Street (Drop Off)', compute='_compute_to_partner_address', store=True, readonly=True)
+    to_street2 = fields.Char(string='Street 2 (Drop Off)', compute='_compute_to_partner_address', store=True, readonly=True)
     to_address = fields.Char(string='Address (Drop Off)', compute='_compute_to_address', store=True)
-    to_town = fields.Char(related='to_location.city', string='Delivery Town', readonly=True)
-    to_county = fields.Many2one(related='to_location.state_id', string='County (Drop Off)')
-    to_country = fields.Many2one(related='to_location.country_id', string='Country (Drop Off)')
+    to_town = fields.Char(string='Delivery Town', compute='_compute_to_partner_address', store=True, readonly=True)
+    to_county = fields.Many2one('res.country.state', string='County (Drop Off)', compute='_compute_to_partner_address', store=True, readonly=True)
+    to_country = fields.Many2one('res.country', string='Country (Drop Off)', compute='_compute_to_partner_address', store=True, readonly=True)
     to_tel = fields.Char(related='to_location.phone', string='Delivery Phone', readonly=True)
     to_contact = fields.Char(string='Contact (Drop Off)')
     to_email = fields.Char(related='to_location.email', string='Delivery Email', readonly=True)
@@ -311,6 +311,42 @@ class SaleTransportLeg(models.Model):
         for record in self:
             record.from_town_postcode = ', '.join(p for p in (record.from_town, record.from_postcode) if p)
             record.to_town_postcode = ', '.join(p for p in (record.to_town, record.to_postcode) if p)
+
+    @api.depends(
+        'from_location.street', 'from_location.street2', 'from_location.city',
+        'from_location.state_id', 'from_location.zip', 'from_location.country_id',
+        'from_location.commercial_partner_id.street', 'from_location.commercial_partner_id.street2',
+        'from_location.commercial_partner_id.city', 'from_location.commercial_partner_id.state_id',
+        'from_location.commercial_partner_id.zip', 'from_location.commercial_partner_id.country_id',
+    )
+    def _compute_from_partner_address(self):
+        for record in self:
+            partner = record.from_location
+            source = partner.commercial_partner_id if partner and not partner.street else partner
+            record.from_street = source.street
+            record.from_street2 = source.street2
+            record.from_town = source.city
+            record.from_county = source.state_id
+            record.from_postcode = source.zip
+            record.from_country = source.country_id
+
+    @api.depends(
+        'to_location.street', 'to_location.street2', 'to_location.city',
+        'to_location.state_id', 'to_location.zip', 'to_location.country_id',
+        'to_location.commercial_partner_id.street', 'to_location.commercial_partner_id.street2',
+        'to_location.commercial_partner_id.city', 'to_location.commercial_partner_id.state_id',
+        'to_location.commercial_partner_id.zip', 'to_location.commercial_partner_id.country_id',
+    )
+    def _compute_to_partner_address(self):
+        for record in self:
+            partner = record.to_location
+            source = partner.commercial_partner_id if partner and not partner.street else partner
+            record.to_street = source.street
+            record.to_street2 = source.street2
+            record.to_town = source.city
+            record.to_county = source.state_id
+            record.to_postcode = source.zip
+            record.to_country = source.country_id
 
     @api.depends('from_street', 'from_street2')
     def _compute_from_address(self):

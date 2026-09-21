@@ -12,7 +12,7 @@
 
 {
     "name": "DPD Local UK Shipping",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.1.0",
     "summary": """
     DPD Local UK shipping integration for Odoo using the current DPD UK REST API
     (JWT token authentication). Create domestic shipments, generate labels

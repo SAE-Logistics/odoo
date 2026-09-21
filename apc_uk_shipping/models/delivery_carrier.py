@@ -153,9 +153,11 @@ class DeliveryCarrier(models.Model):
         country = get("country")
         p_state = partner.state_id if partner else False
         p_country = partner.country_id if partner else False
+        company_lines = partner.get_shipping_name_lines() if partner else []
+        company_name = ", ".join(company_lines) if company_lines else False
         return {
             "name": get("contact") or p_get("name"),
-            "company_name": p_get("name") or get("contact"),
+            "company_name": company_name or get("contact"),
             "phone": get("tel") or p_get("phone"),
             "mobile": get("mobile") or p_get("mobile"),
             "email": get("email") or p_get("email"),
