@@ -161,8 +161,8 @@ class DeliveryCarrier(models.Model):
             "phone": get("tel") or p_get("phone"),
             "mobile": get("mobile") or p_get("mobile"),
             "email": get("email") or p_get("email"),
-            "street": get("address") or p_get("street"),
-            "street2": p_get("street2"),
+            "street": get("street") or p_get("street"),
+            "street2": get("street2") or p_get("street2"),
             "city": get("town") or p_get("city"),
             "zip": get("postcode") or p_get("zip"),
             "state_name": (county.name if county else False)
