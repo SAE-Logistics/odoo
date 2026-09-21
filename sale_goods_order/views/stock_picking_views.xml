@@ -77,9 +77,11 @@
                             <field name="customer_id" optional="show"/>
                             <field name="from_location"
                                    string="From"
+                                   domain="[('type', '!=', 'other')]"
                                    context="{'show_address': True, 'address_inline': True}"/>
                             <field name="to_location"
                                    string="To"
+                                   domain="[('type', '!=', 'other')]"
                                    context="{'show_address': True, 'address_inline': True}"/>
                             <field name="from_date" string="Collection Date" widget="remaining_days" optional="show"/>
                             <field name="to_date" string="Delivery Date" widget="remaining_days" optional="show"/>

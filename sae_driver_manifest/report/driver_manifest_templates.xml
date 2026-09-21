@@ -92,7 +92,13 @@
                                 <t t-set="pkg_lines" t-value="pk.package_ids if pk else leg.order_line_id.package_ids"/>
                                 <tr>
                                     <td style="padding:5px 4px; border:1px solid #ccc; vertical-align:top;"><span t-out="row_no"/></td>
-                                    <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;"><span t-out="leg.order_id.partner_id.name or leg.to_location.name or ''"/></td>
+                                    <t t-set="cust_name_lines"
+                                       t-value="[leg.order_id.partner_id.name] if leg.order_id.partner_id else (leg.to_location.get_shipping_name_lines() if leg.to_location else [])"/>
+                                    <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;">
+                                        <t t-foreach="cust_name_lines" t-as="cust_name_line">
+                                            <div t-out="cust_name_line"/>
+                                        </t>
+                                    </td>
                                     <td style="padding:5px 4px; border:1px solid #ccc; vertical-align:top; white-space:nowrap;"><span t-out="(leg.order_id and leg.order_id.name) or ''"/></td>
                                     <td style="padding:5px 4px; border:1px solid #ccc; vertical-align:top; white-space:nowrap;"><span t-out="'Collect' if is_collect else 'Deliver'"/></td>
                                     <td style="padding:5px 8px; border:1px solid #ccc; vertical-align:top;">

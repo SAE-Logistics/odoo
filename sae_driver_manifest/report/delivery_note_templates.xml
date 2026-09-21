@@ -151,6 +151,7 @@
                     </div>
 
                     <t t-set="loc" t-value="leg.from_location if is_collect else leg.to_location"/>
+                    <t t-set="loc_name_lines" t-value="loc.get_shipping_name_lines() if loc else []"/>
                     <table class="sae-plain" style="width:100%; border-collapse:collapse; margin-bottom:14px;">
                         <colgroup>
                             <col style="width:15%;"/>
@@ -159,7 +160,9 @@
                         <tr>
                             <td style="padding:3px 4px; color:#1F6FB2; vertical-align:top;">Company</td>
                             <td style="padding:3px 4px; vertical-align:top; font-weight:bold;">
-                                <span t-out="loc.name or ''"/>
+                                <t t-foreach="loc_name_lines" t-as="name_line">
+                                    <div t-out="name_line"/>
+                                </t>
                             </td>
                         </tr>
                         <tr>
