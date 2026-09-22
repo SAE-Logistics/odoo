@@ -274,7 +274,15 @@ class SaleTransportLeg(models.Model):
         if not self.tracking_code:
             raise UserError(_('Please enter a tracking code first.'))
         url = False
-        if self.carrier_id:
+        # Carrier adapters (transport_booking_core) implement get_tracking_url
+        # on their own booking-adapter class, not on delivery.carrier - try
+        # that route first since it's carrier-specific and adapter-aware.
+        if hasattr(self, '_leg_get_tracking_url'):
+            try:
+                url = self._leg_get_tracking_url()
+            except Exception:
+                _logger.exception('Could not build adapter tracking URL for transport leg %s', self.id)
+        if not url and self.carrier_id:
             try:
                 url = self.carrier_id.get_tracking_link(self)
             except Exception:
