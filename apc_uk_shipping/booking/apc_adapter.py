@@ -203,5 +203,9 @@ class ApcAdapter(TransportBookingAdapter):
         return True
 
     def get_tracking_url(self, leg):
+        # Best-guess only: apc-overnight.com now redirects to apc.co.uk, and
+        # neither the API guide nor the site's own tracking form (which also
+        # requires a postcode, not just a consignment number) confirm this
+        # query format. Unconfirmed pending APC support (KB §7/§11).
         reference = leg.tracking_code or leg.booking_ref or ""
-        return f"https://www.apc-overnight.com/track?trackingNumber={reference}"
+        return f"https://apc.co.uk/track?consignment={reference}"
