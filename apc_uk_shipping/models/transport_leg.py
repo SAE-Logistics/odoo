@@ -116,11 +116,18 @@ class SaleTransportLeg(models.Model):
         return None
 
     def _apc_apply_track(self, track):
+        """Apply one Track entry to its matching leg.
+
+        The status data is NOT at the top of Track - APC nests it at
+        ``ShipmentDetails -> Items -> Item -> Activity -> Status`` (API guide
+        p.44-46), with one Activity per historical scan. Walk every scan
+        found (across every item) in chronological order so the leg's
+        booking/movement state ends up reflecting the most advanced scan
+        seen, with an audit trail of intermediate scans in the chatter.
+        """
         waybill = (track.get("WayBill") or "").strip()
         if not waybill:
             return
-        status_code = track.get("StatusCode")
-        status_desc = track.get("Status") or ""
 
         leg = self.search([
             "|",
@@ -130,6 +137,46 @@ class SaleTransportLeg(models.Model):
         if not leg or leg.is_internal:
             return
 
+        statuses = self._apc_extract_statuses(track)
+        for status in sorted(statuses, key=lambda s: s.get("DateTime") or ""):
+            self._apc_apply_status(
+                leg, status.get("StatusCode"), status.get("StatusDescription") or "")
+
+    @staticmethod
+    def _apc_extract_statuses(track):
+        """Walk Track -> ShipmentDetails -> Items -> Item -> Activity ->
+        Status and return every Status dict found, across every item."""
+        statuses = []
+        shipment = track.get("ShipmentDetails")
+        if not isinstance(shipment, dict):
+            return statuses
+        items = shipment.get("Items", [])
+        if isinstance(items, dict):
+            items = [items]
+        if not isinstance(items, list):
+            return statuses
+        for entry in items:
+            if not isinstance(entry, dict):
+                continue
+            item = entry.get("Item", entry)
+            item_list = item if isinstance(item, list) else [item]
+            for one_item in item_list:
+                if not isinstance(one_item, dict):
+                    continue
+                activities = one_item.get("Activity", [])
+                if isinstance(activities, dict):
+                    activities = [activities]
+                if not isinstance(activities, list):
+                    continue
+                for act in activities:
+                    if not isinstance(act, dict):
+                        continue
+                    status = act.get("Status")
+                    if isinstance(status, dict):
+                        statuses.append(status)
+        return statuses
+
+    def _apc_apply_status(self, leg, status_code, status_desc):
         booking_state, movement_state = self._apc_classify_status(
             status_code, status_desc)
         vals = {
@@ -169,10 +216,12 @@ class SaleTransportLeg(models.Model):
         desc = (status_desc or "").strip().lower()
         code = str(status_code or "").strip()
 
-        delivered_codes = {"14", "15", "16"}
-        cancelled_codes = {"97"}
+        # Confirmed against the APC API guide's own worked example (p.44-46)
+        # and KB §7's status table - not guessed.
+        delivered_codes = {"3"}  # DELIVERED
+        cancelled_codes = {"97"}  # CANCELLED
         # "Accepted by APC but not physically collected / scanned yet."
-        pretransit_codes = {"1", "2", "3"}
+        pretransit_codes = {"1", "62"}  # READY TO PRINT, LABEL PRINTED
 
         if "cancel" in desc or code in cancelled_codes:
             return "none", False
