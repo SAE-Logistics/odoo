@@ -1,6 +1,6 @@
 # KB: apc_uk_shipping — APC Overnight Carrier Integration
 
-**Status:** Pre-build. Training credentials obtained and verified on website. Curl smoke test pending.
+**Status:** Booking + label printing live and in daily use on staging (14+ bookings since 17 Jul 2026, one carrier account, training environment). Tracking poll cron shipped but was found non-functional on first live review — the parser read the wrong response shape and every status came back empty, so it silently no-op'd on every run for ~4 weeks against real bookings; fixed 22 Sep 2026 (see §7).
 **Carrier:** APC Overnight (Hypaship booking platform)
 **API version:** v3 (Integration Guide edition 3.1.2, 26 Sep 2024)
 **Odoo instance:** staging.mysae.net (Odoo 18.0, db `2vlobt9f2ut.cloudpepper.site`)
@@ -187,6 +187,20 @@ All legs on an SAE order carry the same number of boxes (established SAE rule); 
 
 Cron polls multi-track endpoint: `GET Tracks.json?datefrom=<last poll>&history=yes`. Without a consignment number this returns all scans since the last call for the account (p.43) — efficient default. Map `StatusCode` to `booking_state` / leg state.
 
+**Response shape (p.44-46, confirmed against the guide's own worked example — do not assume `StatusCode`/`Status` sit at the top of each `Track`):**
+
+```
+Tracks.Track[]
+  .WayBill / .OrderNumber        <- top-level, used to match the leg
+  .ShipmentDetails.Items[]
+    .Item.Activity[]             <- one entry per historical scan, oldest first
+      .Status.{StatusCode, StatusDescription, DateTime, ...}
+```
+
+The status data is nested three levels below `Track`, and a `Track` can carry several `Activity` entries (full scan history for the consignment), not just the latest one. A first implementation (merged Aug 2026, `transport_leg.py`) read `track.get("StatusCode")` / `track.get("Status")` directly — those keys don't exist at that level, so every status came back empty and the cron silently no-op'd on every run against every real booking for ~4 weeks (confirmed live on staging 22 Sep 2026: 6 real APC waybills going back to 17 Jul 2026, all with `apc_status_code = False`). Fixed by walking the full path above and applying every `Activity` found, oldest-to-newest, through the existing forward-only state-rank guard (a leg's `state` can only advance, never regress, so replaying history is safe and gives a full audit trail in chatter).
+
+Per the XML→JSON quirk (§9), `Items` and `Activity` collapse to a bare object instead of an array when there's only one element — the normaliser (`apc_api.py::_apc_normalise_items`) was widened to cover both keys, not just `Item`/`Orders`/`Label`.
+
 Key status codes (full table p.73):
 
 | Code | Meaning | Suggested leg effect |
@@ -204,6 +218,8 @@ Key status codes (full table p.73):
 | 115–119, 125 | PUR confirmation / failure reasons | PUR-specific handling (Goods In / Transport) |
 
 Pagination: responses include a Pagination block (50 items/page); cron must walk `NextPage`.
+
+The numeric-code fallback in `_apc_classify_status` (used only when the free-text `Status` description doesn't match a known keyword) previously used fabricated/misordered code sets (e.g. treated code `3` DELIVERED as pretransit, and a `delivered_codes` set of `14/15/16` that appears nowhere in APC's own guide). Fixed to `delivered_codes = {"3"}`, `cancelled_codes = {"97"}`, `pretransit_codes = {"1", "62"}` per the table above and the guide's worked example. Codes `71`/`70`/`69`/`63` and `2` (OUT FOR DELIVERY) have no dedicated numeric handling and fall through to a generic "any other scan → in_transit" branch — correct per the table, since the leg model has no dedicated `out_for_delivery` state. Codes `76`/`96`/`44` (exception-type: closed/carded, refused, return to sender) and `115–119`/`125` (PUR confirmation) also fall into that same generic in_transit branch — there is no `exception` state on the leg model today, so these are not distinguished from ordinary transit scans. Known, accepted gap; not fixed as part of the tracking-verification pass (would need a model/UI change).
 
 Activity endpoint (POD signature, photo, GPS) deferred to phase two.
 
@@ -233,15 +249,15 @@ Activity endpoint (POD signature, photo, GPS) deferred to phase two.
 
 - [x] Dispatcher base — already exists (`transport_booking_core`, installed on staging)
 - [x] Obtain training credentials from depot; verify website login
-- [ ] Curl/Postman smoke test vs training: availability, order, label, cancel
-- [ ] Review `dpd_local_uk_shipping` source as adapter reference (registration pattern, per-item tracking storage)
-- [ ] `apc_uk_shipping` scaffold + config settings
-- [ ] Adapter: payload builder, validator/sanitiser, JSON normaliser
-- [ ] Book + label flow (PDF), attach to leg
-- [ ] PUR cutoff validation (20:00, no same-day) for Goods In / Transport Orders
+- [x] Curl/Postman smoke test vs training: availability, order, label — proven via 14+ real bookings on staging since 17 Jul 2026; cancel not yet exercised
+- [x] Review `dpd_local_uk_shipping` source as adapter reference (registration pattern) — DPD has no tracking implementation to reference; APC tracking is the first of its kind in this codebase
+- [x] `apc_uk_shipping` scaffold + config settings
+- [x] Adapter: payload builder, validator/sanitiser, JSON normaliser
+- [x] Book + label flow (PDF), attach to leg
+- [x] PUR cutoff validation (20:00, no same-day) for Goods In / Transport Orders
 - [ ] Amend / cancel actions with manifest guard
-- [ ] Tracking cron with pagination + status mapping
-- [ ] UAT on staging (all three order types)
+- [x] Tracking cron with pagination + status mapping — shipped, found non-functional (wrong response shape parsed), fixed 22 Sep 2026; see §7
+- [ ] UAT on staging (all three order types) — blocked on booking/tracking a fresh order post-fix to confirm real scans now apply
 - [ ] Switch `label_format` to ZPL, environment to live
 - [ ] Phase two: Activity endpoint (POD/photo/GPS)
 

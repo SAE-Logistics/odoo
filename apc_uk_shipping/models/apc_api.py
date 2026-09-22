@@ -19,10 +19,11 @@ APC_HOSTS = {
 
 
 def _apc_normalise_items(data):
-    """API v3 quirk: Item/Orders/Label is an object for one element, an array for 2+."""
+    """API v3 quirk: Item/Orders/Label/Items/Activity is an object for one
+    element, an array for 2+ (XML->JSON translation artefact, KB §9)."""
     if isinstance(data, dict):
         for key, value in list(data.items()):
-            if key in ("Item", "Orders", "Label") and isinstance(value, dict):
+            if key in ("Item", "Orders", "Label", "Items", "Activity") and isinstance(value, dict):
                 data[key] = [value]
             elif isinstance(value, (dict, list)):
                 data[key] = _apc_normalise_items(value)
