@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_dpd_webhook_event_list" model="ir.ui.view">
+        <field name="name">dpd.webhook.event.list</field>
+        <field name="model">dpd.webhook.event</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0"
+                  decoration-success="state == 'applied'"
+                  decoration-warning="state == 'unmatched'"
+                  decoration-danger="state == 'error'">
+                <field name="event_datetime"/>
+                <field name="kind"/>
+                <field name="event_code"/>
+                <field name="event_description"/>
+                <field name="parcel_code"/>
+                <field name="leg_id"/>
+                <field name="picking_id" optional="hide"/>
+                <field name="state"/>
+                <field name="create_date" string="Received" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_dpd_webhook_event_form" model="ir.ui.view">
+        <field name="name">dpd.webhook.event.form</field>
+        <field name="model">dpd.webhook.event</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="kind"/>
+                            <field name="event_code"/>
+                            <field name="event_description"/>
+                            <field name="event_datetime"/>
+                        </group>
+                        <group>
+                            <field name="message_id"/>
+                            <field name="parcel_code"/>
+                            <field name="parcel_number"/>
+                            <field name="leg_id"/>
+                            <field name="picking_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="result_message"/>
+                        <field name="payload" widget="ace" options="{'mode': 'json'}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_dpd_webhook_event_search" model="ir.ui.view">
+        <field name="name">dpd.webhook.event.search</field>
+        <field name="model">dpd.webhook.event</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="parcel_code"/>
+                <field name="event_code"/>
+                <field name="leg_id"/>
+                <field name="message_id"/>
+                <filter name="unmatched" string="Unmatched" domain="[('state', '=', 'unmatched')]"/>
+                <filter name="error" string="Errors" domain="[('state', '=', 'error')]"/>
+                <separator/>
+                <filter name="parcel" string="Parcel Events" domain="[('kind', '=', 'parcel')]"/>
+                <filter name="collection" string="Collection Events" domain="[('kind', '=', 'collection')]"/>
+                <filter name="notification" string="Notifications" domain="[('kind', '=', 'notification')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="Result" context="{'group_by': 'state'}"/>
+                    <filter name="group_code" string="Code" context="{'group_by': 'event_code'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_dpd_webhook_event" model="ir.actions.act_window">
+        <field name="name">DPD Webhook Events</field>
+        <field name="res_model">dpd.webhook.event</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_dpd_webhook_event"
+              name="DPD Webhook Events"
+              parent="stock.menu_delivery"
+              action="action_dpd_webhook_event"
+              sequence="21"/>
+
+    <record id="view_sale_transport_leg_form_dpd" model="ir.ui.view">
+        <field name="name">sale.transport.leg.form.dpd</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="inherit_id" ref="sale_goods_order.sale_transport_leg_form_view"/>
+        <field name="arch" type="xml">
+            <field name="booking_ref" position="after">
+                <field name="dpd_event_count" invisible="1"/>
+                <field name="dpd_status_code" invisible="not dpd_status_code"/>
+                <field name="dpd_status_description" invisible="not dpd_status_code"/>
+                <field name="dpd_status_date" invisible="not dpd_status_code"/>
+                <button name="action_view_dpd_events" type="object"
+                        string="DPD Events" icon="fa-list" class="btn-link"
+                        invisible="not dpd_event_count"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>
