@@ -12,7 +12,7 @@
 
 {
     "name": "DPD Local UK Shipping",
-    "version": "18.0.1.1.0",
+    "version": "18.0.1.2.0",
     "summary": """
     DPD Local UK shipping integration for Odoo using the current DPD UK REST API
     (JWT token authentication). Create domestic shipments, generate labels
@@ -59,6 +59,7 @@ Ireland and Channel Islands).
         "views/delivery_carrier_views.xml",
         "views/dpd_local_collection_wizard_views.xml",
         "views/stock_picking_views.xml",
+        "views/dpd_webhook_event_views.xml",
     ],
     "installable": True,
     "application": True,
