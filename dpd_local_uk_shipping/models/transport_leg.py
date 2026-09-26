@@ -21,6 +21,15 @@ class SaleTransportLeg(models.Model):
     dpd_status_date = fields.Datetime(
         string="DPD Status Time", copy=False, readonly=True,
     )
+    dpd_exception = fields.Boolean(
+        string="DPD Exception", copy=False, readonly=True, index=True,
+        help="DPD reported a failed attempt, hold, delay, return or other "
+             "problem. Cleared when the parcel goes out for delivery again "
+             "or is delivered.",
+    )
+    dpd_exception_description = fields.Char(
+        string="DPD Exception Detail", copy=False, readonly=True,
+    )
     dpd_event_count = fields.Integer(compute="_compute_dpd_event_count")
 
     def _compute_dpd_event_count(self):
@@ -65,13 +74,32 @@ class SaleTransportLeg(models.Model):
             return "recorded", _("Leg is internal; DPD status not applied.")
 
         vals = {}
-        if not self.dpd_status_date or (
-                event.event_datetime and event.event_datetime >= self.dpd_status_date):
+        notes = []
+        is_latest = not self.dpd_status_date or (
+            event.event_datetime and event.event_datetime >= self.dpd_status_date)
+        if is_latest:
             vals.update({
                 "dpd_status_code": event.event_code,
                 "dpd_status_description": event.event_description,
                 "dpd_status_date": event.event_datetime,
             })
+            # Exceptions follow the newest event too, so a late-arriving
+            # older scan can't raise or clear the flag out of order.
+            effect = event._dpd_exception_effect()
+            event_label = "%s - %s" % (
+                event.event_code or "-", event.event_description or "-")
+            if effect == "raise":
+                vals.update({
+                    "dpd_exception": True,
+                    "dpd_exception_description": event_label,
+                })
+                notes.append(_("DPD exception: %s") % event_label)
+            elif effect == "clear" and self.dpd_exception:
+                vals.update({
+                    "dpd_exception": False,
+                    "dpd_exception_description": False,
+                })
+                notes.append(_("DPD exception cleared by %s.") % event_label)
 
         advanced_to = False
         movement_state = event._dpd_movement_state()
@@ -84,18 +112,21 @@ class SaleTransportLeg(models.Model):
 
         if vals:
             self.write(vals)
-        if not advanced_to:
+        for note in notes:
+            self._leg_post_log(note)
+        if advanced_to:
+            label = self._dpd_state_label(advanced_to)
+            self._leg_post_log(_(
+                "Status advanced to <b>%(state)s</b> from DPD webhook "
+                "(%(code)s - %(desc)s).") % {
+                    "state": label,
+                    "code": event.event_code or "-",
+                    "desc": event.event_description or "-",
+                })
+            notes.insert(0, _("Leg advanced to %s.") % label)
+        if not notes:
             return "recorded", _("Recorded; leg stays %s.") % self._dpd_state_label(self.state)
-
-        label = self._dpd_state_label(advanced_to)
-        self._leg_post_log(_(
-            "Status advanced to <b>%(state)s</b> from DPD webhook "
-            "(%(code)s - %(desc)s).") % {
-                "state": label,
-                "code": event.event_code or "-",
-                "desc": event.event_description or "-",
-            })
-        return "applied", _("Leg advanced to %s.") % label
+        return "applied", " ".join(notes)
 
     def _dpd_state_label(self, state):
         return dict(self._fields["state"].selection).get(state, state)
