@@ -52,6 +52,62 @@ _NON_MOVEMENT_CODES = {
     "491",  # Customs Status
     "505",  # Parcel Document
 }
+# Parcel event codes that mean the delivery is in trouble and someone should
+# look at the leg: failed attempts, refusals, holds/delays, misroutes,
+# returns and customs problems. Flagged on the leg as a DPD exception.
+_EXCEPTION_CODES = {
+    "002",  # Misdirect - Misroute
+    "003",  # Misdirect - Customer Mislabel
+    "008",  # Failed - Calling Card
+    "019",  # Held - In Hub
+    "020",  # Held - Late Trailer
+    "021",  # Held - Damaged Parcel
+    "022",  # Held - To Be Booked In
+    "023",  # Held - Chemicals
+    "027",  # Held - In Depot
+    "031",  # Refused - By Consignee
+    "032",  # Failed - No Time Available
+    "033",  # Failed - Unable To Locate/gain Access
+    "047",  # Refused - Damaged
+    "049",  # Return To Depot
+    "058",  # Request Further Instructions
+    "068",  # Failed - Notification Received
+    "072",  # Collection On Delivery Failure
+    "077",  # Failed Collection
+    "083",  # Held - International
+    "089",  # Failed - Incorrect Packaging
+    "092",  # Refused - Swap Not Ready
+    "402",  # Failed - Directions Required
+    "403",  # Refused - Contact Not Known
+    "404",  # Failed - No Premises Number/name
+    "407",  # Held - In Trailer
+    "409",  # Held - In Collection Depot
+    "410",  # Held - In Collection Depot
+    "411",  # Delivery Delayed
+    "412",  # Failed - Delivery Abandoned
+    "413",  # Shipment Delayed
+    "418",  # Shipment Not Received
+    "421",  # Duty Payment Required
+    "424",  # Duty Not Paid
+    "426",  # Parcel Disposed
+    "449",  # Failed - Delivery Check
+    "453",  # Unable To Deliver - Overweight (pickup)
+    "454",  # Refused - No Capacity (pickup)
+    "455",  # Failed - Premises Closed (pickup)
+    "456",  # Refused - By Consignee (at Pickup)
+    "461",  # Failed - No Valid Id (at Pickup)
+    "464",  # Refused - Damaged (pickup)
+    "465",  # Unable To Deliver - Oversized (pickup)
+    "471",  # Call Customer Regarding Delivery
+    "472",  # No Response To Rfi
+    "492",  # Unsuitable For Pickup Delivery
+    "495",  # Parcel Seized
+    "503",  # Held - In Hub: Depot Capacity
+    "504",  # Held - In Hub: Missed Onward Connection
+}
+# Parcel event codes that show the delivery is back on track, clearing an
+# earlier exception: out for delivery again, or delivered.
+_EXCEPTION_CLEARING_CODES = _DELIVERED_CODES | {"015"}
 # Webhook Notifications carry no eventCode; the type is the second
 # ``_``-separated fragment of messageId (e.g. ``<parcelCode>_OFD_<ts>``).
 _NOTIFICATION_DELIVERED = {
@@ -188,14 +244,16 @@ class DpdWebhookEvent(models.Model):
                     data.get("eventDate"), data.get("eventTime")),
             })
         elif data.get("notificationName"):
+            # Only Proof of Delivery carries a time (podDate/podTime). The
+            # others only have deliveryDate, which would parse as midnight,
+            # so fall back to the receipt time below instead.
             vals.update({
                 "kind": "notification",
                 "parcel_code": data.get("parcelCode"),
                 "event_code": self._dpd_notification_code(message_id),
                 "event_description": data["notificationName"],
-                "event_datetime": self._dpd_parse_datetime(
-                    data.get("podDate") or data.get("deliveryDate"),
-                    data.get("podTime")),
+                "event_datetime": data.get("podTime") and self._dpd_parse_datetime(
+                    data.get("podDate"), data.get("podTime")),
             })
 
         if vals.get("kind") in ("parcel", "notification") and vals.get("parcel_code"):
@@ -303,4 +361,19 @@ class DpdWebhookEvent(models.Model):
                 return False
             # Any other scan: hub, depot, out for delivery, failed attempt...
             return "in_transit"
+        return False
+
+    def _dpd_exception_effect(self):
+        """``"raise"`` if this event flags a delivery exception, ``"clear"``
+        if it shows the delivery is back on track, else False."""
+        self.ensure_one()
+        code = (self.event_code or "").upper()
+        if self.kind == "parcel":
+            if code in _EXCEPTION_CODES:
+                return "raise"
+            if code in _EXCEPTION_CLEARING_CODES:
+                return "clear"
+        elif self.kind == "notification":
+            if code in _NOTIFICATION_DELIVERED | _NOTIFICATION_IN_TRANSIT:
+                return "clear"
         return False

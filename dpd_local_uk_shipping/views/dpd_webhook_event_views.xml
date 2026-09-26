@@ -100,10 +100,53 @@
                 <field name="dpd_status_code" invisible="not dpd_status_code"/>
                 <field name="dpd_status_description" invisible="not dpd_status_code"/>
                 <field name="dpd_status_date" invisible="not dpd_status_code"/>
+                <field name="dpd_exception" invisible="1"/>
+                <field name="dpd_exception_description"
+                       decoration-danger="dpd_exception"
+                       invisible="not dpd_exception"/>
                 <button name="action_view_dpd_events" type="object"
                         string="DPD Events" icon="fa-list" class="btn-link"
                         invisible="not dpd_event_count"/>
             </field>
+        </field>
+    </record>
+
+    <record id="view_sale_transport_leg_list_dpd" model="ir.ui.view">
+        <field name="name">sale.transport.leg.list.dpd</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="inherit_id" ref="sale_goods_order.sale_transport_leg_list_view"/>
+        <field name="arch" type="xml">
+            <field name="service_id" position="after">
+                <field name="dpd_exception" column_invisible="1"/>
+                <field name="dpd_status_description" optional="hide"/>
+                <field name="dpd_exception_description" optional="show"
+                       decoration-danger="dpd_exception"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- sale.transport.leg had no search view (Odoo generated a bare one),
+         so this becomes its default search view. -->
+    <record id="view_sale_transport_leg_search_dpd" model="ir.ui.view">
+        <field name="name">sale.transport.leg.search.dpd</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="order_id"/>
+                <field name="customer_id"/>
+                <field name="tracking_code"/>
+                <field name="booking_ref"/>
+                <field name="carrier_id"/>
+                <filter name="dpd_exception" string="DPD Exception"
+                        domain="[('dpd_exception', '=', True)]"/>
+                <separator/>
+                <filter name="scheduled" string="Scheduled" domain="[('state', '=', 'scheduled')]"/>
+                <filter name="in_transit" string="In Transit" domain="[('state', '=', 'in_transit')]"/>
+                <filter name="completed" string="Completed" domain="[('state', '=', 'completed')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
