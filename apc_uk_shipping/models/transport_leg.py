@@ -10,10 +10,12 @@ from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
-# Movement axis (sale.transport.leg.state) ordered low -> high. The tracking
-# poll only ever advances a leg along this axis, never rewinds it, so a manual
-# advance by an operator is never undone by a stale carrier scan.
-_LEG_STATE_RANK = {"scheduled": 0, "in_transit": 1, "completed": 2}
+# Scans that mean the delivery has a problem: held at depot, held awaiting
+# collection, closed/carded, customer refused, return to sender. APC also
+# colours such scans orange/red (StatusColor), which catches codes not
+# listed here.
+_APC_EXCEPTION_CODES = {"95", "150", "76", "96", "44"}
+_APC_EXCEPTION_COLORS = {"orange", "red"}
 
 
 class SaleTransportLeg(models.Model):
@@ -27,15 +29,8 @@ class SaleTransportLeg(models.Model):
         help="18-digit APC OrderNumber returned after booking.",
         copy=False,
     )
-    apc_status_code = fields.Char(
-        string="APC Status Code",
-        help="Latest status code from APC Tracks endpoint.",
-        copy=False,
-    )
-    apc_status_description = fields.Char(
-        string="APC Status Description",
-        copy=False,
-    )
+    # Latest status and the exception flag live in transport_booking_core's
+    # shared carrier_status_* / carrier_exception fields.
     apc_label_attachment_id = fields.Many2one(
         "ir.attachment",
         string="APC Label",
@@ -175,12 +170,19 @@ class SaleTransportLeg(models.Model):
         # APC does not return Activity in time order, and DateTime is
         # "dd/mm/yyyy hh:mm:ss" so it can't be sorted as a string. sorted()
         # is stable, so scans sharing a timestamp keep APC's order.
-        statuses = self._apc_extract_statuses(track)
-        for status in sorted(
-                statuses,
-                key=lambda s: self._apc_parse_datetime(s.get("DateTime"))
-                or datetime.min):
-            self._apc_apply_status(leg, status)
+        scans = sorted(
+            ((self._apc_parse_datetime(s.get("DateTime")), s)
+             for s in self._apc_extract_statuses(track)),
+            key=lambda pair: pair[0] or datetime.min)
+        # history=yes and the poll overlap replay every earlier scan on each
+        # run. Only apply scans newer than the last one applied, otherwise
+        # two scans sharing a timestamp would flip the status back and forth
+        # (and post chatter) on every poll.
+        applied_up_to = leg.carrier_status_date
+        for scan_time, status in scans:
+            if applied_up_to and scan_time and scan_time <= applied_up_to:
+                continue
+            self._apc_apply_status(leg, status, scan_time)
 
     @staticmethod
     def _apc_parse_datetime(value):
@@ -231,40 +233,32 @@ class SaleTransportLeg(models.Model):
                         statuses.append(status)
         return statuses
 
-    def _apc_apply_status(self, leg, status):
-        status_code = status.get("StatusCode")
-        status_desc = status.get("StatusDescription") or ""
+    def _apc_apply_status(self, leg, status, scan_time=None):
+        status_code = str(status.get("StatusCode") or "").strip()
+        status_desc = (status.get("StatusDescription") or "").strip()
         booking_state, movement_state = self._apc_classify_status(
             status_code, status_desc,
             completed=str(status.get("Completed") or "").lower() == "true")
-        vals = {
-            "apc_status_code": status_code and str(status_code) or False,
-            "apc_status_description": status_desc,
-        }
         if booking_state and booking_state != leg.booking_state:
-            vals["booking_state"] = booking_state
+            leg.write({"booking_state": booking_state})
+        leg._leg_apply_carrier_status(
+            "APC", status_code, status_desc,
+            status_date=scan_time,
+            movement_state=movement_state,
+            exception=self._apc_exception_effect(
+                status_code, status.get("StatusColor"), movement_state),
+        )
 
-        advanced_to = False
-        if movement_state:
-            current_rank = _LEG_STATE_RANK.get(leg.state, 0)
-            if _LEG_STATE_RANK[movement_state] > current_rank:
-                vals["state"] = movement_state
-                advanced_to = movement_state
-                if movement_state == "completed" and not leg.date_completion:
-                    vals["date_completion"] = (
-                        self._apc_parse_datetime(status.get("DateTime"))
-                        or fields.Datetime.now())
-
-        leg.write(vals)
-        if advanced_to:
-            leg._leg_post_log(_(
-                "Status advanced to <b>%(state)s</b> from APC tracking "
-                "(%(code)s - %(desc)s).") % {
-                    "state": dict(leg._fields["state"].selection).get(
-                        advanced_to, advanced_to),
-                    "code": status_code or "-",
-                    "desc": status_desc or "-",
-                })
+    @staticmethod
+    def _apc_exception_effect(status_code, status_color, movement_state):
+        """``"raise"`` if this scan flags a delivery problem, ``"clear"`` if
+        it shows the delivery back on track, else False."""
+        color = str(status_color or "").strip().lower()
+        if status_code in _APC_EXCEPTION_CODES or color in _APC_EXCEPTION_COLORS:
+            return "raise"
+        if movement_state == "completed" or (movement_state and color == "green"):
+            return "clear"
+        return False
 
     def _apc_classify_status(self, status_code, status_desc, completed=False):
         """Map an APC tracking status to ``(booking_state, movement_state)``.

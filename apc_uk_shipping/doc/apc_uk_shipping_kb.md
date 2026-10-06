@@ -117,7 +117,7 @@ Reuse core fields where they exist; add APC-specific ones only.
 
 **`sale.transport.leg` (new):**
 - `apc_order_number` (Char, 18 digits)
-- `apc_status_code` / `apc_status_description` (from tracking)
+- Tracking status goes to the shared `carrier_status_*` / `carrier_exception` fields from `transport_booking_core` (the former `apc_status_code` / `apc_status_description` were migrated into them in 18.0.1.3.0)
 - `apc_label_attachment_id` (Many2one ir.attachment)
 - Per-item tracking numbers: field on `sale.package.line` vs JSON on leg — decision pending (align with DPD adapter precedent)
 
@@ -231,7 +231,7 @@ Key status codes (full table p.73):
 
 Pagination: responses include a Pagination block (50 items/page); cron must walk `NextPage`.
 
-The numeric-code fallback in `_apc_classify_status` (used only when the free-text `Status` description doesn't match a known keyword) previously used fabricated/misordered code sets (e.g. treated code `3` DELIVERED as pretransit, and a `delivered_codes` set of `14/15/16` that appears nowhere in APC's own guide). Fixed to `delivered_codes = {"3"}`, `cancelled_codes = {"97"}`, `pretransit_codes = {"1", "62"}` per the table above and the guide's worked example. Codes `71`/`70`/`69`/`63` and `2` (OUT FOR DELIVERY) have no dedicated numeric handling and fall through to a generic "any other scan → in_transit" branch — correct per the table, since the leg model has no dedicated `out_for_delivery` state. Codes `76`/`96`/`44` (exception-type: closed/carded, refused, return to sender) and `115–119`/`125` (PUR confirmation) also fall into that same generic in_transit branch — there is no `exception` state on the leg model today, so these are not distinguished from ordinary transit scans. Known, accepted gap; not fixed as part of the tracking-verification pass (would need a model/UI change).
+The numeric-code fallback in `_apc_classify_status` (used only when the free-text `Status` description doesn't match a known keyword) previously used fabricated/misordered code sets (e.g. treated code `3` DELIVERED as pretransit, and a `delivered_codes` set of `14/15/16` that appears nowhere in APC's own guide). Fixed to `delivered_codes = {"3"}`, `cancelled_codes = {"97"}`, `pretransit_codes = {"1", "62"}` per the table above and the guide's worked example. Codes `71`/`70`/`69`/`63` and `2` (OUT FOR DELIVERY) have no dedicated numeric handling and fall through to a generic "any other scan → in_transit" branch — correct per the table, since the leg model has no dedicated `out_for_delivery` state. Codes `76`/`96`/`44` (exception-type: closed/carded, refused, return to sender) and `115–119`/`125` (PUR confirmation) also fall into that same generic in_transit branch — the movement state is still in_transit, but since 6 Oct 2026 they also raise the shared courier exception flag (`carrier_exception`, see §10).
 
 Activity endpoint (POD signature, photo, GPS) deferred to phase two.
 
@@ -269,7 +269,7 @@ Activity endpoint (POD signature, photo, GPS) deferred to phase two.
 - [x] PUR cutoff validation (20:00, no same-day) for Goods In / Transport Orders
 - [ ] Amend / cancel actions with manifest guard
 - [x] Tracking cron with pagination + status mapping — shipped, found non-functional (wrong response shape parsed, fixed 22 Sep 2026; wrong `datefrom` format, fixed 6 Oct 2026); see §7
-- [ ] Exception flagging for holds / carded / refused / returns (95, 150, 76, 96, 44) — currently treated as plain in-transit
+- [x] Exception flagging for holds / carded / refused / returns (95, 150, 76, 96, 44, or `StatusColor` orange/red) — shared `carrier_exception` flag in `transport_booking_core`, cleared on delivery or a green in-transit scan
 - [ ] UAT on staging (all three order types) — blocked on booking/tracking a fresh order post-fix to confirm real scans now apply
 - [ ] Switch `label_format` to ZPL, environment to live
 - [ ] Phase two: Activity endpoint (POD/photo/GPS)

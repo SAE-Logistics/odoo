@@ -54,7 +54,7 @@ _NON_MOVEMENT_CODES = {
 }
 # Parcel event codes that mean the delivery is in trouble and someone should
 # look at the leg: failed attempts, refusals, holds/delays, misroutes,
-# returns and customs problems. Flagged on the leg as a DPD exception.
+# returns and customs problems. Flagged on the leg as a courier exception.
 _EXCEPTION_CODES = {
     "002",  # Misdirect - Misroute
     "003",  # Misdirect - Customer Mislabel

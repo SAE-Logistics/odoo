@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Transport Booking Core",
-    "version": "18.0.1.3.0",
+    "version": "18.0.1.4.0",
     "summary": "Carrier-agnostic per-leg shipment booking framework "
                "(adapter registry, booking state, per-leg action).",
     "description": """
@@ -22,6 +22,9 @@ Provides the carrier-agnostic orchestration for booking shipments per
 * **Picking-level suppression**: validating a Delivery Order never auto-books
   when the picking has transport legs. Booking is always explicit.
 * ``picking.carrier_id`` **primary-leg mirror** for native Odoo back-compat.
+* Shared **carrier tracking status** (``carrier_status_*``) and **courier
+  exception** flag on the leg, applied by every carrier module through
+  ``_leg_apply_carrier_status``.
 
 Provider adapters (DPD Local, APC, Crossflight, Palletworks, ...) depend on this
 module and register themselves. This module contains no carrier API specifics.
