@@ -187,6 +187,16 @@ All legs on an SAE order carry the same number of boxes (established SAE rule); 
 
 Cron polls multi-track endpoint: `GET Tracks.json?datefrom=<last poll>&history=yes`. Without a consignment number this returns all scans since the last call for the account (p.43) — efficient default. Map `StatusCode` to `booking_state` / leg state.
 
+**`datefrom` format is `dd-mm-yyyyThh:mm`** (e.g. `05-10-2026T00:00`). Anything else (including `dd/mm/yyyy`) returns HTTP 200 with `Tracks.Messages.Code = 119 "WRONG FORMAT FOR DATE (dd-mm-yyyyThh:mm)"` and no `Track` list. `datefrom` filters on **scan time**, not booking date — a consignment booked weeks earlier is returned if it has a scan inside the window. Confirmed live against training on 6 Oct 2026.
+
+**Root cause of the "no scans ever applied" problem (fixed 6 Oct 2026):** the cron sent `datefrom` as `dd/mm/yyyy`, so every poll since the module shipped was rejected with code 119. The poller did not check `Messages.Code`, treated the rejection as an empty result and advanced `apc_tracking_polled_at` anyway, so it failed silently. The training environment **does** produce scans: APC IT Service Desk set statuses manually on TR00004 waybills `…032` (75 → 150 → 3 → 95 → 3) and `…033` (74 → 95), and both appear in `Tracks.json` with full history. The poller now raises on any non-`SUCCESS` code, so the watermark stays put and the failure shows in the server log.
+
+**Live response details (training, 6 Oct 2026):**
+- `Activity` entries are **not in time order**, and `DateTime` is `dd/mm/yyyy hh:mm:ss` (UK local), so they are parsed before sorting rather than compared as strings.
+- Each `Status` also carries `Completed` (`"true"`/`"false"`), `StatusColor` (`green`/`orange`/…) and `StatusGroup` (e.g. `DELIVERY`). `Completed = "true"` is set on both 3 DELIVERED and 74 COLLECTED FROM DEPOT, so it is used as the primary delivered signal.
+- Holds seen: 95 HELD AT DELIVERY DEPOT, 150 HELD AWAITING COLLECTION (both `orange`). 75 CUSTOMER RE-ARRANGED is `green`.
+- The single-waybill endpoint without `history=yes` returns only the latest scan.
+
 **Response shape (p.44-46, confirmed against the guide's own worked example — do not assume `StatusCode`/`Status` sit at the top of each `Track`):**
 
 ```
@@ -199,7 +209,7 @@ Tracks.Track[]
 
 The status data is nested three levels below `Track`, and a `Track` can carry several `Activity` entries (full scan history for the consignment), not just the latest one. A first implementation (merged Aug 2026, `transport_leg.py`) read `track.get("StatusCode")` / `track.get("Status")` directly — those keys don't exist at that level, so every status came back empty and the cron silently no-op'd on every run against every real booking for ~4 weeks (confirmed live on staging 22 Sep 2026: 6 real APC waybills going back to 17 Jul 2026, all with `apc_status_code = False`). Fixed by walking the full path above and applying every `Activity` found, oldest-to-newest, through the existing forward-only state-rank guard (a leg's `state` can only advance, never regress, so replaying history is safe and gives a full audit trail in chatter).
 
-**Post-fix re-verification (22 Sep 2026):** fix deployed to staging (git pull + Odoo restart + upgrade), cron manually re-triggered against the same 7 real training waybills (32, 33, 70, 72, 80, 84, 85) — still zero scans applied afterward. Parser logic double-checked against the API guide's own worked example and is correct; deploy confirmed current via `apc_tracking_polled_at` advancing to the trigger time. The remaining explanation is that **APC's training environment does not simulate real depot scan events** for these waybills — consistent with a caveat left in the original tracking commit (`fff4ccd`). Not fully confirmed: next step is either asking APC's IT Service Desk (`itservicedesk@apc-overnight.com`, §11) whether training generates scans at all, or verifying against a live booking once APC goes live. Until one of those happens, the poller and its parsing should be considered code-complete but operationally unverified end-to-end.
+**Post-fix re-verification (22 Sep 2026):** fix deployed to staging (git pull + Odoo restart + upgrade), cron manually re-triggered against the same 7 real training waybills (32, 33, 70, 72, 80, 84, 85) — still zero scans applied afterward. Parser logic double-checked against the API guide's own worked example and is correct; deploy confirmed current via `apc_tracking_polled_at` advancing to the trigger time. ~~The remaining explanation is that APC's training environment does not simulate real depot scan events.~~ **Wrong — superseded 6 Oct 2026:** the real cause was the `datefrom` format (see above); training does return scans.
 
 Per the XML→JSON quirk (§9), `Items` and `Activity` collapse to a bare object instead of an array when there's only one element — the normaliser (`apc_api.py::_apc_normalise_items`) was widened to cover both keys, not just `Item`/`Orders`/`Label`.
 
@@ -258,7 +268,8 @@ Activity endpoint (POD signature, photo, GPS) deferred to phase two.
 - [x] Book + label flow (PDF), attach to leg
 - [x] PUR cutoff validation (20:00, no same-day) for Goods In / Transport Orders
 - [ ] Amend / cancel actions with manifest guard
-- [x] Tracking cron with pagination + status mapping — shipped, found non-functional (wrong response shape parsed), fixed 22 Sep 2026; see §7
+- [x] Tracking cron with pagination + status mapping — shipped, found non-functional (wrong response shape parsed, fixed 22 Sep 2026; wrong `datefrom` format, fixed 6 Oct 2026); see §7
+- [ ] Exception flagging for holds / carded / refused / returns (95, 150, 76, 96, 44) — currently treated as plain in-transit
 - [ ] UAT on staging (all three order types) — blocked on booking/tracking a fresh order post-fix to confirm real scans now apply
 - [ ] Switch `label_format` to ZPL, environment to live
 - [ ] Phase two: Activity endpoint (POD/photo/GPS)

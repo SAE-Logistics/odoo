@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
+
+import pytz
 
 from odoo import _, fields, models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -63,8 +66,11 @@ class SaleTransportLeg(models.Model):
                  or run_start - timedelta(days=self._APC_POLL_LOOKBACK_DAYS))
                 - timedelta(days=self._APC_POLL_OVERLAP_DAYS)
             )
+            # APC rejects any other date format with Messages code 119
+            # (WRONG FORMAT FOR DATE). datefrom filters on scan time, not
+            # booking date, so old consignments with new scans still return.
             params = {
-                "datefrom": since.strftime("%d/%m/%Y"),
+                "datefrom": since.strftime("%d-%m-%YT%H:%M"),
                 "history": "yes",
             }
             try:
@@ -80,6 +86,7 @@ class SaleTransportLeg(models.Model):
         seen_pages = 0
         while True:
             response = client.call("GET", "Tracks.json", params=params)
+            self._apc_check_response(response)
             for track in self._apc_extract_tracks(response):
                 self._apc_apply_track(track)
             next_page = self._apc_next_page(response)
@@ -87,6 +94,34 @@ class SaleTransportLeg(models.Model):
             if not next_page or seen_pages > 100:
                 break
             params["page"] = next_page
+
+    @staticmethod
+    def _apc_check_response(response):
+        """Raise if APC rejected the request.
+
+        APC reports request errors as HTTP 200 with a non-SUCCESS
+        ``Tracks.Messages.Code`` and no ``Track`` list. Treating that as an
+        empty result let the cron advance its watermark on every run while
+        never receiving a scan, so fail loudly instead and keep the
+        watermark where it is.
+        """
+        if not isinstance(response, dict):
+            return
+        container = response.get("Tracks")
+        if not isinstance(container, dict):
+            container = response
+        messages = container.get("Messages")
+        if isinstance(messages, list):
+            messages = messages[0] if messages else {}
+        if not isinstance(messages, dict):
+            return
+        code = str(messages.get("Code") or "").strip().upper()
+        if code and code != "SUCCESS":
+            raise ValidationError(_(
+                "APC Tracks request rejected (%(code)s): %(desc)s") % {
+                    "code": code,
+                    "desc": messages.get("Description") or "-",
+                })
 
     @staticmethod
     def _apc_extract_tracks(response):
@@ -137,10 +172,30 @@ class SaleTransportLeg(models.Model):
         if not leg or leg.is_internal:
             return
 
+        # APC does not return Activity in time order, and DateTime is
+        # "dd/mm/yyyy hh:mm:ss" so it can't be sorted as a string. sorted()
+        # is stable, so scans sharing a timestamp keep APC's order.
         statuses = self._apc_extract_statuses(track)
-        for status in sorted(statuses, key=lambda s: s.get("DateTime") or ""):
-            self._apc_apply_status(
-                leg, status.get("StatusCode"), status.get("StatusDescription") or "")
+        for status in sorted(
+                statuses,
+                key=lambda s: self._apc_parse_datetime(s.get("DateTime"))
+                or datetime.min):
+            self._apc_apply_status(leg, status)
+
+    @staticmethod
+    def _apc_parse_datetime(value):
+        """Parse an APC scan time (UK local, "dd/mm/yyyy hh:mm:ss") to a
+        naive UTC datetime, or ``None`` if it can't be read."""
+        if not value:
+            return None
+        for fmt in ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M"):
+            try:
+                local = datetime.strptime(str(value).strip(), fmt)
+            except ValueError:
+                continue
+            london = pytz.timezone("Europe/London").localize(local)
+            return london.astimezone(pytz.utc).replace(tzinfo=None)
+        return None
 
     @staticmethod
     def _apc_extract_statuses(track):
@@ -176,9 +231,12 @@ class SaleTransportLeg(models.Model):
                         statuses.append(status)
         return statuses
 
-    def _apc_apply_status(self, leg, status_code, status_desc):
+    def _apc_apply_status(self, leg, status):
+        status_code = status.get("StatusCode")
+        status_desc = status.get("StatusDescription") or ""
         booking_state, movement_state = self._apc_classify_status(
-            status_code, status_desc)
+            status_code, status_desc,
+            completed=str(status.get("Completed") or "").lower() == "true")
         vals = {
             "apc_status_code": status_code and str(status_code) or False,
             "apc_status_description": status_desc,
@@ -193,7 +251,9 @@ class SaleTransportLeg(models.Model):
                 vals["state"] = movement_state
                 advanced_to = movement_state
                 if movement_state == "completed" and not leg.date_completion:
-                    vals["date_completion"] = fields.Datetime.now()
+                    vals["date_completion"] = (
+                        self._apc_parse_datetime(status.get("DateTime"))
+                        or fields.Datetime.now())
 
         leg.write(vals)
         if advanced_to:
@@ -206,29 +266,40 @@ class SaleTransportLeg(models.Model):
                     "desc": status_desc or "-",
                 })
 
-    def _apc_classify_status(self, status_code, status_desc):
+    def _apc_classify_status(self, status_code, status_desc, completed=False):
         """Map an APC tracking status to ``(booking_state, movement_state)``.
 
-        A ``False`` element means "leave that field unchanged". APC status
-        codes vary by service, so the human-readable ``Status`` description is
-        the primary signal and the numeric code is only a fallback.
+        A ``False`` element means "leave that field unchanged". APC's own
+        ``Completed`` flag on the scan is the primary delivered signal (it is
+        also set for e.g. 74 COLLECTED FROM DEPOT, which has no "delivered"
+        wording); the description keywords and numeric codes are fallbacks.
         """
         desc = (status_desc or "").strip().lower()
         code = str(status_code or "").strip()
 
-        # Confirmed against the APC API guide's own worked example (p.44-46)
-        # and KB §7's status table - not guessed.
+        # Confirmed against the APC API guide's own worked example (p.44-46),
+        # KB §7's status table and live training responses - not guessed.
         delivered_codes = {"3"}  # DELIVERED
         cancelled_codes = {"97"}  # CANCELLED
+        returned_codes = {"44"}  # RETURN TO SENDER
         # "Accepted by APC but not physically collected / scanned yet."
         pretransit_codes = {"1", "62"}  # READY TO PRINT, LABEL PRINTED
 
         if "cancel" in desc or code in cancelled_codes:
             return "none", False
-        if (any(kw in desc for kw in (
-                "delivered", "proof of delivery", "pod", "signed for"))
+        # A return is never a completed delivery, whatever Completed says.
+        if "return" in desc or code in returned_codes:
+            return "booked", "in_transit"
+        if (completed
+                or any(kw in desc for kw in (
+                    "delivered", "proof of delivery", "pod", "signed for"))
                 or code in delivered_codes):
             return "booked", "completed"
+        # Depot holds (95 HELD AT DELIVERY DEPOT, 150 HELD AWAITING
+        # COLLECTION) happen after pickup; check before the pre-transit
+        # keywords, which would otherwise match "awaiting collection".
+        if "held" in desc:
+            return "booked", "in_transit"
         if (any(kw in desc for kw in (
                 "order received", "manifest", "awaiting collection",
                 "not yet received", "pre-advice", "expected"))
