@@ -7,8 +7,6 @@
         <field name="arch" type="xml">
             <field name="booking_ref" position="after">
                 <field name="apc_order_number"/>
-                <field name="apc_status_code"/>
-                <field name="apc_status_description"/>
                 <field name="apc_label_attachment_id"/>
             </field>
             <xpath expr="//field[@name='to_email']" position="after">

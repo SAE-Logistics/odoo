@@ -2,12 +2,19 @@
 
 import logging
 
+from markupsafe import Markup
+
 from odoo import _, fields, models
 from odoo.exceptions import UserError
 
 from ..booking import TransportBookingAdapter, TransportBookingError
 
 _logger = logging.getLogger(__name__)
+
+# Movement axis (sale.transport.leg.state) ordered low -> high. Carrier
+# tracking only ever advances a leg along this axis, never rewinds it, so a
+# manual advance by an operator is never undone by a late or stale scan.
+_LEG_STATE_RANK = {"scheduled": 0, "in_transit": 1, "completed": 2}
 
 
 class SaleTransportLeg(models.Model):
@@ -33,6 +40,29 @@ class SaleTransportLeg(models.Model):
     booking_message = fields.Text(
         string="Booking Message", copy=False,
         help="Last booking error, when Booking Status is 'Failed'.",
+    )
+
+    # Latest carrier tracking status, shared by every carrier integration
+    # (DPD webhooks, APC polling, ...). Written only through
+    # _leg_apply_carrier_status().
+    carrier_status_code = fields.Char(
+        string="Carrier Status Code", copy=False, readonly=True,
+        help="Latest status code reported by the carrier.",
+    )
+    carrier_status_description = fields.Char(
+        string="Carrier Status", copy=False, readonly=True,
+    )
+    carrier_status_date = fields.Datetime(
+        string="Carrier Status Time", copy=False, readonly=True,
+    )
+    carrier_exception = fields.Boolean(
+        string="Courier Exception", copy=False, readonly=True, index=True,
+        help="The carrier reported a failed attempt, hold, refusal, return "
+             "or other problem. Cleared when the carrier reports the parcel "
+             "back on track or delivered.",
+    )
+    carrier_exception_description = fields.Char(
+        string="Courier Exception Detail", copy=False, readonly=True,
     )
 
     # ------------------------------------------------------------------
@@ -232,6 +262,81 @@ class SaleTransportLeg(models.Model):
                 raise UserError(_("Could not cancel: %s") % exc)
         self.write({"booking_state": "none", "booking_message": False})
         return self._leg_notify("success", _("Booking cancelled."))
+
+    # ------------------------------------------------------------------
+    # Carrier tracking status
+    # ------------------------------------------------------------------
+    def _leg_apply_carrier_status(self, carrier_label, code, description,
+                                  status_date=False, movement_state=False,
+                                  exception=False):
+        """Apply one carrier tracking status to this leg.
+
+        Carrier modules decide what a status means (``movement_state`` and
+        ``exception``); this method owns how it lands on the leg, so every
+        integration behaves the same:
+
+        * ``carrier_status_*`` and the exception flag follow the newest
+          status by ``status_date`` - a late-arriving older status can't
+          overwrite or raise/clear out of order.
+        * ``state`` only ever advances (``_LEG_STATE_RANK``).
+        * One chatter note per status that changes something.
+
+        :param movement_state: ``"in_transit"``/``"completed"`` or False.
+        :param exception: ``"raise"``, ``"clear"`` or False.
+        :return: list of short change descriptions (empty if nothing
+            changed).
+        """
+        self.ensure_one()
+        status_label = "%s - %s" % (code or "-", description or "-")
+        vals = {}
+        changes = []
+
+        is_latest = (not status_date or not self.carrier_status_date
+                     or status_date >= self.carrier_status_date)
+        if is_latest:
+            new_status = {
+                "carrier_status_code": code or False,
+                "carrier_status_description": description or False,
+                "carrier_status_date": status_date or fields.Datetime.now(),
+            }
+            if ((self.carrier_status_code or False, self.carrier_status_description or False)
+                    != (new_status["carrier_status_code"],
+                        new_status["carrier_status_description"])):
+                changes.append(_("%(carrier)s status: %(status)s") % {
+                    "carrier": carrier_label, "status": status_label})
+            vals.update(new_status)
+            if exception == "raise" and (
+                    not self.carrier_exception
+                    or self.carrier_exception_description != status_label):
+                vals.update({
+                    "carrier_exception": True,
+                    "carrier_exception_description": status_label,
+                })
+                changes.append(_("Courier exception raised."))
+            elif exception == "clear" and self.carrier_exception:
+                vals.update({
+                    "carrier_exception": False,
+                    "carrier_exception_description": False,
+                })
+                changes.append(_("Courier exception cleared."))
+
+        if movement_state and (
+                _LEG_STATE_RANK[movement_state]
+                > _LEG_STATE_RANK.get(self.state, 0)):
+            vals["state"] = movement_state
+            if movement_state == "completed" and not self.date_completion:
+                vals["date_completion"] = status_date or fields.Datetime.now()
+            changes.append(_("Leg advanced to %s.") % dict(
+                self._fields["state"].selection).get(
+                    movement_state, movement_state))
+
+        if vals:
+            self.write(vals)
+        if changes:
+            # Markup.join escapes each line; a plain str body would be
+            # escaped whole and show a literal "<br/>".
+            self._leg_post_log(Markup("<br/>").join(changes))
+        return changes
 
     # ------------------------------------------------------------------
     # Tracking URL

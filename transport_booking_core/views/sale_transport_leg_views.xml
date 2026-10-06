@@ -30,7 +30,53 @@
                 <field name="booking_ref" readonly="1"/>
                 <field name="booking_message" readonly="1"
                        invisible="booking_state != 'failed'"/>
+                <field name="carrier_status_code" invisible="not carrier_status_code"/>
+                <field name="carrier_status_description" invisible="not carrier_status_code"/>
+                <field name="carrier_status_date" invisible="not carrier_status_code"/>
+                <field name="carrier_exception" invisible="1"/>
+                <field name="carrier_exception_description"
+                       decoration-danger="carrier_exception"
+                       invisible="not carrier_exception"/>
             </field>
+        </field>
+    </record>
+
+    <record id="view_sale_transport_leg_list_carrier_status" model="ir.ui.view">
+        <field name="name">sale.transport.leg.list.carrier.status</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="inherit_id" ref="sale_goods_order.sale_transport_leg_list_view"/>
+        <field name="arch" type="xml">
+            <field name="service_id" position="after">
+                <field name="carrier_exception" column_invisible="1"/>
+                <field name="carrier_status_description" optional="hide"/>
+                <field name="carrier_exception_description" optional="show"
+                       decoration-danger="carrier_exception"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- sale.transport.leg has no search view in sale_goods_order, so this is
+         its default search view (moved here from dpd_local_uk_shipping). -->
+    <record id="view_sale_transport_leg_search" model="ir.ui.view">
+        <field name="name">sale.transport.leg.search</field>
+        <field name="model">sale.transport.leg</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="order_id"/>
+                <field name="customer_id"/>
+                <field name="tracking_code"/>
+                <field name="booking_ref"/>
+                <field name="carrier_id"/>
+                <filter name="carrier_exception" string="Courier Exception"
+                        domain="[('carrier_exception', '=', True)]"/>
+                <separator/>
+                <filter name="scheduled" string="Scheduled" domain="[('state', '=', 'scheduled')]"/>
+                <filter name="in_transit" string="In Transit" domain="[('state', '=', 'in_transit')]"/>
+                <filter name="completed" string="Completed" domain="[('state', '=', 'completed')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
         </field>
     </record>
 </odoo>

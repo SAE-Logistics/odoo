@@ -2,34 +2,12 @@
 
 from odoo import _, api, fields, models
 
-# Movement axis (sale.transport.leg.state) ordered low -> high. DPD webhooks
-# only ever advance a leg along this axis, never rewind it, so a manual
-# advance by an operator is never undone by a late or out-of-order scan.
-_LEG_STATE_RANK = {"scheduled": 0, "in_transit": 1, "completed": 2}
-
 
 class SaleTransportLeg(models.Model):
     _inherit = "sale.transport.leg"
 
-    dpd_status_code = fields.Char(
-        string="DPD Status Code", copy=False, readonly=True,
-        help="Latest DPD webhook event code for this leg's parcels.",
-    )
-    dpd_status_description = fields.Char(
-        string="DPD Status", copy=False, readonly=True,
-    )
-    dpd_status_date = fields.Datetime(
-        string="DPD Status Time", copy=False, readonly=True,
-    )
-    dpd_exception = fields.Boolean(
-        string="DPD Exception", copy=False, readonly=True, index=True,
-        help="DPD reported a failed attempt, hold, delay, return or other "
-             "problem. Cleared when the parcel goes out for delivery again "
-             "or is delivered.",
-    )
-    dpd_exception_description = fields.Char(
-        string="DPD Exception Detail", copy=False, readonly=True,
-    )
+    # Latest status and the exception flag live in transport_booking_core's
+    # shared carrier_status_* / carrier_exception fields.
     dpd_event_count = fields.Integer(compute="_compute_dpd_event_count")
 
     def _compute_dpd_event_count(self):
@@ -65,68 +43,23 @@ class SaleTransportLeg(models.Model):
     def _dpd_apply_event(self, event):
         """Apply one dpd.webhook.event to this leg.
 
-        Returns ``(state, message)`` for the event record. The DPD status
-        fields follow the newest event by event time (webhooks can arrive
-        out of order); the movement state only ever advances.
+        Returns ``(state, message)`` for the event record. Ordering, the
+        forward-only movement rule and chatter are handled by the shared
+        ``_leg_apply_carrier_status``.
         """
         self.ensure_one()
         if self.is_internal:
             return "recorded", _("Leg is internal; DPD status not applied.")
 
-        vals = {}
-        notes = []
-        is_latest = not self.dpd_status_date or (
-            event.event_datetime and event.event_datetime >= self.dpd_status_date)
-        if is_latest:
-            vals.update({
-                "dpd_status_code": event.event_code,
-                "dpd_status_description": event.event_description,
-                "dpd_status_date": event.event_datetime,
-            })
-            # Exceptions follow the newest event too, so a late-arriving
-            # older scan can't raise or clear the flag out of order.
-            effect = event._dpd_exception_effect()
-            event_label = "%s - %s" % (
-                event.event_code or "-", event.event_description or "-")
-            if effect == "raise":
-                vals.update({
-                    "dpd_exception": True,
-                    "dpd_exception_description": event_label,
-                })
-                notes.append(_("DPD exception: %s") % event_label)
-            elif effect == "clear" and self.dpd_exception:
-                vals.update({
-                    "dpd_exception": False,
-                    "dpd_exception_description": False,
-                })
-                notes.append(_("DPD exception cleared by %s.") % event_label)
-
-        advanced_to = False
-        movement_state = event._dpd_movement_state()
-        if movement_state and (
-                _LEG_STATE_RANK[movement_state] > _LEG_STATE_RANK.get(self.state, 0)):
-            vals["state"] = movement_state
-            advanced_to = movement_state
-            if movement_state == "completed" and not self.date_completion:
-                vals["date_completion"] = event.event_datetime or fields.Datetime.now()
-
-        if vals:
-            self.write(vals)
-        for note in notes:
-            self._leg_post_log(note)
-        if advanced_to:
-            label = self._dpd_state_label(advanced_to)
-            self._leg_post_log(_(
-                "Status advanced to <b>%(state)s</b> from DPD webhook "
-                "(%(code)s - %(desc)s).") % {
-                    "state": label,
-                    "code": event.event_code or "-",
-                    "desc": event.event_description or "-",
-                })
-            notes.insert(0, _("Leg advanced to %s.") % label)
-        if not notes:
+        changes = self._leg_apply_carrier_status(
+            "DPD", event.event_code, event.event_description,
+            status_date=event.event_datetime,
+            movement_state=event._dpd_movement_state(),
+            exception=event._dpd_exception_effect(),
+        )
+        if not changes:
             return "recorded", _("Recorded; leg stays %s.") % self._dpd_state_label(self.state)
-        return "applied", " ".join(notes)
+        return "applied", " ".join(changes)
 
     def _dpd_state_label(self, state):
         return dict(self._fields["state"].selection).get(state, state)
