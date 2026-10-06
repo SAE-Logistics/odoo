@@ -104,12 +104,12 @@
                             <group>
                                 <field name="transport_from_id"
                                        options="{'no_create_edit': False}"
-                                       context="{'default_parent_id': partner_id, 'default_type': 'delivery'}"/>
+                                       context="{'default_type': 'delivery'}"/>
                             </group>
                             <group>
                                 <field name="transport_to_id"
                                        options="{'no_create_edit': False}"
-                                       context="{'default_parent_id': partner_id, 'default_type': 'delivery'}"/>
+                                       context="{'default_type': 'delivery'}"/>
                             </group>
                         </group>
                         <field name="product_line_ids">
