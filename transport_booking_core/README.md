@@ -88,8 +88,22 @@ check guards the physical `state` transitions too —
 Transit / Completed, whether triggered from the single-leg form buttons or
 the Transport Legs list bulk actions.
 
-`action_leg_reset_booking` / `action_leg_cancel_booking` put a leg back to
-`none`; cancel also calls the adapter's `cancel()` when one is registered.
+**Cancel and rebook (no amend).** To change a booked leg, cancel it and send
+it again; there is no amend. `action_leg_cancel_booking`:
+- only works on a `booked` leg that is still `scheduled`, and asks the
+  adapter's `check_cancellable()` first (APC: nothing past the paperwork
+  scans 1/62/92);
+- calls the adapter's `cancel()`. It returns True if the carrier voided the
+  booking, or False if the carrier has no cancel API (DPD Local): the booking
+  is then cleared in Odoo only, with a warning to discard the label. If the
+  carrier rejects the cancel, the leg stays booked and the user sees why;
+- on success clears the booking and tracking fields
+  (`_leg_cancelled_booking_vals`, extended by carrier modules) and logs the
+  old reference in chatter.
+
+`action_leg_reset_booking` resets `booking_state` in Odoo only. It is hidden
+(and refused) for carriers whose adapter sets `supports_remote_cancel`
+(APC), because it would leave a live carrier booking behind.
 
 ## Adapter registry
 
@@ -110,8 +124,13 @@ class DpdLocalAdapter(TransportBookingAdapter):
         ...
         return BookingResult(tracking_number=..., consignment_ref=...)
 
-    def cancel(self, leg):
+    supports_remote_cancel = False        # True if cancel() voids at the carrier
+
+    def check_cancellable(self, leg):     # optional: raise if too late
         ...
+
+    def cancel(self, leg):
+        return False                      # True = voided at carrier
 
     def get_tracking_url(self, leg):
         return f"https://..."

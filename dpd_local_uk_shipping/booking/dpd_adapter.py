@@ -50,10 +50,9 @@ class DpdLocalAdapter(TransportBookingAdapter):
 
     def cancel(self, leg):
         # DPD's REST API has no shipment-void endpoint. Nothing to call
-        # server-side; the core clears local booking state after this returns.
-        raise TransportBookingError(
-            "DPD Local has no shipment-void API. Discard the unused label; the "
-            "booking has been cleared in Odoo.")
+        # server-side; returning False tells the core to clear the booking
+        # in Odoo only and warn the user to discard the label.
+        return False
 
     def get_tracking_url(self, leg):
         reference = leg.tracking_code or leg.booking_ref or ""

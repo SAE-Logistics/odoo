@@ -9,6 +9,7 @@
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
                 <field name="carrier_service_id" invisible="1"/>
+                <field name="booking_remote_cancel" invisible="1"/>
                 <button name="action_leg_send_to_shipper"
                         type="object"
                         string="Send to Shipper"
@@ -22,7 +23,7 @@
                 <button name="action_leg_reset_booking"
                         type="object"
                         string="Reset Booking"
-                        invisible="booking_state != 'booked'"/>
+                        invisible="booking_state != 'booked' or booking_remote_cancel"/>
                 <field name="booking_state" widget="statusbar"
                        statusbar_visible="none,pending,booked"/>
             </xpath>

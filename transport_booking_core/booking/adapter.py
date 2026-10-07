@@ -53,6 +53,11 @@ class TransportBookingAdapter:
 
     provider_code = None  # e.g. "dpd_local"; matches delivery.carrier.transport_provider
 
+    # True when cancel() really voids the booking at the carrier. Legs of
+    # such carriers hide "Reset Booking" (an Odoo-only reset would leave a
+    # live carrier booking behind and invite a duplicate on re-send).
+    supports_remote_cancel = False
+
     # provider_code -> adapter instance
     _registry = {}
 
@@ -85,11 +90,21 @@ class TransportBookingAdapter:
         TransportBookingError. Must not write leg fields."""
         raise NotImplementedError
 
+    def check_cancellable(self, leg):
+        """Raise TransportBookingError if the carrier will no longer accept
+        a cancel for this leg (e.g. already manifested/collected). Called
+        before ``cancel``. Default: no extra check."""
+
     def cancel(self, leg):
-        """Cancel a previously booked leg. Optional."""
-        raise NotImplementedError(
-            "Cancellation is not implemented for provider %s"
-            % self.provider_code)
+        """Cancel a previously booked leg.
+
+        Return True if the booking was voided at the carrier, False if the
+        carrier has no cancel API (the core then clears the booking in Odoo
+        only and warns the user). Raise TransportBookingError if the carrier
+        rejected the cancel - the leg then stays booked. Must not write leg
+        fields.
+        """
+        return False
 
     def get_tracking_url(self, leg):
         """Public tracking URL for the leg, or empty string."""

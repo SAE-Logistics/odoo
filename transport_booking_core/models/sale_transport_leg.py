@@ -41,6 +41,11 @@ class SaleTransportLeg(models.Model):
         string="Booking Message", copy=False,
         help="Last booking error, when Booking Status is 'Failed'.",
     )
+    booking_remote_cancel = fields.Boolean(
+        compute="_compute_booking_remote_cancel",
+        help="The leg's carrier adapter can void bookings at the carrier, so "
+             "Reset Booking (Odoo only) is hidden in favour of Cancel Booking.",
+    )
 
     # Latest carrier tracking status, shared by every carrier integration
     # (DPD webhooks, APC polling, ...). Written only through
@@ -64,6 +69,15 @@ class SaleTransportLeg(models.Model):
     carrier_exception_description = fields.Char(
         string="Courier Exception Detail", copy=False, readonly=True,
     )
+
+    def _compute_booking_remote_cancel(self):
+        for leg in self:
+            adapter = False
+            if not leg.is_internal:
+                carrier = leg._leg_find_delivery_carrier()
+                adapter = carrier and leg._leg_booking_adapter(carrier)
+            leg.booking_remote_cancel = bool(
+                adapter and adapter.supports_remote_cancel)
 
     # ------------------------------------------------------------------
     # Non-API-leg booking/state sync
@@ -245,6 +259,10 @@ class SaleTransportLeg(models.Model):
 
     def action_leg_reset_booking(self):
         self.ensure_one()
+        if self.booking_remote_cancel:
+            raise UserError(_(
+                "This carrier supports cancelling the booking. Use Cancel "
+                "Booking instead, so the carrier booking is voided too."))
         self.write({
             "booking_state": "none",
             "booking_message": False,
@@ -252,16 +270,61 @@ class SaleTransportLeg(models.Model):
         return True
 
     def action_leg_cancel_booking(self):
+        """Cancel this leg's booking with the carrier, then clear it in Odoo.
+
+        If the carrier rejects the cancel (or it is no longer allowed) the
+        leg stays booked and the user sees why. Cancel-and-rebook is the
+        way to change a booked leg - there is no amend.
+        """
         self.ensure_one()
+        if self.booking_state != "booked":
+            raise UserError(_("This leg has no booking to cancel."))
         carrier = self._leg_find_delivery_carrier()
         adapter = self._leg_booking_adapter(carrier) if carrier else None
-        if adapter is not None:
-            try:
-                adapter.cancel(self)
-            except (TransportBookingError, NotImplementedError) as exc:
-                raise UserError(_("Could not cancel: %s") % exc)
-        self.write({"booking_state": "none", "booking_message": False})
-        return self._leg_notify("success", _("Booking cancelled."))
+        if adapter is None:
+            # Manual carrier / internal fleet: nothing booked remotely.
+            self.write({"booking_state": "none", "booking_message": False})
+            return self._leg_notify("success", _("Booking cancelled."))
+
+        if self.state != "scheduled":
+            raise UserError(_(
+                "This leg is already %s, so the booking can no longer be "
+                "cancelled from Odoo. Contact the carrier.") % dict(
+                    self._fields["state"].selection).get(self.state, self.state))
+        try:
+            adapter.check_cancellable(self)
+            cancelled_remotely = adapter.cancel(self)
+        except TransportBookingError as exc:
+            raise UserError(_("Could not cancel: %s") % exc)
+
+        old_ref = self.booking_ref or self.tracking_code or "-"
+        self.write(self._leg_cancelled_booking_vals())
+        if cancelled_remotely:
+            self._leg_post_log(_(
+                "Booking %s cancelled with the carrier.") % old_ref)
+            return self._leg_notify("success", _(
+                "Booking %s cancelled with the carrier.") % old_ref)
+        self._leg_post_log(_(
+            "Booking %s cleared in Odoo only - this carrier has no cancel "
+            "API. Discard the unused label.") % old_ref)
+        return self._leg_notify("warning", _(
+            "Booking %s cleared in Odoo only - this carrier has no cancel "
+            "API. Discard the unused label.") % old_ref)
+
+    def _leg_cancelled_booking_vals(self):
+        """Fields reset after an adapter cancel, so the leg is ready to be
+        re-sent with no stale carrier data. Carrier modules extend this."""
+        return {
+            "booking_state": "none",
+            "booking_message": False,
+            "booking_ref": False,
+            "tracking_code": False,
+            "carrier_status_code": False,
+            "carrier_status_description": False,
+            "carrier_status_date": False,
+            "carrier_exception": False,
+            "carrier_exception_description": False,
+        }
 
     # ------------------------------------------------------------------
     # Carrier tracking status

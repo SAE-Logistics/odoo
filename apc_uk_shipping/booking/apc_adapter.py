@@ -23,6 +23,12 @@ class ApcAdapter(TransportBookingAdapter):
     """APC Overnight booking adapter for the transport_booking_core framework."""
 
     provider_code = "apc"
+    supports_remote_cancel = True
+
+    # APC accepts a cancel only until the consignment is manifested (KB §5,
+    # API guide p.57-59). These paperwork scans come before that; any other
+    # scan (63 MANIFESTED, depot scans, ...) means it is too late.
+    _CANCELLABLE_STATUS_CODES = {"1", "62", "92"}
 
     def _carrier(self, leg):
         carrier = leg._leg_find_delivery_carrier()
@@ -186,21 +192,61 @@ class ApcAdapter(TransportBookingAdapter):
             raw_response=data,
         )
 
+    def check_cancellable(self, leg):
+        code = (leg.carrier_status_code or "").strip()
+        if code and code not in self._CANCELLABLE_STATUS_CODES:
+            raise TransportBookingError(
+                "APC has already reported '%s - %s' for this consignment, so "
+                "it can no longer be cancelled through the API. Contact APC."
+                % (code, leg.carrier_status_description or "-"))
+
     def cancel(self, leg):
         carrier = self._carrier(leg)
-        waybill = leg.booking_ref
+        waybill = leg.booking_ref or leg.tracking_code
         if not waybill:
             raise TransportBookingError("No booking reference on this leg.")
         client = ApcApiClient(carrier)
         try:
-            client.call(
+            response = client.call(
                 "PUT", f"Orders/{waybill}.json",
                 params={"searchtype": "CarrierWaybill"},
                 payload={"CancelOrder": {"Order": {"Status": "CANCELLED"}}}
             )
         except ValidationError as exc:
             raise TransportBookingError(str(exc)) from exc
+        _logger.info("APC cancel response for %s: %s", waybill,
+                     json.dumps(response, default=str)[:2000])
+        # APC reports rejections (e.g. already manifested) as HTTP 200 with
+        # a non-SUCCESS Messages code, which client.call doesn't treat as an
+        # error. Without this check Odoo would clear a booking APC still has.
+        errors = self._apc_response_errors(response)
+        if errors:
+            raise TransportBookingError(
+                "APC rejected the cancel: %s" % "; ".join(errors))
         return True
+
+    @classmethod
+    def _apc_response_errors(cls, data):
+        """Every non-SUCCESS ``Messages`` entry anywhere in an APC response,
+        as "CODE: Description" strings. Walks the whole payload because the
+        cancel response layout is not documented."""
+        errors = []
+        if isinstance(data, dict):
+            messages = data.get("Messages")
+            for msg in (messages if isinstance(messages, list) else [messages]):
+                if not isinstance(msg, dict):
+                    continue
+                code = str(msg.get("Code") or "").strip()
+                if code and code.upper() != "SUCCESS":
+                    errors.append("%s: %s" % (
+                        code, msg.get("Description") or msg.get("Text") or "-"))
+            for key, value in data.items():
+                if key != "Messages":
+                    errors.extend(cls._apc_response_errors(value))
+        elif isinstance(data, list):
+            for item in data:
+                errors.extend(cls._apc_response_errors(item))
+        return errors
 
     def get_tracking_url(self, leg):
         # Best-guess only: apc-overnight.com now redirects to apc.co.uk, and

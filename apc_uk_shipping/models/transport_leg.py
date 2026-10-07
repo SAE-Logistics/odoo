@@ -313,6 +313,16 @@ class SaleTransportLeg(models.Model):
             return "booked", "in_transit", "raise"
         return "booked", "in_transit", "clear" if color == "green" else False
 
+    def _leg_cancelled_booking_vals(self):
+        vals = super()._leg_cancelled_booking_vals()
+        # The label stays attached to the leg (and in chatter) for the
+        # record; only the link to the current label is cleared.
+        vals.update({
+            "apc_order_number": False,
+            "apc_label_attachment_id": False,
+        })
+        return vals
+
     def _apply_booking_result(self, result):
         """Write booking outcome + persist the label to APC-specific field.
 
