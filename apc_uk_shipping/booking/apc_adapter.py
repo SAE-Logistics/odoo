@@ -30,6 +30,12 @@ class ApcAdapter(TransportBookingAdapter):
     # scan (63 MANIFESTED, depot scans, ...) means it is too late.
     _CANCELLABLE_STATUS_CODES = {"1", "62", "92"}
 
+    # Message codes that mean the request worked. A successful cancel does
+    # NOT return SUCCESS: confirmed on staging 7 Oct 2026, the reply is
+    # {"CancelOrder": {"Messages": {"Code": "121", "Description":
+    # "Order Cancelled"}}}.
+    _SUCCESS_CODES = {"SUCCESS", "121"}
+
     def _carrier(self, leg):
         carrier = leg._leg_find_delivery_carrier()
         if not carrier or carrier.delivery_type != "apc":
@@ -274,7 +280,7 @@ class ApcAdapter(TransportBookingAdapter):
                 if not isinstance(msg, dict):
                     continue
                 code = str(msg.get("Code") or "").strip()
-                if code and code.upper() != "SUCCESS":
+                if code and code.upper() not in cls._SUCCESS_CODES:
                     errors.append("%s: %s" % (
                         code, msg.get("Description") or msg.get("Text") or "-"))
             for key, value in data.items():
