@@ -33,14 +33,16 @@
                 <xpath expr="//field[@name='partner_shipping_id']" position="attributes">
                     <attribute name="required">order_type == 'goods_out'</attribute>
                     <attribute name="invisible">order_type in ['transport', 'goods_in']</attribute>
+                    <!-- Drop native default_parent_id: new delivery contacts must not be tied to the customer -->
+                    <attribute name="context">{'default_type': 'delivery', 'show_address': False, 'show_vat': False}</attribute>
                 </xpath>
 
                 <xpath expr="//field[@name='partner_shipping_id']" position="before">
                     <field name="collection_address_id"
                            invisible="order_type != 'goods_in'"
                            required="order_type == 'goods_in'"
-                           domain="[('commercial_partner_id', '=', commercial_partner_id), ('type', '=', 'delivery')]"
-                           context="{'default_parent_id': partner_id, 'default_type': 'delivery'}"/>
+                           domain="[('type', 'in', ('delivery', 'contact', 'other'))]"
+                           context="{'default_type': 'delivery'}"/>
                 </xpath>
 
                 <xpath expr="//page[@name='other_information']/group/group[@name='sale_info']/field[@name='invoice_status']"
