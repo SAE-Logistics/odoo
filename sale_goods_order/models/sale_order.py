@@ -62,7 +62,7 @@ class SaleOrder(models.Model):
     collection_address_id = fields.Many2one(
         'res.partner',
         string='Collection Address',
-        help='Customer address from which goods will be collected for Goods In orders.',
+        help='Address from which goods will be collected for Goods In orders.',
     )
 
     transport_state = fields.Selection(
@@ -248,12 +248,6 @@ class SaleOrder(models.Model):
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
         res = super()._onchange_partner_id()
-        for order in self:
-            if (
-                order.collection_address_id
-                and order.collection_address_id.commercial_partner_id != order.partner_id.commercial_partner_id
-            ):
-                order.collection_address_id = False
         self._compute_warehouse_id()
         self._compute_partner_shipping_id()
         return res
