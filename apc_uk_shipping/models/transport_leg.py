@@ -236,8 +236,10 @@ class SaleTransportLeg(models.Model):
     def _apc_apply_status(self, leg, status, scan_time=None):
         status_code = str(status.get("StatusCode") or "").strip()
         status_desc = (status.get("StatusDescription") or "").strip()
-        booking_state, movement_state = self._apc_classify_status(
+        booking_state, movement_state, exception = self._apc_classify_status(
             status_code, status_desc,
+            group=status.get("StatusGroup"),
+            color=status.get("StatusColor"),
             completed=str(status.get("Completed") or "").lower() == "true")
         if booking_state and booking_state != leg.booking_state:
             leg.write({"booking_state": booking_state})
@@ -245,64 +247,71 @@ class SaleTransportLeg(models.Model):
             "APC", status_code, status_desc,
             status_date=scan_time,
             movement_state=movement_state,
-            exception=self._apc_exception_effect(
-                status_code, status.get("StatusColor"), movement_state),
+            exception=exception,
         )
 
-    @staticmethod
-    def _apc_exception_effect(status_code, status_color, movement_state):
-        """``"raise"`` if this scan flags a delivery problem, ``"clear"`` if
-        it shows the delivery back on track, else False."""
-        color = str(status_color or "").strip().lower()
-        if status_code in _APC_EXCEPTION_CODES or color in _APC_EXCEPTION_COLORS:
-            return "raise"
-        if movement_state == "completed" or (movement_state and color == "green"):
-            return "clear"
-        return False
+    def _apc_classify_status(self, status_code, status_desc, group=None,
+                             color=None, completed=False):
+        """Map one APC scan to ``(booking_state, movement_state, exception)``.
 
-    def _apc_classify_status(self, status_code, status_desc, completed=False):
-        """Map an APC tracking status to ``(booking_state, movement_state)``.
+        ``False`` means "leave unchanged"; ``exception`` is ``"raise"``,
+        ``"clear"`` or False. Rules come from live training responses
+        (TR00004, TR00076), not just the API guide:
 
-        A ``False`` element means "leave that field unchanged". APC's own
-        ``Completed`` flag on the scan is the primary delivered signal (it is
-        also set for e.g. 74 COLLECTED FROM DEPOT, which has no "delivered"
-        wording); the description keywords and numeric codes are fallbacks.
+        * ``StatusGroup`` SYSTEM scans (1 READY TO PRINT, 92 ORDER CREATED,
+          62 LABEL PRINTED) are paperwork: never movement, never an
+          exception, even though APC colours 1 orange.
+        * ``Completed`` means "this attempt is finished", not "delivered":
+          APC sets it on 76 CLOSED / CARDED (orange) as well as on
+          3 DELIVERED and 74 COLLECTED FROM DEPOT (green). So it only counts
+          as delivered on a green scan, and an exception scan never
+          completes a leg.
         """
         desc = (status_desc or "").strip().lower()
         code = str(status_code or "").strip()
+        group = str(group or "").strip().lower()
+        color = str(color or "").strip().lower()
 
-        # Confirmed against the APC API guide's own worked example (p.44-46),
-        # KB §7's status table and live training responses - not guessed.
-        delivered_codes = {"3"}  # DELIVERED
+        delivered_codes = {"3", "74"}  # DELIVERED, COLLECTED FROM DEPOT
         cancelled_codes = {"97"}  # CANCELLED
         returned_codes = {"44"}  # RETURN TO SENDER
-        # "Accepted by APC but not physically collected / scanned yet."
-        pretransit_codes = {"1", "62"}  # READY TO PRINT, LABEL PRINTED
+        # Accepted by APC but not physically collected / scanned yet.
+        pretransit_codes = {"1", "62", "92"}  # READY TO PRINT, LABEL PRINTED, ORDER CREATED
 
         if "cancel" in desc or code in cancelled_codes:
-            return "none", False
+            return "none", False, False
+        if group == "system" or code in pretransit_codes:
+            return "booked", False, False
+        # Depot holds (95 HELD AT DELIVERY DEPOT, 150 HELD AWAITING
+        # COLLECTION) happen after pickup; keep them out of the pre-transit
+        # keywords, which would otherwise match "awaiting collection".
+        if "held" not in desc and any(kw in desc for kw in (
+                "order created", "order received", "ready to print",
+                "label printed", "manifest", "awaiting collection",
+                "not yet received", "pre-advice", "expected")):
+            return "booked", False, False
+        if not (desc or code):
+            return False, False, False
+
+        is_exception = (code in _APC_EXCEPTION_CODES
+                        or color in _APC_EXCEPTION_COLORS)
         # A return is never a completed delivery, whatever Completed says.
         if "return" in desc or code in returned_codes:
-            return "booked", "in_transit"
-        if (completed
-                or any(kw in desc for kw in (
-                    "delivered", "proof of delivery", "pod", "signed for"))
-                or code in delivered_codes):
-            return "booked", "completed"
-        # Depot holds (95 HELD AT DELIVERY DEPOT, 150 HELD AWAITING
-        # COLLECTION) happen after pickup; check before the pre-transit
-        # keywords, which would otherwise match "awaiting collection".
-        if "held" in desc:
-            return "booked", "in_transit"
-        if (any(kw in desc for kw in (
-                "order received", "manifest", "awaiting collection",
-                "not yet received", "pre-advice", "expected"))
-                or code in pretransit_codes):
-            return "booked", False
-        if desc or code:
-            # Any other scan: at depot, on vehicle, out for delivery, ...
-            return "booked", "in_transit"
-        return False, False
+            return "booked", "in_transit", "raise"
+        delivered_wording = (
+            any(kw in desc for kw in (
+                "delivered", "proof of delivery", "signed for",
+                "collected from depot"))
+            and not any(kw in desc for kw in ("not delivered", "undelivered")))
+        if not is_exception and (
+                code in delivered_codes or delivered_wording
+                or (completed and color == "green")):
+            return "booked", "completed", "clear"
+        # Any other physical scan: at depot, on vehicle, out for delivery,
+        # held, carded, re-arranged, ...
+        if is_exception:
+            return "booked", "in_transit", "raise"
+        return "booked", "in_transit", "clear" if color == "green" else False
 
     def _apply_booking_result(self, result):
         """Write booking outcome + persist the label to APC-specific field.
