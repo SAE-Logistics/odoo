@@ -196,6 +196,9 @@ Cron polls multi-track endpoint: `GET Tracks.json?datefrom=<last poll>&history=y
 - Each `Status` also carries `Completed` (`"true"`/`"false"`), `StatusColor` (`green`/`orange`/…) and `StatusGroup` (e.g. `DELIVERY`). `Completed = "true"` is set on both 3 DELIVERED and 74 COLLECTED FROM DEPOT, so it is used as the primary delivered signal.
 - Holds seen: 95 HELD AT DELIVERY DEPOT, 150 HELD AWAITING COLLECTION (both `orange`). 75 CUSTOMER RE-ARRANGED is `green`.
 - The single-waybill endpoint without `history=yes` returns only the latest scan.
+- **`Completed` is not "delivered"** (TR00076, 7 Oct 2026): it is also `"true"` on 76 CLOSED / CARDED (orange). Only a green `Completed` scan, code 3/74 or "delivered" wording completes a leg, and an exception code/colour never does.
+- **`StatusGroup` SYSTEM** marks paperwork scans: 1 READY TO PRINT (coloured **orange**), 92 ORDER CREATED, 62 LABEL PRINTED. They never move the leg or raise an exception. Physical scans are `StatusGroup` DELIVERY.
+- APC IT's manual test scans can be back-dated (TR00076: entered together around 16:00, `DateTime`s from 10:05 to 16:00). Scans older than the last one applied to a leg are skipped.
 
 **Response shape (p.44-46, confirmed against the guide's own worked example — do not assume `StatusCode`/`Status` sit at the top of each `Track`):**
 
