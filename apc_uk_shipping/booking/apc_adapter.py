@@ -220,10 +220,47 @@ class ApcAdapter(TransportBookingAdapter):
         # a non-SUCCESS Messages code, which client.call doesn't treat as an
         # error. Without this check Odoo would clear a booking APC still has.
         errors = self._apc_response_errors(response)
-        if errors:
-            raise TransportBookingError(
-                "APC rejected the cancel: %s" % "; ".join(errors))
-        return True
+        if not errors:
+            return True
+        # Cancelling is idempotent from Odoo's point of view: if APC already
+        # has the order as cancelled (an earlier click that APC accepted but
+        # Odoo didn't record, or a cancel made in APC's portal), clear the
+        # booking in Odoo too. Seen live: "122: Order cannot be updated.
+        # current status: CANCELLED". Fall back to the waybill's own tracking
+        # (97 CANCELLED) since the cancel reply layout is undocumented.
+        if any("status: cancelled" in e.lower() for e in errors) or \
+                self._apc_waybill_cancelled(client, waybill):
+            _logger.info(
+                "APC order %s is already cancelled; clearing the booking in "
+                "Odoo. Cancel reply: %s", waybill, "; ".join(errors))
+            return True
+        raise TransportBookingError(
+            "APC rejected the cancel: %s" % "; ".join(errors))
+
+    @staticmethod
+    def _apc_waybill_cancelled(client, waybill):
+        """True if APC's tracking for this waybill shows 97 CANCELLED."""
+        try:
+            data = client.call(
+                "GET", f"Tracks/{waybill}.json",
+                params={"searchtype": "CarrierWaybill", "history": "yes"})
+        except ValidationError:
+            _logger.exception("APC tracking lookup for %s failed", waybill)
+            return False
+
+        def walk(node):
+            if isinstance(node, dict):
+                status = node.get("Status")
+                if isinstance(status, dict) and (
+                        str(status.get("StatusCode") or "").strip() == "97"
+                        or "cancel" in str(status.get("StatusDescription") or "").lower()):
+                    return True
+                return any(walk(v) for v in node.values())
+            if isinstance(node, list):
+                return any(walk(v) for v in node)
+            return False
+
+        return walk(data)
 
     @classmethod
     def _apc_response_errors(cls, data):
