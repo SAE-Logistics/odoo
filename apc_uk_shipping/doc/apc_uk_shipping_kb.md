@@ -270,7 +270,7 @@ Activity endpoint (POD signature, photo, GPS) deferred to phase two.
 - [x] Adapter: payload builder, validator/sanitiser, JSON normaliser
 - [x] Book + label flow (PDF), attach to leg
 - [x] PUR cutoff validation (20:00, no same-day) for Goods In / Transport Orders
-- [x] Cancel with manifest guard (7 Oct 2026): blocked unless the leg is Scheduled and APC has reported nothing past 1/62/92; APC's reply is checked for non-SUCCESS codes; success clears waybill/label link/status. Not yet exercised against training.
+- [x] Cancel with manifest guard (7 Oct 2026): blocked unless the leg is Scheduled and APC has reported nothing past 1/62/92; success clears waybill/label link/status. Verified on training 7 Oct 2026. **A successful cancel replies `{"CancelOrder": {"AccountNumber": "SAELOG", "Messages": {"Code": "121", "Description": "Order Cancelled"}}}` — code 121, not SUCCESS.** Cancelling an already-cancelled order replies `122: Order cannot be updated. current status: CANCELLED`; both are treated as success, as is a waybill whose tracking shows 97 CANCELLED (fallback for any other reply).
 - [x] Amend — **decided not to build** (7 Oct 2026). Changing a booked leg = Cancel Booking + Send to Shipper (new waybill + label).
 - [x] Tracking cron with pagination + status mapping — shipped, found non-functional (wrong response shape parsed, fixed 22 Sep 2026; wrong `datefrom` format, fixed 6 Oct 2026); see §7
 - [x] Exception flagging for holds / carded / refused / returns (95, 150, 76, 96, 44, or `StatusColor` orange/red) — shared `carrier_exception` flag in `transport_booking_core`, cleared on delivery or a green in-transit scan
