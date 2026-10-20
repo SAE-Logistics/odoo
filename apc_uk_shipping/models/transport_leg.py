@@ -111,7 +111,11 @@ class SaleTransportLeg(models.Model):
         if not isinstance(messages, dict):
             return
         code = str(messages.get("Code") or "").strip().upper()
-        if code and code != "SUCCESS":
+        # 108 NO TRACK FOUND is an empty result, not a rejection: APC sends
+        # it whenever the window has no scans (e.g. no APC orders for a few
+        # days). Treating it as an error froze the watermark from 9 to
+        # 20 Oct 2026 and grew the window on every run.
+        if code and code not in ("SUCCESS", "108"):
             raise ValidationError(_(
                 "APC Tracks request rejected (%(code)s): %(desc)s") % {
                     "code": code,
