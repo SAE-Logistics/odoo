@@ -2,6 +2,20 @@ from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
 
+class PickingDoneSaleLineGrant:
+    """In-process marker put in the context by stock.picking._action_done.
+
+    It allows sale.order.line.create to run as superuser for the delivered-move
+    lines sale_stock creates while warehouse users validate a picking. A
+    JSON-RPC context cannot carry a Python object, so clients cannot forge it.
+    """
+
+    __slots__ = ("order_ids",)
+
+    def __init__(self, order_ids):
+        self.order_ids = frozenset(order_ids)
+
+
 ORDER_TYPE = [
         ('standard', 'Standard'),
         ('goods_in', 'Goods In Order'),
@@ -556,6 +570,20 @@ class SaleOrderLine(models.Model):
             # No special handling → normal behavior
             self._add_product_taxes_to_vals_list(vals_list)
             return super(SaleOrderLine, self).create(vals_list)
+
+        # Delivered-move lines come from sale_stock during picking validation,
+        # which warehouse users may run without create rights on SO lines.
+        # Only elevate for lines on the orders of the pickings being validated.
+        grant = self.env.context.get("sae_picking_done")
+        if (
+            isinstance(grant, PickingDoneSaleLineGrant)
+            and not self.env.su
+            and all(
+                vals.get("move_ids") and vals.get("order_id") in grant.order_ids
+                for vals in vals_list
+            )
+        ):
+            return self.sudo().create(vals_list)
 
         # 2) We are in the "material consumption" flow → load template
         material_ids = []
