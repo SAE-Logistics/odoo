@@ -5,15 +5,22 @@ access_material_picking_wizard,material_picking_wizard,model_material_picking_wi
 access_material_picking_wizard_line,material_picking_wizard_line,model_material_picking_wizard_line,base.group_user,1,1,1,1
 access_sale_bulk_invoice_wizard,sale.bulk.invoice.wizard,model_sale_bulk_invoice_wizard,base.group_user,1,1,1,1
 access_stock_picking_consumption_line,stock_picking_consumption_line,model_stock_picking_consumption_line,base.group_user,1,1,1,1
-access_transport_product_line_user,transport.product.line user,model_transport_product_line,base.group_user,1,1,1,1
-access_sale_transport_leg_user,sale.transport.leg.user,model_sale_transport_leg,base.group_user,1,1,1,1
-access_sale_transport_service_user,sale.transport.service.user,model_sale_transport_service,base.group_user,1,1,1,1
-access_sale_transport_carrier_user,sale.transport.carrier.user,model_sale_transport_carrier,base.group_user,1,1,1,1
-access_sale_carrier_service_option_user,sale.carrier.service.option.user,model_sale_carrier_service_option,base.group_user,1,1,1,1
-access_sale_carrier_service_option_surcharge_line_user,sale.carrier.service.option.surcharge.line.user,model_sale_carrier_service_option_surcharge_line,base.group_user,1,1,1,1
-access_sale_transport_leg_surcharge_line_user,sale.transport.leg.surcharge.line.user,model_sale_transport_leg_surcharge_line,base.group_user,1,1,1,1
+access_transport_product_line_user,transport.product.line user,model_transport_product_line,sales_team.group_sale_salesman,1,1,1,1
+access_transport_product_line_stock,transport.product.line stock,model_transport_product_line,stock.group_stock_user,1,0,0,0
+access_sale_transport_leg_user,sale.transport.leg.user,model_sale_transport_leg,sales_team.group_sale_salesman,1,1,1,1
+access_sale_transport_leg_stock,sale.transport.leg.stock,model_sale_transport_leg,stock.group_stock_user,1,0,0,0
+access_sale_transport_service_user,sale.transport.service.user,model_sale_transport_service,sales_team.group_sale_salesman,1,1,1,1
+access_sale_transport_service_stock,sale.transport.service.stock,model_sale_transport_service,stock.group_stock_user,1,0,0,0
+access_sale_transport_carrier_user,sale.transport.carrier.user,model_sale_transport_carrier,sales_team.group_sale_salesman,1,1,1,1
+access_sale_transport_carrier_stock,sale.transport.carrier.stock,model_sale_transport_carrier,stock.group_stock_user,1,0,0,0
+access_sale_carrier_service_option_user,sale.carrier.service.option.user,model_sale_carrier_service_option,sales_team.group_sale_salesman,1,1,1,1
+access_sale_carrier_service_option_stock,sale.carrier.service.option.stock,model_sale_carrier_service_option,stock.group_stock_user,1,0,0,0
+access_sale_carrier_service_option_surcharge_line_user,sale.carrier.service.option.surcharge.line.user,model_sale_carrier_service_option_surcharge_line,sales_team.group_sale_salesman,1,1,1,1
+access_sale_carrier_service_option_surcharge_line_stock,sale.carrier.service.option.surcharge.line.stock,model_sale_carrier_service_option_surcharge_line,stock.group_stock_user,1,0,0,0
+access_sale_transport_leg_surcharge_line_user,sale.transport.leg.surcharge.line.user,model_sale_transport_leg_surcharge_line,sales_team.group_sale_salesman,1,1,1,1
+access_sale_transport_leg_surcharge_line_stock,sale.transport.leg.surcharge.line.stock,model_sale_transport_leg_surcharge_line,stock.group_stock_user,1,0,0,0
 access_sale_package_line_user,sale.package.line.user,model_sale_package_line,base.group_user,1,1,1,1
 access_stock_picking_container_user,stock.picking.container.user,model_stock_picking_container,base.group_user,1,1,1,1
 access_stock_container_report_wizard_user,stock.container.report.wizard.user,model_stock_container_report_wizard,base.group_user,1,1,1,1
 access_stock_container_report_line_user,stock.container.report.line.user,model_stock_container_report_line,base.group_user,1,1,1,1
-access_sale_transport_leg_merge_wizard_user,sale.transport.leg.merge.wizard.user,model_sale_transport_leg_merge_wizard,base.group_user,1,1,1,1
+access_sale_transport_leg_merge_wizard_user,sale.transport.leg.merge.wizard.user,model_sale_transport_leg_merge_wizard,sales_team.group_sale_salesman,1,1,1,1

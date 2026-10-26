@@ -8,9 +8,9 @@
             <field name="arch" type="xml">
                 <form string="Transport Leg">
                     <header>
-                        <button name="action_in_transit" string="In Transit" class="oe_highlight" invisible="state not in ['scheduled']" type="object"/>
-                        <button name="action_completed" string="Mark Completed" class="oe_highlight" invisible="state not in ['in_transit']" type="object"/>
-                        <button name="action_back" string="Revert" invisible="state in ['scheduled']" type="object"/>
+                        <button name="action_in_transit" string="In Transit" class="oe_highlight" invisible="state not in ['scheduled']" type="object" groups="sales_team.group_sale_salesman"/>
+                        <button name="action_completed" string="Mark Completed" class="oe_highlight" invisible="state not in ['in_transit']" type="object" groups="sales_team.group_sale_salesman"/>
+                        <button name="action_back" string="Revert" invisible="state in ['scheduled']" type="object" groups="sales_team.group_sale_salesman"/>
                         <field name="state" widget="statusbar" statusbar_visible="scheduled,in_transit,completed"/>
                     </header>
                     <sheet>
@@ -95,7 +95,7 @@
                                         <label for="preferred_service_id"/>
                                         <div class="o_row">
                                             <field name="preferred_service_id" options="{'no_open':True,'no_create': True}"/>
-                                            <button name="action_fetch_service_carrier_options" type="object" string=" Fetch" help="Recompute all carrier options based on this service" class="btn-link mb-1 px-0" icon="fa-refresh"/>
+                                            <button name="action_fetch_service_carrier_options" type="object" string=" Fetch" help="Recompute all carrier options based on this service" class="btn-link mb-1 px-0" icon="fa-refresh" groups="sales_team.group_sale_salesman"/>
                                         </div>
                                     </group>
                                 </group>
@@ -117,7 +117,7 @@
                                         <field name="chargeable_weight"/>
                                         <field name="pallet_quantity"/>
                                         <field name="is_selected"/>
-                                        <button name="action_select_option" type="object" string="Select" class="btn-primary"/>
+                                        <button name="action_select_option" type="object" string="Select" class="btn-primary" groups="sales_team.group_sale_salesman"/>
                                     </list>
                                 </field>
                                 <group string="Last API Exchange">
