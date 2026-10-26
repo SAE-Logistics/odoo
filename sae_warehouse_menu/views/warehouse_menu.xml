@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ready pickings grouped by operation type, so empty warehouses drop out. -->
+    <record id="action_sae_goods_in" model="ir.actions.act_window">
+        <field name="name">Goods In</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="stock.view_picking_internal_search"/>
+        <field name="domain">[('picking_type_code', '=', 'incoming')]</field>
+        <field name="context">{'search_default_available': 1, 'search_default_picking_type': 1, 'restricted_picking_type_code': 'incoming', 'create': False}</field>
+    </record>
+
+    <record id="action_sae_goods_out" model="ir.actions.act_window">
+        <field name="name">Goods Out</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="stock.view_picking_internal_search"/>
+        <field name="domain">[('picking_type_code', '=', 'outgoing')]</field>
+        <field name="context">{'search_default_available': 1, 'search_default_picking_type': 1, 'restricted_picking_type_code': 'outgoing', 'create': False}</field>
+    </record>
+
+    <!-- Consumables pickings created by the "Add materials" wizard. They are only
+         billed once validated (done), so Ready ones are unbilled work. -->
+    <record id="action_sae_materials" model="ir.actions.act_window">
+        <field name="name">Materials</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="stock.view_picking_internal_search"/>
+        <field name="domain">[('is_material_picking', '=', True)]</field>
+        <field name="context">{'search_default_available': 1, 'create': False}</field>
+    </record>
+
+    <menuitem id="menu_sae_warehouse_root"
+              name="Warehouse"
+              groups="stock.group_stock_user"
+              web_icon="stock,static/description/icon.png"
+              sequence="5"/>
+
+    <menuitem id="menu_sae_goods_in"
+              name="Goods In"
+              parent="menu_sae_warehouse_root"
+              action="action_sae_goods_in"
+              sequence="10"/>
+
+    <menuitem id="menu_sae_goods_out"
+              name="Goods Out"
+              parent="menu_sae_warehouse_root"
+              action="action_sae_goods_out"
+              sequence="20"/>
+
+    <menuitem id="menu_sae_materials"
+              name="Materials"
+              parent="menu_sae_warehouse_root"
+              action="action_sae_materials"
+              sequence="30"/>
+
+    <menuitem id="menu_sae_stock_counts"
+              name="Stock Counts"
+              parent="menu_sae_warehouse_root"
+              action="stock.action_view_inventory_tree"
+              sequence="40"/>
+</odoo>
