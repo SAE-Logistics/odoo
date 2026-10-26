@@ -201,6 +201,22 @@
             </field>
         </record>
 
+        <!-- Extension of the base search view so "Open Orders" is available in
+             Quotations, Orders and the custom order menus alike. -->
+        <record id="sale_order_search_inherit_open_orders" model="ir.ui.view">
+            <field name="name">sale.order.search.inherit.open.orders</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                    <separator/>
+                    <!-- Open = not yet planned: no legs, or a leg with neither a carrier service nor marked internal. -->
+                    <filter string="Open Orders" name="open_orders"
+                            domain="[('state', '!=', 'cancel'), ('no_transport_needed', '=', False), '|', ('transport_all_leg_ids', '=', False), ('transport_all_leg_ids', 'any', [('carrier_service_id', '=', False), ('is_internal', '=', False)])]"/>
+                </xpath>
+            </field>
+        </record>
+
         <!-- Inherit Form View to Modify it -->
         <record id="sale_order_template_view_form_inherit_order_type" model="ir.ui.view">
             <field name="name">sale.order.template.view.form.inherit.order.type</field>
