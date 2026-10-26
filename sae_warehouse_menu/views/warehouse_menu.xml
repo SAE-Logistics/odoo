@@ -35,7 +35,7 @@
     <menuitem id="menu_sae_warehouse_root"
               name="Warehouse"
               groups="stock.group_stock_user"
-              web_icon="stock,static/description/icon.png"
+              web_icon="sae_warehouse_menu,static/description/icon.png"
               sequence="5"/>
 
     <menuitem id="menu_sae_goods_in"

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Hide apps warehouse staff don't use. This module depends on base and
+         hr, so upgrading either re-applies these groups after their own data. -->
+
+    <!-- Apps (module management): administrators only. -->
+    <record id="base.menu_management" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [ref('base.group_system')])]"/>
+    </record>
+
+    <!-- Employees: HR users and office (sales) users; not warehouse-only users. -->
+    <record id="hr.menu_hr_root" model="ir.ui.menu">
+        <field name="groups_id" eval="[(6, 0, [
+            ref('hr.group_hr_user'),
+            ref('hr.group_hr_manager'),
+            ref('sales_team.group_sale_salesman'),
+        ])]"/>
+    </record>
+</odoo>
