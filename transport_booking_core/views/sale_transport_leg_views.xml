@@ -14,16 +14,19 @@
                         type="object"
                         string="Send to Shipper"
                         class="oe_highlight"
-                        invisible="booking_state == 'booked' or not carrier_service_id"/>
+                        invisible="booking_state == 'booked' or not carrier_service_id"
+                        groups="sales_team.group_sale_salesman"/>
                 <button name="action_leg_cancel_booking"
                         type="object"
                         string="Cancel Booking"
                         confirm="Cancel this leg's booking?"
-                        invisible="booking_state != 'booked'"/>
+                        invisible="booking_state != 'booked'"
+                        groups="sales_team.group_sale_salesman"/>
                 <button name="action_leg_reset_booking"
                         type="object"
                         string="Reset Booking"
-                        invisible="booking_state != 'booked' or booking_remote_cancel"/>
+                        invisible="booking_state != 'booked' or booking_remote_cancel"
+                        groups="sales_team.group_sale_salesman"/>
                 <field name="booking_state" widget="statusbar"
                        statusbar_visible="none,pending,booked"/>
             </xpath>
