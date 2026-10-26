@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "SAE Warehouse Menu",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.0.1",
     "summary": "Warehouse app for goods-in and picking staff: Goods In, Goods Out, Materials and Stock Counts.",
     "author": "eartisan",
     "website": "https://eartisan.co.uk",
