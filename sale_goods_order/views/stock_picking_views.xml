@@ -70,7 +70,11 @@
                             Transport legs will automatically attach to the existing transport charge line for the sale order, or create one if none exists.
                         </div>
                     </group>
-                    <field name="transport_leg_ids" context="{'default_picking_id': id}" readonly="state in ('done', 'cancel')">
+                    <!-- Office (sales) users plan legs before or after validation:
+                         booking, In Transit/Completed and the driver paperwork all
+                         require a validated delivery anyway. Locked once cancelled. -->
+                    <field name="transport_leg_ids" context="{'default_picking_id': id}" readonly="state == 'cancel'"
+                           groups="sales_team.group_sale_salesman">
                         <list editable="bottom">
                             <button name="action_open_form_view" type="object" string="View" icon="fa-external-link"/>
                             <field name="order_id" string="Sales Order Number" optional="show"/>
@@ -94,6 +98,24 @@
                             <field name="currency_id" column_invisible="1"/>
                             <field name="base_buy_rate" optional="show"/>
                             <field name="base_sell_rate" optional="show"/>
+                        </list>
+                    </field>
+                    <!-- Warehouse users have read-only access to legs. -->
+                    <field name="transport_leg_ids" readonly="1"
+                           groups="!sales_team.group_sale_salesman">
+                        <list>
+                            <button name="action_open_form_view" type="object" string="View" icon="fa-external-link"/>
+                            <field name="order_id" string="Sales Order Number" optional="show"/>
+                            <field name="from_location" string="From"
+                                   context="{'show_address': True, 'address_inline': True}"/>
+                            <field name="to_location" string="To"
+                                   context="{'show_address': True, 'address_inline': True}"/>
+                            <field name="from_date" string="Collection Date" widget="remaining_days" optional="show"/>
+                            <field name="to_date" string="Delivery Date" widget="remaining_days" optional="show"/>
+                            <field name="is_internal" optional="show"/>
+                            <field name="driver_id" optional="show"/>
+                            <field name="carrier_id" optional="show"/>
+                            <field name="service_id" optional="show"/>
                         </list>
                     </field>
                 </page>

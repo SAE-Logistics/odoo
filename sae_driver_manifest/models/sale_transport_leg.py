@@ -55,6 +55,25 @@ class SaleTransportLeg(models.Model):
         string="Run Order", default=10, index=True)
 
     # ------------------------------------------------------------------
+    # Guard: the run-sheet and delivery note travel with the goods, so
+    # refuse them for Goods Out legs whose delivery is not validated yet -
+    # the same rule as booking and In Transit / Completed.
+    # ------------------------------------------------------------------
+    def _manifest_check_deliveries_validated(self, document_label):
+        unvalidated = self.filtered(
+            lambda leg: leg.picking_id and leg.order_type == "goods_out"
+            and leg.picking_id.state != "done")
+        if unvalidated:
+            raise UserError(_(
+                "Validate the delivery before printing the %(document)s. "
+                "Not validated: %(pickings)s."
+            ) % {
+                "document": document_label,
+                "pickings": ", ".join(
+                    unvalidated.mapped("picking_id").mapped("name")),
+            })
+
+    # ------------------------------------------------------------------
     # Row derivation (mirrors report_driver_manifest)
     # ------------------------------------------------------------------
     def _manifest_sorted_run(self):
@@ -164,6 +183,7 @@ class SaleTransportLeg(models.Model):
                 "to install it."))
         if not self:
             raise UserError(_("Select the legs for the run first."))
+        self._manifest_check_deliveries_validated(_("driver manifest"))
 
         stream = io.BytesIO()
         workbook = xlsxwriter.Workbook(stream, {"in_memory": True})
