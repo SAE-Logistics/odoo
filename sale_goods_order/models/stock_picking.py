@@ -3,6 +3,8 @@ from collections import defaultdict
 from odoo import fields, models
 from odoo.tools.float_utils import float_round
 
+from .sale_order import PickingDoneSaleLineGrant
+
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
@@ -508,9 +510,10 @@ class StockPicking(models.Model):
                     "quantity": qty,
                 })
     def _action_done(self):
-        # sale_stock creates SO lines for delivered moves without sudo; the flag
+        # sale_stock creates SO lines for delivered moves without sudo; the grant
         # lets sale.order.line.create elevate only within picking validation.
-        res = super(StockPicking, self.with_context(sae_picking_done=True))._action_done()
+        grant = PickingDoneSaleLineGrant(self.mapped("sale_id").ids)
+        res = super(StockPicking, self.with_context(sae_picking_done=grant))._action_done()
         self._update_goods_order_metrics()
         self.filtered(
             lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
