@@ -557,6 +557,11 @@ class SaleOrderLine(models.Model):
             self._add_product_taxes_to_vals_list(vals_list)
             return super(SaleOrderLine, self).create(vals_list)
 
+        # Delivered-move lines come from sale_stock during picking validation,
+        # which warehouse users may run without create rights on SO lines.
+        if self.env.context.get("sae_picking_done") and not self.env.su:
+            return self.sudo().create(vals_list)
+
         # 2) We are in the "material consumption" flow → load template
         material_ids = []
         template = self.env["material.picking.wizard"]._get_template()

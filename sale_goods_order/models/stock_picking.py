@@ -117,7 +117,10 @@ class StockPicking(models.Model):
 
 
     def _update_goods_order_metrics(self):
-        sales = self.filtered(
+        # Charge lines are system bookkeeping: warehouse users validating a
+        # picking have no create right on sale.order.line, so run as superuser.
+        pickings = self.sudo()
+        sales = pickings.filtered(
             lambda p: (
                 not p.is_material_picking
                 and p.sale_id
@@ -130,12 +133,12 @@ class StockPicking(models.Model):
             )
             metrics = defaultdict(float)
             for picking in done_pickings:
-                picking_metrics = self._collect_metrics_from_picking(picking)
+                picking_metrics = pickings._collect_metrics_from_picking(picking)
                 for key, qty in picking_metrics.items():
                     metrics[key] += qty
-            self._apply_metrics_to_sale_order(sale, metrics)
-            self._clear_legacy_pallet_sale_lines(sale)
-            self._sync_package_sale_lines(sale, done_pickings)
+            pickings._apply_metrics_to_sale_order(sale, metrics)
+            pickings._clear_legacy_pallet_sale_lines(sale)
+            pickings._sync_package_sale_lines(sale, done_pickings)
 
     def _collect_metrics_from_picking(self, picking):
         metrics = defaultdict(float)
@@ -505,7 +508,9 @@ class StockPicking(models.Model):
                     "quantity": qty,
                 })
     def _action_done(self):
-        res = super()._action_done()
+        # sale_stock creates SO lines for delivered moves without sudo; the flag
+        # lets sale.order.line.create elevate only within picking validation.
+        res = super(StockPicking, self.with_context(sae_picking_done=True))._action_done()
         self._update_goods_order_metrics()
         self.filtered(
             lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
