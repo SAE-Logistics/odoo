@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sae_batch_invoice_wizard,sae.batch.invoice.wizard,model_sae_batch_invoice_wizard,sales_team.group_sale_salesman,1,1,1,1
+access_sae_batch_invoice_wizard_group,sae.batch.invoice.wizard.group,model_sae_batch_invoice_wizard_group,sales_team.group_sale_salesman,1,1,1,1
+access_sae_batch_invoice_wizard_skipped,sae.batch.invoice.wizard.skipped,model_sae_batch_invoice_wizard_skipped,sales_team.group_sale_salesman,1,1,1,1

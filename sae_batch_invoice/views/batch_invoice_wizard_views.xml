@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sae_batch_invoice_wizard_form" model="ir.ui.view">
+        <field name="name">sae.batch.invoice.wizard.form</field>
+        <field name="model">sae.batch.invoice.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Batch Invoice">
+                <field name="state" invisible="1"/>
+                <group>
+                    <group>
+                        <field name="date_from" readonly="state != 'setup'"/>
+                        <field name="date_to" readonly="state != 'setup'"/>
+                        <field name="invoice_date" readonly="state != 'setup'"/>
+                    </group>
+                    <group>
+                        <field name="order_family" readonly="state != 'setup'"/>
+                        <field name="partner_id" readonly="state != 'setup'"/>
+                    </group>
+                </group>
+                <div class="text-muted" invisible="state != 'setup'">
+                    Every confirmed order with something left to invoice up to Period End is included,
+                    including late charges on orders from earlier periods.
+                </div>
+
+                <div invisible="state != 'preview'">
+                    <separator string="Invoices to Create"/>
+                    <field name="group_count" invisible="1"/>
+                    <field name="group_line_ids" nolabel="1" readonly="1">
+                        <list>
+                            <field name="partner_id"/>
+                            <field name="cost_centre_id"/>
+                            <field name="family"/>
+                            <field name="order_count" string="Orders"/>
+                            <field name="earlier_order_count" optional="show"/>
+                            <field name="order_ids" widget="many2many_tags" optional="hide"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="amount_untaxed" sum="Total"/>
+                        </list>
+                    </field>
+                    <div class="alert alert-info" role="alert" invisible="group_count">
+                        Nothing to invoice. See the skipped orders below.
+                    </div>
+                    <field name="skipped_count" invisible="1"/>
+                    <separator string="Skipped Orders" invisible="not skipped_count"/>
+                    <field name="skipped_line_ids" nolabel="1" readonly="1" invisible="not skipped_count">
+                        <list>
+                            <field name="order_id"/>
+                            <field name="partner_id"/>
+                            <field name="reason"/>
+                        </list>
+                    </field>
+                </div>
+
+                <footer>
+                    <button name="action_preview" type="object" string="Preview" class="btn-primary"
+                            invisible="state != 'setup'"/>
+                    <button name="action_create_invoices" type="object" string="Create Draft Invoices"
+                            class="btn-primary" invisible="state != 'preview' or not group_count"/>
+                    <button name="action_back" type="object" string="Back" class="btn-secondary"
+                            invisible="state != 'preview'"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sae_batch_invoice_wizard" model="ir.actions.act_window">
+        <field name="name">Batch Invoice</field>
+        <field name="res_model">sae.batch.invoice.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_sae_batch_invoice"
+              name="Batch Invoice (New)"
+              parent="sale.menu_sale_order"
+              sequence="28"
+              action="action_sae_batch_invoice_wizard"
+              groups="sales_team.group_sale_salesman"/>
+</odoo>
