@@ -30,6 +30,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
       temporary per-order invoices), keeping section and note lines;
     * period bounds are worked out in the user's timezone;
     * a preview lists what will be invoiced and which orders are skipped;
+    * orders with nothing to charge are skipped, not billed at zero;
     * no rental/storage lines are added.
     """
 
@@ -198,6 +199,9 @@ class SaeBatchInvoiceWizard(models.TransientModel):
         if billing_date >= self._local_day_start_utc(self.date_to + timedelta(days=1)):
             local_date = fields.Datetime.context_timestamp(self, billing_date)
             return _("Finished after the cut-off date (%s).", local_date.strftime("%d/%m/%Y"))
+        # A posted line counts as invoiced, so a price added later would never bill.
+        if order.currency_id.is_zero(self._estimate_untaxed(order)):
+            return _("Nothing to charge: the lines to invoice total zero. Add the price, then run again.")
         return False
 
     def _split_orders(self, orders):

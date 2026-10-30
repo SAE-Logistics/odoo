@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "SAE Batch Invoice",
-    "version": "18.0.1.0.1",
+    "version": "18.0.1.0.2",
     "summary": "Batch invoicing of goods and transport orders with a preview step. "
                "Runs alongside the original Bulk Invoice Orders wizard.",
     "author": "eartisan",
