@@ -9,7 +9,7 @@ already created remain normal invoices.
 
 ## How a run works
 
-1. Choose Period Start/End, Invoice Date, and optionally a customer and order type.
+1. Choose Invoice Up To, Invoice Date, and optionally a customer and order type.
 2. **Preview** lists the invoices that will be created (one per company, customer,
    cost centre, goods/transport and currency) with an estimated untaxed total, and the
    orders that will be skipped with the reason.
@@ -19,8 +19,8 @@ already created remain normal invoices.
 
 | | Original (`sale.bulk.invoice.wizard`) | This module |
 |---|---|---|
-| Which orders | `date_order` between Date From and Date To | Finished jobs still "to invoice" up to Period End (see below). Late charges on older orders are picked up |
-| Period Start | Filters orders | Printed on the invoice only (`invoice_period_start`) |
+| Which orders | `date_order` between Date From and Date To | Finished jobs still "to invoice" up to Invoice Up To (see below). Late charges on older orders are picked up |
+| Start date | Required, filters orders | None. `invoice_status` stops a line being billed twice |
 | Timezone | UTC midnight | User's timezone (default Europe/London) |
 | Lines | Temporary per-order invoice, copied then deleted | Prepared directly from sale order lines; section/note lines kept |
 | Rental/storage lines | Added automatically | Not added |
@@ -41,7 +41,7 @@ SAE decided (Oct 2026) that a job is billed in the month it finished. `_get_orde
 | Goods In | All incoming pickings are validated | Latest `date_done` |
 
 - Material (consumables) pickings and return pickings don't count. Transport charges on a goods order follow the goods date.
-- Unfinished jobs, and jobs finished after Period End, appear in the preview's skipped list with the reason.
+- Unfinished jobs, and jobs finished after the Invoice Up To date, appear in the preview's skipped list with the reason.
 - The module records `date_completion` when a leg is completed by hand, and clears it if the leg is moved back. It can be corrected on the leg's Completion Details tab if the leg was marked late.
 - Legs completed before this module was installed may have no completion time. They fall back to the planned drop off date, then the leg's last edit. Those orders are counted under **Estimated Dates** in the preview.
 

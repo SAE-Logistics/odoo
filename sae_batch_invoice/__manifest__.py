@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "SAE Batch Invoice",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.0.1",
     "summary": "Batch invoicing of goods and transport orders with a preview step. "
                "Runs alongside the original Bulk Invoice Orders wizard.",
     "author": "eartisan",
@@ -9,7 +9,7 @@
     "license": "LGPL-3",
     "category": "Sales",
     "depends": [
-        "sale_goods_order",  # order_type, cost_centre_id, invoice_period_* fields
+        "sale_goods_order",  # order_type, cost_centre_id, invoice_period_end
     ],
     "data": [
         "security/ir.model.access.csv",
