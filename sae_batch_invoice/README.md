@@ -42,6 +42,7 @@ SAE decided (Oct 2026) that a job is billed in the month it finished. `_get_orde
 
 - Material (consumables) pickings and return pickings don't count. Transport charges on a goods order follow the goods date.
 - Unfinished jobs, and jobs finished after the Invoice Up To date, appear in the preview's skipped list with the reason.
+- Finished orders whose lines to invoice total zero are skipped too. Odoo counts a billed line as invoiced, so a price added after posting would never bill. Add the price and run again. A genuinely free job stays on the skipped list until its quantities are set to zero.
 - The module records `date_completion` when a leg is completed by hand, and clears it if the leg is moved back. It can be corrected on the leg's Completion Details tab if the leg was marked late.
 - Legs completed before this module was installed may have no completion time. They fall back to the planned drop off date, then the leg's last edit. Those orders are counted under **Estimated Dates** in the preview.
 

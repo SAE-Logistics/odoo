@@ -238,6 +238,32 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         self.assertFalse(wizard.group_line_ids)
         self.assertEqual(wizard.skipped_line_ids.order_id, order)
 
+    def test_order_with_nothing_to_charge_is_skipped_until_priced(self):
+        order = self._make_goods_order(datetime(2026, 10, 5, 12, 0))
+        order.order_line.price_unit = 0.0
+        wizard = self._run()
+        self.assertFalse(wizard.group_line_ids)
+        self.assertEqual(wizard.skipped_line_ids.order_id, order)
+        self.assertIn("total zero", wizard.skipped_line_ids.reason)
+
+        order.order_line.price_unit = 100.0
+        wizard = self._run()
+        self.assertEqual(wizard.group_line_ids.order_ids, order)
+
+    def test_zero_priced_line_on_charged_order_is_still_billed(self):
+        order = self._make_goods_order(datetime(2026, 10, 5, 12, 0))
+        self._add_surcharge(order)
+        order.order_line[-1].price_unit = 0.0
+        invoice = self._create(self._run())
+        self.assertEqual(invoice.amount_untaxed, 100.0)
+
+    def test_order_zeroed_after_preview_is_not_billed(self):
+        order = self._make_goods_order(datetime(2026, 10, 5, 12, 0))
+        wizard = self._run()
+        order.order_line.price_unit = 0.0
+        with self.assertRaises(UserError):
+            wizard.action_create_invoices()
+
     def test_no_rental_or_storage_lines_added(self):
         self._make_goods_order(datetime(2026, 10, 5, 12, 0))
         invoice = self._create(self._run())
