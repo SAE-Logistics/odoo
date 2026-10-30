@@ -82,9 +82,8 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
             "price_unit": self.surcharge.list_price,
         })]
 
-    def _run(self, date_from=date(2026, 10, 1), date_to=date(2026, 10, 31), **vals):
+    def _run(self, date_to=date(2026, 10, 31), **vals):
         wizard = self.env["sae.batch.invoice.wizard"].create({
-            "date_from": date_from,
             "date_to": date_to,
             "invoice_date": date_to,
             "partner_id": self.customer.id,
@@ -104,7 +103,7 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         order = self._make_goods_order(datetime(2026, 10, 3, 12, 0))
         order.date_order = datetime(2026, 9, 28, 12, 0)
 
-        september = self._run(date(2026, 9, 1), date(2026, 9, 30))
+        september = self._run(date(2026, 9, 30))
         self.assertFalse(september.group_line_ids)
         self.assertEqual(september.skipped_line_ids.order_id, order)
         self.assertIn("03/10/2026", september.skipped_line_ids.reason)
@@ -115,7 +114,7 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
 
     def test_late_charge_on_older_order_is_billed_next_run(self):
         order = self._make_goods_order(datetime(2026, 9, 20, 12, 0))
-        september = self._create(self._run(date(2026, 9, 1), date(2026, 9, 30)))
+        september = self._create(self._run(date(2026, 9, 30)))
         self.assertEqual(len(september), 1)
         september.action_post()
 
@@ -128,7 +127,7 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         self.assertEqual(len(invoices), 1)
         product_lines = invoices.invoice_line_ids.filtered(lambda line: line.display_type == "product")
         self.assertEqual(product_lines.product_id, self.surcharge)
-        self.assertEqual(invoices.invoice_period_start, date(2026, 10, 1))
+        self.assertEqual(invoices.invoice_period_end, date(2026, 10, 31))
 
     def test_goods_waiting_for_warehouse_are_skipped(self):
         order = self._make_order()
@@ -203,7 +202,7 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
     def test_finish_time_uses_local_day(self):
         # 30 Sep 2026 23:30 UTC is 1 Oct 00:30 BST, so it belongs to October.
         self._make_goods_order(datetime(2026, 9, 30, 23, 30))
-        self.assertFalse(self._run(date(2026, 9, 1), date(2026, 9, 30)).group_line_ids)
+        self.assertFalse(self._run(date(2026, 9, 30)).group_line_ids)
         wizard = self._run()
         self.assertEqual(len(wizard.group_line_ids), 1)
         self.assertEqual(wizard.group_line_ids.earlier_order_count, 0)

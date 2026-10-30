@@ -23,9 +23,9 @@ class SaeBatchInvoiceWizard(models.TransientModel):
       legs are completed, goods orders when the warehouse has validated the
       goods out/in (SAE's decision, Oct 2026). The job's finish date decides
       the period, not the order confirmation date;
-    * every finished order still "to invoice" up to Date To is picked up, so
-      late charges on orders from earlier periods are billed in the next run;
-      Date From only sets the period printed on the invoice;
+    * every finished order still "to invoice" up to the cut-off date is picked
+      up, so late charges on earlier jobs are billed in the next run. There is
+      no start date: invoice_status already stops a line being billed twice;
     * invoice lines are prepared straight from the sale order lines (no
       temporary per-order invoices), keeping section and note lines;
     * period bounds are worked out in the user's timezone;
@@ -41,18 +41,12 @@ class SaeBatchInvoiceWizard(models.TransientModel):
         default="setup",
         required=True,
     )
-    date_from = fields.Date(
-        string="Period Start",
-        required=True,
-        default=lambda self: fields.Date.context_today(self).replace(day=1),
-        help="Printed on the invoice as the start of the billing period. "
-             "Orders from earlier periods that still have something to invoice are included.",
-    )
     date_to = fields.Date(
-        string="Period End",
+        string="Invoice Up To",
         required=True,
         default=fields.Date.context_today,
-        help="Jobs finished after this day are left for a later run.",
+        help="Jobs finished on or before this day are invoiced, including late charges on "
+             "earlier jobs. Jobs finished after it are left for a later run.",
     )
     invoice_date = fields.Date(required=True, default=fields.Date.context_today)
     partner_id = fields.Many2one("res.partner", string="Customer")
@@ -180,8 +174,6 @@ class SaeBatchInvoiceWizard(models.TransientModel):
 
     def _get_candidate_orders(self):
         self.ensure_one()
-        if self.date_from > self.date_to:
-            raise UserError(_("Period Start must be earlier than or equal to Period End."))
         return self.env["sale.order"].search(
             self._get_order_domain(), order="commercial_partner_id,date_order,id"
         )
@@ -205,7 +197,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             return waiting_reason
         if billing_date >= self._local_day_start_utc(self.date_to + timedelta(days=1)):
             local_date = fields.Datetime.context_timestamp(self, billing_date)
-            return _("Finished after Period End (%s).", local_date.strftime("%d/%m/%Y"))
+            return _("Finished after the cut-off date (%s).", local_date.strftime("%d/%m/%Y"))
         return False
 
     def _split_orders(self, orders):
@@ -247,7 +239,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
         return total
 
     def _prepare_group_line_vals(self, orders):
-        period_start = self._local_day_start_utc(self.date_from)
+        month_start = self._local_day_start_utc(self.date_to.replace(day=1))
         base_order = orders[0]
         billing_dates = [self._get_order_billing_date(order) for order in orders]
         return {
@@ -256,7 +248,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             "family": self._get_order_family(base_order),
             "currency_id": base_order.currency_id.id,
             "order_ids": [Command.set(orders.ids)],
-            "earlier_order_count": sum(1 for billing_date in billing_dates if billing_date[0] < period_start),
+            "earlier_order_count": sum(1 for billing_date in billing_dates if billing_date[0] < month_start),
             "estimated_date_count": sum(1 for billing_date in billing_dates if billing_date[1]),
             "amount_untaxed": self._estimate_untaxed(orders),
         }
@@ -326,7 +318,6 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             "cost_centre_id": base_order.cost_centre_id.id or False,
             "ref": base_order.cost_centre_id.display_name or ", ".join(client_refs)[:2000] or False,
             "payment_reference": payment_refs.pop() if len(payment_refs) == 1 else False,
-            "invoice_period_start": self.date_from,
             "invoice_period_end": self.date_to,
             "sae_batch_invoice": True,
             "invoice_line_ids": [Command.create(vals) for vals in line_vals],
@@ -385,9 +376,10 @@ class SaeBatchInvoiceWizardGroup(models.TransientModel):
     order_ids = fields.Many2many("sale.order", string="Orders", readonly=True)
     order_count = fields.Integer(compute="_compute_order_count")
     earlier_order_count = fields.Integer(
-        string="From Earlier Periods",
+        string="From Earlier Months",
         readonly=True,
-        help="Orders finished before Period Start that still had something to invoice, e.g. late surcharges.",
+        help="Orders finished before the month of the cut-off date that still had something "
+             "to invoice, e.g. late surcharges.",
     )
     estimated_date_count = fields.Integer(
         string="Estimated Dates",
