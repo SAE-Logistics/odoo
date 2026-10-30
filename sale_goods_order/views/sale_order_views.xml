@@ -196,13 +196,25 @@
                     <filter string="To Do" name="transport_status_to_do" domain="[('transport_leg_status', '=', 'to_do')]"/>
                     <filter string="Missing" name="transport_status_missing" domain="[('transport_leg_status', '=', 'missing')]"/>
                     <filter string="Not Needed" name="transport_status_not_needed" domain="[('transport_leg_status', '=', 'not_needed')]"/>
-                    <filter string="Completed" name="transport_status_completed" domain="[('transport_leg_status', '=', 'completed')]"/>
+                    <filter string="Transport Completed" name="transport_status_completed" domain="[('transport_leg_status', '=', 'completed')]"/>
                 </xpath>
             </field>
         </record>
 
-        <!-- Extension of the base search view so "Open Orders" is available in
-             Quotations, Orders and the custom order menus alike. -->
+        <!-- Superseded by our "To Invoice", which only lists finished jobs. -->
+        <record id="sale_order_search_hide_native_to_invoice" model="ir.ui.view">
+            <field name="name">sale.order.search.hide.native.to.invoice</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.sale_order_view_search_inherit_sale"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='to_invoice']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Extension of the base search view so the order status filters are
+             available in Quotations, Orders and the custom order menus alike. -->
         <record id="sale_order_search_inherit_open_orders" model="ir.ui.view">
             <field name="name">sale.order.search.inherit.open.orders</field>
             <field name="model">sale.order</field>
@@ -213,6 +225,14 @@
                     <!-- Open = not yet planned: no legs, or a leg with neither a carrier service nor marked internal. -->
                     <filter string="Open Orders" name="open_orders"
                             domain="[('state', '!=', 'cancel'), ('no_transport_needed', '=', False), '|', ('transport_all_leg_ids', '=', False), ('transport_all_leg_ids', 'any', [('carrier_service_id', '=', False), ('is_internal', '=', False)])]"/>
+                    <!-- To Invoice = job finished, something still to bill. Finished follows
+                         sae_batch_invoice: all legs completed, or all goods pickings validated,
+                         ignoring material pickings and those in the other direction. -->
+                    <filter string="To Invoice" name="ready_to_invoice"
+                            domain="[('state', '=', 'sale'), ('invoice_status', '=', 'to invoice'), '|', '&amp;', ('order_type', '=', 'transport'), ('transport_leg_status', '=', 'completed'), '|', '&amp;', '&amp;', ('order_type', '=', 'goods_out'), ('picking_ids', 'any', [('picking_type_code', '=', 'outgoing'), ('is_material_picking', '=', False), ('state', '=', 'done')]), ('picking_ids', 'not any', [('picking_type_code', '=', 'outgoing'), ('is_material_picking', '=', False), ('state', 'not in', ['done', 'cancel'])]), '&amp;', '&amp;', ('order_type', '=', 'goods_in'), ('picking_ids', 'any', [('picking_type_code', '=', 'incoming'), ('is_material_picking', '=', False), ('state', '=', 'done')]), ('picking_ids', 'not any', [('picking_type_code', '=', 'incoming'), ('is_material_picking', '=', False), ('state', 'not in', ['done', 'cancel'])])]"/>
+                    <!-- Completed = fully billed on posted invoices, none still in draft. -->
+                    <filter string="Completed" name="order_completed"
+                            domain="[('state', '=', 'sale'), ('invoice_status', '=', 'invoiced'), ('order_line.invoice_lines.parent_state', '=', 'posted'), ('order_line', 'not any', [('invoice_lines', 'any', [('parent_state', '=', 'draft')])])]"/>
                 </xpath>
             </field>
         </record>
