@@ -19,9 +19,13 @@ class SaeBatchInvoiceWizard(models.TransientModel):
     Replacement candidate for ``sale.bulk.invoice.wizard`` (sale_goods_order),
     which is left untouched as a fallback. Differences:
 
-    * every order still "to invoice" with a billing date up to Date To is
-      picked up, so late charges on orders from earlier periods are billed in
-      the next run; Date From only sets the period printed on the invoice;
+    * an order is billed once its job is finished: transport orders when all
+      legs are completed, goods orders when the warehouse has validated the
+      goods out/in (SAE's decision, Oct 2026). The job's finish date decides
+      the period, not the order confirmation date;
+    * every finished order still "to invoice" up to Date To is picked up, so
+      late charges on orders from earlier periods are billed in the next run;
+      Date From only sets the period printed on the invoice;
     * invoice lines are prepared straight from the sale order lines (no
       temporary per-order invoices), keeping section and note lines;
     * period bounds are worked out in the user's timezone;
@@ -48,7 +52,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
         string="Period End",
         required=True,
         default=fields.Date.context_today,
-        help="Orders with a billing date after this day are left for a later run.",
+        help="Jobs finished after this day are left for a later run.",
     )
     invoice_date = fields.Date(required=True, default=fields.Date.context_today)
     partner_id = fields.Many2one("res.partner", string="Customer")
@@ -100,14 +104,67 @@ class SaeBatchInvoiceWizard(models.TransientModel):
         local_start = tz.localize(datetime.combine(day, time.min))
         return local_start.astimezone(pytz.utc).replace(tzinfo=None)
 
-    def _get_order_billing_date(self, order):
-        """Return the UTC datetime that decides which period an order is billed in.
+    def _get_leg_completion(self, leg):
+        """Return ``(completion datetime, estimated)`` for a completed leg.
 
-        Currently the order (confirmation) date, as in the original wizard.
-        Change this single method once SAE confirm whether leg completion or
-        delivery validation should drive the billing period instead.
+        Legs completed before this module was installed have no completion
+        time unless a carrier supplied one, so fall back to the planned drop
+        off date (midday, to stay on the same UK day), then the last edit.
         """
-        return order.date_order
+        if leg.date_completion:
+            return leg.date_completion, False
+        if leg.to_date:
+            return datetime.combine(leg.to_date, time(12)), True
+        return leg.write_date, True
+
+    def _get_transport_billing_date(self, order):
+        legs = self.env["sale.transport.leg"].search([("order_id", "=", order.id)])
+        if not legs:
+            return False, False, _("No transport legs on this order.")
+        open_legs = legs.filtered(lambda leg: leg.state != "completed")
+        if open_legs:
+            return False, False, _(
+                "Waiting for delivery: %(done)s of %(total)s legs completed.",
+                done=len(legs) - len(open_legs),
+                total=len(legs),
+            )
+        completions = [self._get_leg_completion(leg) for leg in legs]
+        return (
+            max(completion[0] for completion in completions),
+            any(completion[1] for completion in completions),
+            False,
+        )
+
+    def _get_goods_billing_date(self, order):
+        # Only pickings in the order's own direction count: goods out orders
+        # also carry return receipts, and material (consumables) pickings can
+        # be validated weeks after the goods have moved.
+        picking_code = "outgoing" if order.order_type == "goods_out" else "incoming"
+        pickings = order.picking_ids.filtered(
+            lambda picking: not picking.is_material_picking
+            and picking.picking_type_code == picking_code
+            and picking.state != "cancel"
+        )
+        if not pickings:
+            return False, False, _("No warehouse delivery or receipt on this order.")
+        open_pickings = pickings.filtered(lambda picking: picking.state != "done")
+        if open_pickings:
+            return False, False, _(
+                "Waiting for warehouse validation: %s.",
+                ", ".join(open_pickings.mapped("name")),
+            )
+        return max(pickings.mapped("date_done")), False, False
+
+    def _get_order_billing_date(self, order):
+        """Return ``(billing datetime, estimated, waiting reason)``.
+
+        The UTC datetime the job finished decides which period the order is
+        billed in. ``estimated`` is True when it had to be inferred. While
+        the job is unfinished the datetime is False and the reason says why.
+        """
+        if order.order_type == "transport":
+            return self._get_transport_billing_date(order)
+        return self._get_goods_billing_date(order)
 
     def _get_order_domain(self):
         self.ensure_one()
@@ -125,13 +182,8 @@ class SaeBatchInvoiceWizard(models.TransientModel):
         self.ensure_one()
         if self.date_from > self.date_to:
             raise UserError(_("Period Start must be earlier than or equal to Period End."))
-        period_end = self._local_day_start_utc(self.date_to + timedelta(days=1))
-        orders = self.env["sale.order"].search(
+        return self.env["sale.order"].search(
             self._get_order_domain(), order="commercial_partner_id,date_order,id"
-        )
-        return orders.filtered(
-            lambda order: self._get_order_billing_date(order)
-            and self._get_order_billing_date(order) < period_end
         )
 
     def _get_order_invoice_lines(self, order):
@@ -148,6 +200,12 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             return _("Already has a draft invoice. Post or delete it, then run again.")
         if not self._get_order_invoice_lines(order):
             return _("Nothing left to invoice.")
+        billing_date, estimated, waiting_reason = self._get_order_billing_date(order)
+        if waiting_reason:
+            return waiting_reason
+        if billing_date >= self._local_day_start_utc(self.date_to + timedelta(days=1)):
+            local_date = fields.Datetime.context_timestamp(self, billing_date)
+            return _("Finished after Period End (%s).", local_date.strftime("%d/%m/%Y"))
         return False
 
     def _split_orders(self, orders):
@@ -191,14 +249,15 @@ class SaeBatchInvoiceWizard(models.TransientModel):
     def _prepare_group_line_vals(self, orders):
         period_start = self._local_day_start_utc(self.date_from)
         base_order = orders[0]
-        earlier = orders.filtered(lambda order: self._get_order_billing_date(order) < period_start)
+        billing_dates = [self._get_order_billing_date(order) for order in orders]
         return {
             "partner_id": base_order.commercial_partner_id.id,
             "cost_centre_id": base_order.cost_centre_id.id or False,
             "family": self._get_order_family(base_order),
             "currency_id": base_order.currency_id.id,
             "order_ids": [Command.set(orders.ids)],
-            "earlier_order_count": len(earlier),
+            "earlier_order_count": sum(1 for billing_date in billing_dates if billing_date[0] < period_start),
+            "estimated_date_count": sum(1 for billing_date in billing_dates if billing_date[1]),
             "amount_untaxed": self._estimate_untaxed(orders),
         }
 
@@ -216,7 +275,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
         self.ensure_one()
         ready, skipped = self._split_orders(self._get_candidate_orders())
         if not ready and not skipped:
-            raise UserError(_("No orders with something to invoice up to %s.", self.date_to))
+            raise UserError(_("No orders with something to invoice."))
 
         group_vals = [
             Command.create(self._prepare_group_line_vals(orders))
@@ -328,7 +387,14 @@ class SaeBatchInvoiceWizardGroup(models.TransientModel):
     earlier_order_count = fields.Integer(
         string="From Earlier Periods",
         readonly=True,
-        help="Orders dated before Period Start that still had something to invoice, e.g. late surcharges.",
+        help="Orders finished before Period Start that still had something to invoice, e.g. late surcharges.",
+    )
+    estimated_date_count = fields.Integer(
+        string="Estimated Dates",
+        readonly=True,
+        help="Orders with a leg that has no recorded completion time, so the finish date was "
+             "taken from the planned drop off date or the leg's last edit. "
+             "Check these fell in the right month.",
     )
     currency_id = fields.Many2one("res.currency", readonly=True)
     amount_untaxed = fields.Monetary(string="Untaxed (est.)", readonly=True)
@@ -341,6 +407,7 @@ class SaeBatchInvoiceWizardGroup(models.TransientModel):
 class SaeBatchInvoiceWizardSkipped(models.TransientModel):
     _name = "sae.batch.invoice.wizard.skipped"
     _description = "Batch Invoice Preview: Skipped Order"
+    _order = "reason, id"
 
     wizard_id = fields.Many2one("sae.batch.invoice.wizard", required=True, ondelete="cascade")
     order_id = fields.Many2one("sale.order", string="Order", readonly=True)

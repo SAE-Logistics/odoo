@@ -18,8 +18,8 @@
                     </group>
                 </group>
                 <div class="text-muted" invisible="state != 'setup'">
-                    Every confirmed order with something left to invoice up to Period End is included,
-                    including late charges on orders from earlier periods.
+                    Jobs finished up to Period End are included: transport when all legs are completed,
+                    goods when the warehouse has validated them. Late charges on earlier jobs are included too.
                 </div>
 
                 <div invisible="state != 'preview'">
@@ -32,6 +32,7 @@
                             <field name="family"/>
                             <field name="order_count" string="Orders"/>
                             <field name="earlier_order_count" optional="show"/>
+                            <field name="estimated_date_count" optional="show"/>
                             <field name="order_ids" widget="many2many_tags" optional="hide"/>
                             <field name="currency_id" column_invisible="1"/>
                             <field name="amount_untaxed" sum="Total"/>
