@@ -17,6 +17,7 @@ are no other repositories for these modules.
 | `dpd_local_uk_shipping` | SAE | DPD Local (UK) carrier integration — JWT auth, rating and booking |
 | `reports_designer_commercial_invoice` | SAE | XLSX commercial-invoice report templates for goods and transport orders |
 | `sae_driver_manifest` | SAE | Driver manifest report |
+| `sae_batch_invoice` | SAE | Batch invoicing of goods/transport orders with a preview step; runs alongside the original Bulk Invoice Orders wizard |
 | `sae_warehouse_menu` | SAE | Warehouse app for warehouse staff — Goods In, Goods Out, Materials, Stock Counts (menus/actions only) |
 | `partner_cost_centre` | SAE | Cost centres on partners, surfaced on invoices |
 | `ps_partner_address_autofill` | SAE (LGPL-3 fork of PySquad module) | Google Places autocomplete on the partner address; API key in system parameters |
