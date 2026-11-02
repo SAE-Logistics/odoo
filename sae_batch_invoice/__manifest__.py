@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "SAE Batch Invoice",
-    "version": "18.0.1.0.2",
+    "version": "18.0.1.0.3",
     "summary": "Batch invoicing of goods and transport orders with a preview step. "
                "Runs alongside the original Bulk Invoice Orders wizard.",
     "author": "eartisan",
@@ -13,6 +13,7 @@
     ],
     "data": [
         "security/ir.model.access.csv",
+        "data/invoice_reports.xml",
         "views/batch_invoice_wizard_views.xml",
         "views/account_move_views.xml",
     ],

@@ -10,10 +10,24 @@ already created remain normal invoices.
 ## How a run works
 
 1. Choose Invoice Up To, Invoice Date, and optionally a customer and order type.
-2. **Preview** lists the invoices that will be created (one per company, customer,
-   cost centre, goods/transport and currency) with an estimated untaxed total, and the
-   orders that will be skipped with the reason.
+2. **Preview** lists the invoices that will be created (see below) with an estimated
+   untaxed total, and the orders that will be skipped with the reason.
 3. **Create Draft Invoices** creates them. Nothing is posted automatically.
+
+## How invoices are split
+
+Follows SAE's existing invoices. The split is by line, so a goods order can land on two invoices.
+
+| Invoice | Contains | One per | PDF |
+|---|---|---|---|
+| Warehouse | Handling and service lines on goods orders | Customer, across cost centres | Warehouse Invoice |
+| Goods Order Transport | Transport charges on Goods In/Out orders | Customer and cost centre | Transport Invoice |
+| Transport Only | Transport orders | Customer and cost centre | Transport Invoice |
+
+All are also split by company and currency. UK / EU / ROW is not applied yet, pending SAE's rules.
+
+Batch invoices print and send with the PDF above instead of Odoo's standard invoice, and
+their shipping address is the billing customer, because one invoice covers many jobs.
 
 ## Differences from the original wizard
 
