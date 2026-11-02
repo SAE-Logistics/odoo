@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Send refuses any report not flagged as an invoice report. -->
+    <record id="sale_goods_order.action_report_goods_invoice" model="ir.actions.report">
+        <field name="is_invoice_report" eval="True"/>
+    </record>
+    <record id="sale_goods_order.action_report_transport_invoice" model="ir.actions.report">
+        <field name="is_invoice_report" eval="True"/>
+    </record>
+</odoo>

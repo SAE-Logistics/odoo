@@ -7,10 +7,7 @@ from odoo import _, fields, models
 from odoo.exceptions import UserError
 from odoo.fields import Command
 
-FAMILY_SELECTION = [
-    ("goods", "Goods"),
-    ("transport", "Transport"),
-]
+from ..models.account_move import FAMILY_SELECTION
 
 
 class SaeBatchInvoiceWizard(models.TransientModel):
@@ -31,7 +28,12 @@ class SaeBatchInvoiceWizard(models.TransientModel):
     * period bounds are worked out in the user's timezone;
     * a preview lists what will be invoiced and which orders are skipped;
     * orders with nothing to charge are skipped, not billed at zero;
-    * no rental/storage lines are added.
+    * no rental/storage lines are added: SAE invoice storage space outside
+      Odoo for now;
+    * invoices follow SAE's split, line by line, so a goods order can land on
+      two invoices: warehouse charges such as handling and receiving, transport
+      charges on goods orders, and transport-only orders. Each is split by cost
+      centre where the order has one.
     """
 
     _name = "sae.batch.invoice.wizard"
@@ -90,8 +92,17 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             return ["transport"]
         return ["goods_in", "goods_out", "transport"]
 
-    def _get_order_family(self, order):
-        return "transport" if order.order_type == "transport" else "goods"
+    def _get_line_family(self, line):
+        if line.order_id.order_type == "transport":
+            return "transport"
+        if (
+            line.invoice_service_type == "transport"
+            or line.transport_leg_ids
+            or line.goods_delivery_transport_charge_line
+            or line.transport_surcharge_charge_line
+        ):
+            return "goods_transport"
+        return "warehouse"
 
     def _local_day_start_utc(self, day):
         """Return the UTC datetime of local midnight at the start of ``day``."""
@@ -186,6 +197,28 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             return self.env["sale.order.line"]
         return lines
 
+    def _get_family_invoice_lines(self, order, family):
+        """Lines of ``order`` for one invoice family, each section with the line after it."""
+        family_lines = self.env["sale.order.line"]
+        pending = self.env["sale.order.line"]
+        for line in self._get_order_invoice_lines(order):
+            if line.display_type:
+                pending |= line
+                continue
+            if self._get_line_family(line) == family:
+                family_lines |= pending | line
+            pending = self.env["sale.order.line"]
+        return family_lines
+
+    def _get_order_families(self, order):
+        """Invoice families ``order`` has something to charge on."""
+        lines = self._get_order_invoice_lines(order).filtered(lambda line: not line.display_type)
+        families = dict.fromkeys(self._get_line_family(line) for line in lines)
+        return [
+            family for family in families
+            if not order.currency_id.is_zero(self._estimate_untaxed(order, family))
+        ]
+
     def _get_skip_reason(self, order):
         if order.invoice_ids.filtered(
             lambda move: move.move_type == "out_invoice" and move.state == "draft"
@@ -216,45 +249,51 @@ class SaeBatchInvoiceWizard(models.TransientModel):
                 ready |= order
         return ready, skipped
 
-    def _get_bucket_key(self, order):
+    def _get_bucket_key(self, order, family):
         return (
+            family,
             order.company_id.id,
             order.commercial_partner_id.id,
-            order.cost_centre_id.id or False,
-            self._get_order_family(order),
+            order.cost_centre_id.id,
             order.currency_id.id,
         )
 
     def _bucket_orders(self, orders):
         buckets = defaultdict(lambda: self.env["sale.order"])
         for order in orders.sorted(key=lambda so: (so.date_order or fields.Datetime.now(), so.id)):
-            buckets[self._get_bucket_key(order)] |= order
+            for family in self._get_order_families(order):
+                buckets[self._get_bucket_key(order, family)] |= order
         return buckets
 
     # ------------------------------------------------------------------
     # Preview
     # ------------------------------------------------------------------
 
-    def _estimate_untaxed(self, orders):
+    def _estimate_untaxed(self, orders, family=False):
         total = 0.0
         for order in orders:
-            for line in self._get_order_invoice_lines(order).filtered(lambda sol: not sol.display_type):
+            lines = (
+                self._get_family_invoice_lines(order, family)
+                if family
+                else self._get_order_invoice_lines(order)
+            )
+            for line in lines.filtered(lambda sol: not sol.display_type):
                 total += line.price_unit * line.qty_to_invoice * (1 - (line.discount or 0.0) / 100.0)
         return total
 
-    def _prepare_group_line_vals(self, orders):
+    def _prepare_group_line_vals(self, orders, family):
         month_start = self._local_day_start_utc(self.date_to.replace(day=1))
         base_order = orders[0]
         billing_dates = [self._get_order_billing_date(order) for order in orders]
         return {
             "partner_id": base_order.commercial_partner_id.id,
-            "cost_centre_id": base_order.cost_centre_id.id or False,
-            "family": self._get_order_family(base_order),
+            "cost_centre_id": base_order.cost_centre_id.id,
+            "family": family,
             "currency_id": base_order.currency_id.id,
             "order_ids": [Command.set(orders.ids)],
             "earlier_order_count": sum(1 for billing_date in billing_dates if billing_date[0] < month_start),
             "estimated_date_count": sum(1 for billing_date in billing_dates if billing_date[1]),
-            "amount_untaxed": self._estimate_untaxed(orders),
+            "amount_untaxed": self._estimate_untaxed(orders, family),
         }
 
     def _reopen(self):
@@ -274,8 +313,8 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             raise UserError(_("No orders with something to invoice."))
 
         group_vals = [
-            Command.create(self._prepare_group_line_vals(orders))
-            for orders in self._bucket_orders(ready).values()
+            Command.create(self._prepare_group_line_vals(orders, key[0]))
+            for key, orders in self._bucket_orders(ready).items()
         ]
         skipped_vals = [
             Command.create({"order_id": order.id, "reason": reason})
@@ -301,14 +340,15 @@ class SaeBatchInvoiceWizard(models.TransientModel):
     # Invoice creation
     # ------------------------------------------------------------------
 
-    def _prepare_bucket_invoice_vals(self, orders):
+    def _prepare_bucket_invoice_vals(self, orders, family):
         base_order = orders[0].with_company(orders[0].company_id)
         invoice_vals = base_order._prepare_invoice()
+        cost_centre = base_order.cost_centre_id
 
         line_vals = []
         sequence = 10
         for order in orders:
-            for line in self._get_order_invoice_lines(order):
+            for line in self._get_family_invoice_lines(order, family):
                 line_vals.append(
                     line.with_company(order.company_id)._prepare_invoice_line(sequence=sequence)
                 )
@@ -316,20 +356,26 @@ class SaeBatchInvoiceWizard(models.TransientModel):
 
         client_refs = list(dict.fromkeys(filter(None, orders.mapped("client_order_ref"))))
         payment_refs = set(filter(None, orders.mapped("reference")))
+        ref = cost_centre.display_name
+        if not ref and family != "warehouse":
+            ref = ", ".join(client_refs)[:2000]
         invoice_vals.update({
             "invoice_date": self.invoice_date,
             "invoice_origin": ", ".join(orders.mapped("name")),
-            "cost_centre_id": base_order.cost_centre_id.id or False,
-            "ref": base_order.cost_centre_id.display_name or ", ".join(client_refs)[:2000] or False,
+            # One invoice covers many jobs, so no single job's delivery address applies.
+            "partner_shipping_id": invoice_vals["partner_id"],
+            "cost_centre_id": cost_centre.id,
+            "ref": ref or False,
             "payment_reference": payment_refs.pop() if len(payment_refs) == 1 else False,
             "invoice_period_end": self.date_to,
             "sae_batch_invoice": True,
+            "sae_invoice_family": family,
             "invoice_line_ids": [Command.create(vals) for vals in line_vals],
         })
         return invoice_vals
 
-    def _create_bucket_invoice(self, orders):
-        invoice_vals = self._prepare_bucket_invoice_vals(orders)
+    def _create_bucket_invoice(self, orders, family):
+        invoice_vals = self._prepare_bucket_invoice_vals(orders, family)
         invoice = (
             self.env["account.move"]
             .with_company(orders[0].company_id)
@@ -348,14 +394,20 @@ class SaeBatchInvoiceWizard(models.TransientModel):
         if self.state != "preview":
             raise UserError(_("Preview the run before creating invoices."))
 
+        # Re-check once, up front: an order may have been invoiced since the
+        # preview, and the draft from an order's first invoice must not make
+        # the order skip its second.
+        ready_orders = self.group_line_ids.order_ids.filtered(
+            lambda order: order.invoice_status == "to invoice" and not self._get_skip_reason(order)
+        )
+
         invoices = self.env["account.move"]
         for group in self.group_line_ids:
-            # Re-check: an order may have been invoiced since the preview.
-            orders = group.order_ids.filtered(
-                lambda order: order.invoice_status == "to invoice" and not self._get_skip_reason(order)
+            orders = (group.order_ids & ready_orders).filtered(
+                lambda order: self._get_family_invoice_lines(order, group.family)
             )
             if orders:
-                invoices |= self._create_bucket_invoice(orders)
+                invoices |= self._create_bucket_invoice(orders, group.family)
 
         if not invoices:
             raise UserError(_("No invoices were created. The previewed orders have been invoiced or changed since."))
