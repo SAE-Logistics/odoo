@@ -16,18 +16,22 @@ already created remain normal invoices.
 
 ## How invoices are split
 
-Follows SAE's existing invoices. The split is by line, so a goods order can land on two invoices.
+Only transport is invoiced here. SAE invoice warehouse and storage charges outside Odoo for
+now, so those lines stay on the order, and an order with nothing else is listed as skipped.
 
-| Invoice | Contains | One per | PDF |
-|---|---|---|---|
-| Warehouse | Handling and service lines on goods orders | Customer, across cost centres | Warehouse Invoice |
-| Goods Order Transport | Transport charges on Goods In/Out orders | Customer and cost centre | Transport Invoice |
-| Transport Only | Transport orders | Customer and cost centre | Transport Invoice |
+| Invoice | Contains |
+|---|---|
+| Goods Order Transport | Transport charges on Goods In/Out orders |
+| Transport Only | Transport orders |
 
-All are also split by company and currency. UK / EU / ROW is not applied yet, pending SAE's rules.
+Each is split by customer and by cost centre where the order has one, then by company and
+currency. UK / EU / ROW is not applied yet, pending SAE's rules.
 
-Batch invoices print and send with the PDF above instead of Odoo's standard invoice, and
-their shipping address is the billing customer, because one invoice covers many jobs.
+A manual charge on a goods order counts as transport only if its Invoice Service Type is
+Transport. Otherwise it is treated as a warehouse charge and is not billed.
+
+Batch invoices print and send with the Transport Invoice PDF instead of Odoo's standard
+invoice. Their shipping address is the billing customer, because one invoice covers many jobs.
 
 ## Differences from the original wizard
 
