@@ -20,13 +20,13 @@ The split is by line, so a goods order can land on two invoices.
 
 | Invoice | Contains | PDF |
 |---|---|---|
-| Warehouse | Handling, receiving and other service lines on goods orders | Warehouse Invoice |
+| Goods In/Out | Handling, receiving, packaging and other service lines on goods orders | Warehouse Invoice |
 | Goods Order Transport | Transport charges on Goods In/Out orders | Transport Invoice |
 | Transport Only | Transport orders | Transport Invoice |
 
 Each is split by customer and by cost centre where the order has one, then by company and
-currency. UK / EU / ROW is not applied yet, pending SAE's rules. Storage space is not billed
-here: SAE invoice it outside Odoo for now.
+currency, with orders oldest first. UK / EU / ROW is not applied yet, pending SAE's rules.
+Storage space is not billed here: SAE invoice it outside Odoo for now.
 
 Batch invoices print and send with the PDF above instead of Odoo's standard invoice, and
 their shipping address is the billing customer, because one invoice covers many jobs.

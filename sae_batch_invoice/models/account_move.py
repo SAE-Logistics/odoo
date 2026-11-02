@@ -1,7 +1,7 @@
 from odoo import api, fields, models
 
 FAMILY_SELECTION = [
-    ("warehouse", "Warehouse"),
+    ("warehouse", "Goods In/Out"),
     ("goods_transport", "Goods Order Transport"),
     ("transport", "Transport Only"),
 ]

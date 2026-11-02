@@ -270,9 +270,12 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             order.currency_id.id,
         )
 
+    def _sort_orders(self, orders):
+        return orders.sorted(key=lambda so: (so.date_order or fields.Datetime.now(), so.id))
+
     def _bucket_orders(self, orders):
         buckets = defaultdict(lambda: self.env["sale.order"])
-        for order in orders.sorted(key=lambda so: (so.date_order or fields.Datetime.now(), so.id)):
+        for order in self._sort_orders(orders):
             for family in self._get_order_families(order):
                 buckets[self._get_bucket_key(order, family)] |= order
         return buckets
@@ -419,7 +422,8 @@ class SaeBatchInvoiceWizard(models.TransientModel):
                 lambda order: self._get_family_invoice_lines(order, group.family)
             )
             if orders:
-                invoices |= self._create_bucket_invoice(orders, group.family)
+                # order_ids reads back newest first, so restore the invoice's row order.
+                invoices |= self._create_bucket_invoice(self._sort_orders(orders), group.family)
 
         if not invoices:
             raise UserError(_("No invoices were created. The previewed orders have been invoiced or changed since."))
