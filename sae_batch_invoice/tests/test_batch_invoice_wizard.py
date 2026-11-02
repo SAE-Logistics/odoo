@@ -57,9 +57,8 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         order.action_confirm()
         return order
 
-    def _make_goods_order(self, finished_at, cost_centre=False, service_type="transport"):
+    def _make_goods_order(self, finished_at, cost_centre=False):
         order = self._make_order(cost_centre)
-        order.order_line.invoice_service_type = service_type
         order.picking_ids.write({"state": "done", "date_done": finished_at})
         return order
 
@@ -77,7 +76,7 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         return order
 
     def _make_goods_order_with_transport(self, finished_at, cost_centre=False):
-        order = self._make_goods_order(finished_at, cost_centre, service_type="warehouse")
+        order = self._make_goods_order(finished_at, cost_centre)
         order.order_line = [(0, 0, {
             "product_id": self.surcharge.id,
             "product_uom_qty": 1,
@@ -91,7 +90,6 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
             "product_id": self.surcharge.id,
             "product_uom_qty": 1,
             "price_unit": self.surcharge.list_price,
-            "invoice_service_type": "transport",
         })]
 
     def _run(self, date_to=date(2026, 10, 31), **vals):
@@ -143,7 +141,6 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
 
     def test_goods_waiting_for_warehouse_are_skipped(self):
         order = self._make_order()
-        order.order_line.invoice_service_type = "transport"
         self.assertNotEqual(order.picking_ids.state, "done")
         wizard = self._run()
         self.assertFalse(wizard.group_line_ids)
@@ -227,42 +224,53 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         with self.assertRaises(UserError):
             self._run()
 
-    def test_warehouse_only_order_is_skipped(self):
-        order = self._make_goods_order(datetime(2026, 10, 5, 12, 0), service_type="warehouse")
-        wizard = self._run()
-        self.assertFalse(wizard.group_line_ids)
-        self.assertEqual(wizard.skipped_line_ids.order_id, order)
-        self.assertIn("outside Odoo", wizard.skipped_line_ids.reason)
-
-    def test_goods_order_bills_transport_and_leaves_warehouse_charges(self):
-        order = self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0), self.cost_centre_a)
-
-        invoice = self._create(self._run())
-        self.assertEqual(len(invoice), 1)
-        self.assertEqual(invoice.amount_untaxed, 25.0)
-        self.assertEqual(invoice.cost_centre_id, self.cost_centre_a)
-        self.assertEqual(order.order_line[0].qty_invoiced, 0.0)
-
-    def test_one_invoice_per_cost_centre_and_order_type(self):
-        self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0), self.cost_centre_a)
-        self._make_goods_order_with_transport(datetime(2026, 10, 6, 12, 0), self.cost_centre_a)
-        self._make_goods_order_with_transport(datetime(2026, 10, 7, 12, 0), self.cost_centre_b)
-        self._make_goods_order_with_transport(datetime(2026, 10, 7, 12, 0))
-        self._make_transport_order(datetime(2026, 10, 8, 12, 0), self.cost_centre_a)
+    def test_one_warehouse_invoice_per_cost_centre(self):
+        self._make_goods_order(datetime(2026, 10, 5, 12, 0), self.cost_centre_a)
+        self._make_goods_order(datetime(2026, 10, 6, 12, 0), self.cost_centre_a)
+        self._make_goods_order(datetime(2026, 10, 7, 12, 0), self.cost_centre_b)
+        self._make_goods_order(datetime(2026, 10, 8, 12, 0))
 
         invoices = self._create(self._run())
-        self.assertEqual(len(invoices), 4)
-        cc_a_goods = invoices.filtered(
-            lambda move: move.cost_centre_id == self.cost_centre_a and "," in move.invoice_origin
-        )
-        self.assertEqual(cc_a_goods.amount_untaxed, 50.0)
+        self.assertEqual(len(invoices), 3)
+        self.assertEqual(set(invoices.mapped("sae_invoice_family")), {"warehouse"})
+        cc_a = invoices.filtered(lambda move: move.cost_centre_id == self.cost_centre_a)
+        self.assertEqual(cc_a.amount_untaxed, 200.0)
 
-    def test_goods_transport_at_zero_is_skipped_despite_warehouse_charges(self):
+    def test_goods_order_splits_warehouse_and_transport_charges(self):
+        order = self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0), self.cost_centre_a)
+
+        wizard = self._run()
+        self.assertEqual(len(wizard.group_line_ids), 2)
+        invoices = self._create(wizard)
+        self.assertEqual(len(invoices), 2)
+        warehouse = invoices.filtered(lambda move: move.sae_invoice_family == "warehouse")
+        transport = invoices.filtered(lambda move: move.sae_invoice_family == "goods_transport")
+        self.assertEqual(warehouse.amount_untaxed, 100.0)
+        self.assertEqual(transport.amount_untaxed, 25.0)
+        self.assertEqual(invoices.cost_centre_id, self.cost_centre_a)
+        self.assertEqual(order.invoice_ids, invoices)
+
+    def test_transport_invoices_split_by_cost_centre_and_order_type(self):
+        self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0), self.cost_centre_a)
+        self._make_goods_order_with_transport(datetime(2026, 10, 6, 12, 0), self.cost_centre_b)
+        self._make_transport_order(datetime(2026, 10, 7, 12, 0), self.cost_centre_a)
+
+        invoices = self._create(self._run())
+        families = sorted(invoices.mapped("sae_invoice_family"))
+        self.assertEqual(
+            families,
+            ["goods_transport", "goods_transport", "transport", "warehouse", "warehouse"],
+        )
+        self.assertEqual(
+            invoices.filtered(lambda move: move.sae_invoice_family == "transport").cost_centre_id,
+            self.cost_centre_a,
+        )
+
+    def test_family_with_nothing_to_charge_gets_no_invoice(self):
         order = self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0))
         order.order_line[-1].price_unit = 0.0
-        wizard = self._run()
-        self.assertFalse(wizard.group_line_ids)
-        self.assertIn("total zero", wizard.skipped_line_ids.reason)
+        invoice = self._create(self._run())
+        self.assertEqual(invoice.sae_invoice_family, "warehouse")
 
     def test_invoice_ships_to_billing_customer_not_an_order_contact(self):
         order = self._make_goods_order(datetime(2026, 10, 5, 12, 0))
@@ -274,16 +282,17 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         invoice = self._create(self._run())
         self.assertEqual(invoice.partner_shipping_id, invoice.partner_id)
 
-    def test_print_and_send_use_transport_layout(self):
+    def test_print_and_send_use_sae_layout(self):
         self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0))
         self._make_transport_order(datetime(2026, 10, 6, 12, 0))
+        move_send = self.env["account.move.send"]
+        warehouse_report = self.env.ref("sale_goods_order.action_report_goods_invoice")
         transport_report = self.env.ref("sale_goods_order.action_report_transport_invoice")
 
-        invoices = self._create(self._run())
-        self.assertEqual(len(invoices), 2)
-        for invoice in invoices:
-            report = self.env["account.move.send"]._get_default_pdf_report_id(invoice)
-            self.assertEqual(report, transport_report)
+        for invoice in self._create(self._run()):
+            report = move_send._get_default_pdf_report_id(invoice)
+            expected = warehouse_report if invoice.sae_invoice_family == "warehouse" else transport_report
+            self.assertEqual(report, expected)
             self.assertTrue(report.is_invoice_report)
 
     def test_order_with_draft_invoice_is_listed_as_skipped(self):
