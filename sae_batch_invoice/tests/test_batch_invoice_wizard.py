@@ -194,6 +194,30 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         self.assertEqual(wizard.group_line_ids.order_ids, order)
         self.assertEqual(wizard.group_line_ids.estimated_date_count, 1)
 
+    def _complete_legs_without_dates(self, *legs):
+        self.env.cr.execute(
+            "UPDATE sale_transport_leg SET state = 'completed', write_date = '2026-11-20' WHERE id IN %s",
+            [tuple(leg.id for leg in legs)],
+        )
+        self.env["sale.transport.leg"].invalidate_model()
+
+    def test_leg_with_no_dates_falls_back_to_order_date_not_last_edit(self):
+        order = self._make_order(template=self.transport_template)
+        order.date_order = datetime(2026, 10, 5, 12, 0)
+        self._complete_legs_without_dates(self._add_leg(order, state="scheduled"))
+
+        wizard = self._run()
+        self.assertEqual(wizard.group_line_ids.order_ids, order)
+        self.assertEqual(wizard.group_line_ids.estimated_date_count, 1)
+
+    def test_undated_leg_does_not_move_order_past_a_dated_leg(self):
+        order = self._make_transport_order(datetime(2026, 10, 5, 12, 0))
+        order.date_order = datetime(2026, 9, 1, 12, 0)
+        self._complete_legs_without_dates(self._add_leg(order, state="scheduled"))
+
+        self.assertFalse(self._run(date(2026, 9, 30)).group_line_ids)
+        self.assertEqual(self._run().group_line_ids.order_ids, order)
+
     def test_completing_a_leg_records_the_time_and_back_clears_it(self):
         order = self._make_order(template=self.transport_template)
         leg = self._add_leg(order, state="in_transit")
@@ -266,11 +290,26 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
             self.cost_centre_a,
         )
 
-    def test_family_with_nothing_to_charge_gets_no_invoice(self):
+    def test_zero_transport_line_goes_on_warehouse_invoice_and_clears_order(self):
         order = self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0))
         order.order_line[-1].price_unit = 0.0
-        invoice = self._create(self._run())
+        wizard = self._run()
+        self.assertEqual(len(wizard.group_line_ids), 1)
+
+        invoice = self._create(wizard)
         self.assertEqual(invoice.sae_invoice_family, "warehouse")
+        self.assertEqual(invoice.amount_untaxed, 100.0)
+        self.assertEqual(order.order_line[-1].qty_invoiced, 1.0)
+        self.assertEqual(order.invoice_status, "invoiced")
+
+    def test_zero_warehouse_line_goes_on_transport_invoice_and_clears_order(self):
+        order = self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0))
+        order.order_line[0].price_unit = 0.0
+
+        invoice = self._create(self._run())
+        self.assertEqual(invoice.sae_invoice_family, "goods_transport")
+        self.assertEqual(invoice.amount_untaxed, 25.0)
+        self.assertEqual(order.invoice_status, "invoiced")
 
     def test_invoice_ships_to_billing_customer_not_an_order_contact(self):
         order = self._make_goods_order(datetime(2026, 10, 5, 12, 0))

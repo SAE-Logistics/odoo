@@ -115,13 +115,15 @@ class SaeBatchInvoiceWizard(models.TransientModel):
 
         Legs completed before this module was installed have no completion
         time unless a carrier supplied one, so fall back to the planned drop
-        off date (midday, to stay on the same UK day), then the last edit.
+        off date (midday, to stay on the same UK day). The datetime is False
+        if the leg has neither: its last edit says nothing, as bulk changes
+        stamp old legs with today's date.
         """
         if leg.date_completion:
             return leg.date_completion, False
         if leg.to_date:
             return datetime.combine(leg.to_date, time(12)), True
-        return leg.write_date, True
+        return False, True
 
     def _get_transport_billing_date(self, order):
         legs = self.env["sale.transport.leg"].search([("order_id", "=", order.id)])
@@ -135,8 +137,9 @@ class SaeBatchInvoiceWizard(models.TransientModel):
                 total=len(legs),
             )
         completions = [self._get_leg_completion(leg) for leg in legs]
+        dates = [completion[0] for completion in completions if completion[0]]
         return (
-            max(completion[0] for completion in completions),
+            max(dates) if dates else order.date_order,
             any(completion[1] for completion in completions),
             False,
         )
@@ -197,27 +200,36 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             return self.env["sale.order.line"]
         return lines
 
+    def _get_line_amount(self, line):
+        return line.price_unit * line.qty_to_invoice * (1 - (line.discount or 0.0) / 100.0)
+
+    def _get_order_families(self, order):
+        """Invoice families ``order`` has something to charge on."""
+        totals = defaultdict(float)
+        for line in self._get_order_invoice_lines(order).filtered(lambda line: not line.display_type):
+            totals[self._get_line_family(line)] += self._get_line_amount(line)
+        return [family for family, total in totals.items() if not order.currency_id.is_zero(total)]
+
     def _get_family_invoice_lines(self, order, family):
-        """Lines of ``order`` for one invoice family, each section with the line after it."""
+        """Lines of ``order`` for one invoice family, each section with the line after it.
+
+        Lines of a family with nothing to charge go on the order's first
+        invoice. Left unbilled, they would hold the order at "to invoice".
+        """
+        charged_families = self._get_order_families(order)
         family_lines = self.env["sale.order.line"]
         pending = self.env["sale.order.line"]
         for line in self._get_order_invoice_lines(order):
             if line.display_type:
                 pending |= line
                 continue
-            if self._get_line_family(line) == family:
+            line_family = self._get_line_family(line)
+            if line_family not in charged_families and charged_families:
+                line_family = charged_families[0]
+            if line_family == family:
                 family_lines |= pending | line
             pending = self.env["sale.order.line"]
         return family_lines
-
-    def _get_order_families(self, order):
-        """Invoice families ``order`` has something to charge on."""
-        lines = self._get_order_invoice_lines(order).filtered(lambda line: not line.display_type)
-        families = dict.fromkeys(self._get_line_family(line) for line in lines)
-        return [
-            family for family in families
-            if not order.currency_id.is_zero(self._estimate_untaxed(order, family))
-        ]
 
     def _get_skip_reason(self, order):
         if order.invoice_ids.filtered(
@@ -278,7 +290,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
                 else self._get_order_invoice_lines(order)
             )
             for line in lines.filtered(lambda sol: not sol.display_type):
-                total += line.price_unit * line.qty_to_invoice * (1 - (line.discount or 0.0) / 100.0)
+                total += self._get_line_amount(line)
         return total
 
     def _prepare_group_line_vals(self, orders, family):
@@ -441,7 +453,7 @@ class SaeBatchInvoiceWizardGroup(models.TransientModel):
         string="Estimated Dates",
         readonly=True,
         help="Orders with a leg that has no recorded completion time, so the finish date was "
-             "taken from the planned drop off date or the leg's last edit. "
+             "taken from the planned drop off date or the order date. "
              "Check these fell in the right month.",
     )
     currency_id = fields.Many2one("res.currency", readonly=True)
