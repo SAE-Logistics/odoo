@@ -139,6 +139,21 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         self.assertEqual(product_lines.product_id, self.surcharge)
         self.assertEqual(invoices.invoice_period_end, date(2026, 10, 31))
 
+    def test_invoice_lists_orders_oldest_first(self):
+        older = self._make_goods_order(datetime(2026, 10, 5, 12, 0))
+        newer = self._make_goods_order(datetime(2026, 10, 6, 12, 0))
+        older.date_order = datetime(2026, 10, 1, 12, 0)
+        newer.date_order = datetime(2026, 10, 2, 12, 0)
+
+        invoice = self._create(self._run())
+
+        self.assertEqual(invoice.invoice_origin, f"{older.name}, {newer.name}")
+        product_lines = invoice.invoice_line_ids.filtered(lambda line: line.display_type == "product")
+        self.assertEqual(
+            product_lines.sale_line_ids.order_id.ids,
+            [older.id, newer.id],
+        )
+
     def test_goods_waiting_for_warehouse_are_skipped(self):
         order = self._make_order()
         self.assertNotEqual(order.picking_ids.state, "done")
