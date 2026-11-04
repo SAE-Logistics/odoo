@@ -25,7 +25,10 @@ class TransportProductLine(models.Model):
     product_id = fields.Many2one("product.product", string="Product")
     image = fields.Binary(string="Image", attachment=True)
 
-    type = fields.Selection([('consumable', 'Consumable')], string="Type")
+    type = fields.Selection(
+        [('consumable', 'Consumable'), ('commodity', 'Commodity')],
+        string="Type",
+    )
 
     categ_id = fields.Many2one(related="product_id.categ_id", string="Category")
 
