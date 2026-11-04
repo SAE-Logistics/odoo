@@ -1,5 +1,6 @@
 from lxml import etree
 
+from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
 
 from ..models.sale_order import SERVICE_LEVEL
@@ -78,3 +79,85 @@ class TestServiceCustomsFields(TransactionCase):
             'customs_consignee_eori', 'customs_consignee_vat', 'customs_consignee_other_ref',
         ]:
             self.assertEqual(copy[fname], self.order[fname], fname)
+
+
+class TestCustomsRequired(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.gb = cls.env.ref('base.uk')
+        cls.fr = cls.env.ref('base.fr')
+        cls.de = cls.env.ref('base.de')
+        Partner = cls.env['res.partner']
+        cls.customer = Partner.create({'name': 'Customs Customer'})
+        cls.addr_gb = Partner.create({'name': 'Addr GB', 'country_id': cls.gb.id})
+        cls.addr_fr = Partner.create({'name': 'Addr FR', 'country_id': cls.fr.id})
+        cls.addr_de = Partner.create({'name': 'Addr DE', 'country_id': cls.de.id})
+        cls.addr_blank = Partner.create({'name': 'Addr blank'})
+        Template = cls.env['sale.order.template']
+        cls.tmpl = {
+            order_type: Template.create({
+                'name': 'Customs %s' % order_type,
+                'order_type': order_type,
+                **({'picking_type': 'sku'} if order_type != 'transport' else {}),
+            })
+            for order_type in ('goods_in', 'goods_out', 'transport')
+        }
+
+    def _order(self, order_type, **values):
+        return self.env['sale.order'].create({
+            'partner_id': self.customer.id,
+            'sale_order_template_id': self.tmpl[order_type].id,
+            **values,
+        })
+
+    def test_detection_matrix(self):
+        cases = [
+            (self._order('goods_out', partner_shipping_id=self.addr_fr.id), 'export'),
+            (self._order('goods_out', partner_shipping_id=self.addr_gb.id), False),
+            (self._order('goods_out', partner_shipping_id=self.addr_blank.id), False),
+            (self._order('goods_in', collection_address_id=self.addr_fr.id), 'import'),
+            (self._order('goods_in', collection_address_id=self.addr_gb.id), False),
+            (self._order('transport', transport_from_id=self.addr_gb.id,
+                         transport_to_id=self.addr_fr.id), 'export'),
+            (self._order('transport', transport_from_id=self.addr_fr.id,
+                         transport_to_id=self.addr_gb.id), 'import'),
+            (self._order('transport', transport_from_id=self.addr_fr.id,
+                         transport_to_id=self.addr_de.id), False),
+            (self._order('transport', transport_from_id=self.addr_gb.id,
+                         transport_to_id=self.addr_blank.id), False),
+        ]
+        for order, direction in cases:
+            self.assertEqual(order._get_customs_direction(), direction, order.order_type)
+            self.assertEqual(order.customs_required, bool(direction), order.order_type)
+
+    def test_onchange_suggests_direction(self):
+        order = self._order('transport', transport_from_id=self.addr_fr.id,
+                            transport_to_id=self.addr_gb.id)
+        order._onchange_customs_direction()
+        self.assertEqual(order.customs_direction, 'import')
+
+    def test_confirm_blocked_until_details_filled(self):
+        order = self._order('goods_out', partner_shipping_id=self.addr_fr.id)
+        with self.assertRaises(ValidationError) as cm:
+            order.action_confirm()
+        for label in ('Direction', 'Reason', 'Terms', 'Consignee EORI'):
+            self.assertIn(label, str(cm.exception))
+        order.write({
+            'customs_direction': 'export',
+            'customs_reason': 'other',
+            'customs_terms': 'dap',
+            'customs_consignee_eori': 'FR123',
+        })
+        with self.assertRaises(ValidationError) as cm:
+            order.action_confirm()
+        self.assertIn('Consignee Other Reference', str(cm.exception))
+        order.customs_consignee_other_ref = 'REF'
+        order.action_confirm()
+        self.assertEqual(order.state, 'sale')
+
+    def test_domestic_order_confirms_without_details(self):
+        order = self._order('goods_out', partner_shipping_id=self.addr_gb.id)
+        order.action_confirm()
+        self.assertEqual(order.state, 'sale')
