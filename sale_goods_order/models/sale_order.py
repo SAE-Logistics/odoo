@@ -29,6 +29,36 @@ PICKING_TYPE = [
         ('labour', 'Labour'),
         ('emg', 'EMG'),
     ]
+
+SERVICE_LEVEL = [
+    ('1', 'Before 10:00hrs'),
+    ('4', 'Before 12:00hrs'),
+    ('10', 'Economy'),
+    ('13', 'Nextday'),
+    ('16', 'Sameday'),
+    ('18', 'Sat - Before 10:00hrs'),
+    ('21', 'Sat - Before 12:00hrs'),
+    ('17', 'Saturday'),
+    ('24', 'Timed'),
+]
+
+CUSTOMS_DIRECTION = [('import', 'Import'), ('export', 'Export')]
+
+CUSTOMS_REASON = [
+    ('other', 'Other'),
+    ('document', 'Document'),
+    ('product_analysis', 'Product Analysis - NOT FOR RESALE'),
+    ('gift', 'Gift'),
+    ('sale_of_goods', 'Sale of goods'),
+    ('commercial_sample', 'Commercial Sample - NOT FOR RESALE'),
+    ('returned_goods', 'Returned goods - NOT FOR RESALE'),
+    ('product_exchange', 'Product Exchange - NOT FOR RESALE'),
+    ('commercial_transfer', 'Commercial Transfer - NOT FOR RESALE'),
+]
+
+CUSTOMS_TERMS = [('dap', 'DAP'), ('ddp', 'DDP')]
+
+
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
@@ -95,6 +125,13 @@ class SaleOrder(models.Model):
     # rep_name = fields.Char(string="Rep Name")
     label_email = fields.Char(string="Collection Label Email")
     order_note = fields.Text(string="Order Notes")
+    service_level = fields.Selection(SERVICE_LEVEL, string="Service Level", copy=True, tracking=True)
+    customs_direction = fields.Selection(CUSTOMS_DIRECTION, string="Direction", copy=True)
+    customs_reason = fields.Selection(CUSTOMS_REASON, string="Reason", copy=True)
+    customs_terms = fields.Selection(CUSTOMS_TERMS, string="Terms", copy=True)
+    customs_consignee_eori = fields.Char(string="Consignee EORI", copy=True)
+    customs_consignee_vat = fields.Char(string="Consignee VAT", copy=True)
+    customs_consignee_other_ref = fields.Char(string="Consignee Other Reference", copy=True)
     no_transport_needed = fields.Boolean(
         string="No Transport Needed",
         copy=False,

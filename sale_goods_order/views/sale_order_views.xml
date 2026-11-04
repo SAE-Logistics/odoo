@@ -21,6 +21,12 @@
                     <field name="cost_centre_id" domain="[('partner_id', '=', commercial_partner_id)]"/>
                 </xpath>
 
+                <xpath expr="//field[@name='payment_term_id']" position="after">
+                    <field name="service_level"
+                           invisible="order_type not in ['goods_in', 'goods_out', 'transport']"
+                           readonly="state == 'cancel'"/>
+                </xpath>
+
                 <xpath expr="//field[@name='sale_order_template_id']" position="attributes">
                     <attribute name="domain">[('order_type', 'in', ['goods_in', 'goods_out'])] if context.get('ord_type') == 'goods' else [('order_type', '=', 'transport')] if context.get('ord_type') == 'transport' else []
                     </attribute>
@@ -99,6 +105,22 @@
 <!--                            <field name="rep_name"/>-->
                             <field name="label_email"/>
                             <field name="order_note"/>
+                        </group>
+                    </page>
+                    <page string="Export/Import Details" name="customs_info"
+                          invisible="order_type != 'transport'">
+                        <group>
+                            <group>
+                                <field name="customs_direction"/>
+                                <field name="customs_reason"/>
+                                <field name="customs_terms"/>
+                            </group>
+                            <group>
+                                <field name="customs_consignee_eori"/>
+                                <field name="customs_consignee_vat"/>
+                                <field name="customs_consignee_other_ref"
+                                       invisible="customs_reason != 'other'"/>
+                            </group>
                         </group>
                     </page>
                     <page string="Transport Products" name="product_lines" invisible="order_type != 'transport'">
