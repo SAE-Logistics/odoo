@@ -29,6 +29,36 @@ PICKING_TYPE = [
         ('labour', 'Labour'),
         ('emg', 'EMG'),
     ]
+
+SERVICE_LEVEL = [
+    ('1', 'Before 10:00hrs'),
+    ('4', 'Before 12:00hrs'),
+    ('10', 'Economy'),
+    ('13', 'Nextday'),
+    ('16', 'Sameday'),
+    ('18', 'Sat - Before 10:00hrs'),
+    ('21', 'Sat - Before 12:00hrs'),
+    ('17', 'Saturday'),
+    ('24', 'Timed'),
+]
+
+CUSTOMS_DIRECTION = [('import', 'Import'), ('export', 'Export')]
+
+CUSTOMS_REASON = [
+    ('other', 'Other'),
+    ('document', 'Document'),
+    ('product_analysis', 'Product Analysis - NOT FOR RESALE'),
+    ('gift', 'Gift'),
+    ('sale_of_goods', 'Sale of goods'),
+    ('commercial_sample', 'Commercial Sample - NOT FOR RESALE'),
+    ('returned_goods', 'Returned goods - NOT FOR RESALE'),
+    ('product_exchange', 'Product Exchange - NOT FOR RESALE'),
+    ('commercial_transfer', 'Commercial Transfer - NOT FOR RESALE'),
+]
+
+CUSTOMS_TERMS = [('dap', 'DAP'), ('ddp', 'DDP')]
+
+
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
@@ -95,6 +125,25 @@ class SaleOrder(models.Model):
     # rep_name = fields.Char(string="Rep Name")
     label_email = fields.Char(string="Collection Label Email")
     order_note = fields.Text(string="Order Notes")
+    service_level = fields.Selection(SERVICE_LEVEL, string="Service Level", copy=True, tracking=True)
+    customs_direction = fields.Selection(CUSTOMS_DIRECTION, string="Direction", copy=True)
+    customs_reason = fields.Selection(CUSTOMS_REASON, string="Reason", copy=True)
+    customs_terms = fields.Selection(CUSTOMS_TERMS, string="Terms", copy=True)
+    customs_consignee_eori = fields.Char(
+        string="Consignee EORI",
+        compute="_compute_customs_consignee_eori",
+        store=True,
+        readonly=False,
+        copy=True,
+        help="Defaults to the customer company's EORI number; can be overridden per order.",
+    )
+    customs_consignee_vat = fields.Char(string="Consignee VAT", copy=True)
+    customs_consignee_other_ref = fields.Char(string="Consignee Other Reference", copy=True)
+    customs_required = fields.Boolean(
+        string="Customs Details Required",
+        compute="_compute_customs_required",
+        help="True when the delivery enters or leaves the UK.",
+    )
     no_transport_needed = fields.Boolean(
         string="No Transport Needed",
         copy=False,
@@ -278,6 +327,89 @@ class SaleOrder(models.Model):
             if order.order_type == 'goods_in' and not order.collection_address_id:
                 raise ValidationError(_("Collection Address is required for Goods In orders."))
 
+    @api.depends('partner_id.commercial_partner_id.id_numbers.name',
+                 'partner_id.commercial_partner_id.id_numbers.category_id')
+    def _compute_customs_consignee_eori(self):
+        for order in self:
+            company = order.partner_id.commercial_partner_id
+            number = company.id_numbers.filtered(
+                lambda n: n.category_id.code == 'eori_id_number' and n.name
+            )[:1]
+            order.customs_consignee_eori = number.name or False
+
+    @staticmethod
+    def _customs_direction_for(from_country, to_country):
+        """'export'/'import' when exactly one end is in the UK, else False.
+
+        An unknown (blank) country never counts as crossing the border.
+        """
+        if not from_country or not to_country:
+            return False
+        from_uk = from_country.code == 'GB'
+        to_uk = to_country.code == 'GB'
+        if from_uk and not to_uk:
+            return 'export'
+        if to_uk and not from_uk:
+            return 'import'
+        return False
+
+    def _get_customs_direction(self):
+        """Direction of the UK border crossing for this order, or False."""
+        self.ensure_one()
+        uk = self.env.ref('base.uk', raise_if_not_found=False)
+        if self.order_type == 'goods_out':
+            return self._customs_direction_for(uk, self.partner_shipping_id.country_id)
+        if self.order_type == 'goods_in':
+            return self._customs_direction_for(self.collection_address_id.country_id, uk)
+        if self.order_type == 'transport':
+            direction = self._customs_direction_for(
+                self.transport_from_id.country_id, self.transport_to_id.country_id)
+            if direction:
+                return direction
+            for leg in self.transport_all_leg_ids:
+                direction = self._customs_direction_for(leg.from_country, leg.to_country)
+                if direction:
+                    return direction
+        return False
+
+    @api.depends(
+        'order_type',
+        'partner_shipping_id.country_id',
+        'collection_address_id.country_id',
+        'transport_from_id.country_id',
+        'transport_to_id.country_id',
+        'transport_all_leg_ids.from_country',
+        'transport_all_leg_ids.to_country',
+    )
+    def _compute_customs_required(self):
+        for order in self:
+            order.customs_required = bool(order._get_customs_direction())
+
+    @api.onchange(
+        'order_type', 'partner_shipping_id', 'collection_address_id',
+        'transport_from_id', 'transport_to_id',
+    )
+    def _onchange_customs_direction(self):
+        for order in self:
+            if not order.customs_direction:
+                order.customs_direction = order._get_customs_direction() or False
+
+    def _check_customs_details(self):
+        for order in self.filtered('customs_required'):
+            required = [
+                'customs_direction', 'customs_reason',
+                'customs_terms', 'customs_consignee_eori',
+            ]
+            if order.customs_reason == 'other':
+                required.append('customs_consignee_other_ref')
+            missing = [order._fields[f].string for f in required if not order[f]]
+            if missing:
+                raise ValidationError(_(
+                    "%(order)s crosses the UK border. Complete the Export/Import Details "
+                    "before confirming: %(fields)s.",
+                    order=order.name, fields=", ".join(missing),
+                ))
+
     def _compute_has_only_service_products(self):
         """
         Helper to determine if the sale order contains only service products.
@@ -323,6 +455,7 @@ class SaleOrder(models.Model):
         if the order only contains service products.
         """
         self._check_required_goods_addresses()
+        self._check_customs_details()
         # 1. Execute the standard Odoo confirmation logic
         res = super(SaleOrder, self).action_confirm()
         # 2. After confirmation, check if we need to create a manual picking
