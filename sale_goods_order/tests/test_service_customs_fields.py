@@ -161,3 +161,27 @@ class TestCustomsRequired(TransactionCase):
         order = self._order('goods_out', partner_shipping_id=self.addr_gb.id)
         order.action_confirm()
         self.assertEqual(order.state, 'sale')
+
+
+class TestCustomsEoriDefault(TransactionCase):
+
+    def test_eori_defaults_from_customer_company(self):
+        category = self.env.ref(
+            'partner_identification_eori.partner_identification_eori_number_category')
+        company = self.env['res.partner'].create({'name': 'EORI Co', 'is_company': True})
+        self.env['res.partner.id_number'].create({
+            'name': 'GB123456789000',
+            'category_id': category.id,
+            'partner_id': company.id,
+        })
+        contact = self.env['res.partner'].create({
+            'name': 'EORI Contact', 'parent_id': company.id})
+        order = self.env['sale.order'].create({'partner_id': contact.id})
+        self.assertEqual(order.customs_consignee_eori, 'GB123456789000')
+        order.customs_consignee_eori = 'GB999'
+        self.assertEqual(order.customs_consignee_eori, 'GB999')
+
+    def test_eori_blank_without_id_number(self):
+        partner = self.env['res.partner'].create({'name': 'No EORI'})
+        order = self.env['sale.order'].create({'partner_id': partner.id})
+        self.assertFalse(order.customs_consignee_eori)

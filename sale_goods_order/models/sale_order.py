@@ -129,7 +129,14 @@ class SaleOrder(models.Model):
     customs_direction = fields.Selection(CUSTOMS_DIRECTION, string="Direction", copy=True)
     customs_reason = fields.Selection(CUSTOMS_REASON, string="Reason", copy=True)
     customs_terms = fields.Selection(CUSTOMS_TERMS, string="Terms", copy=True)
-    customs_consignee_eori = fields.Char(string="Consignee EORI", copy=True)
+    customs_consignee_eori = fields.Char(
+        string="Consignee EORI",
+        compute="_compute_customs_consignee_eori",
+        store=True,
+        readonly=False,
+        copy=True,
+        help="Defaults to the customer company's EORI number; can be overridden per order.",
+    )
     customs_consignee_vat = fields.Char(string="Consignee VAT", copy=True)
     customs_consignee_other_ref = fields.Char(string="Consignee Other Reference", copy=True)
     customs_required = fields.Boolean(
@@ -319,6 +326,16 @@ class SaleOrder(models.Model):
                 raise ValidationError(_("Delivery Address is required for Goods Out orders."))
             if order.order_type == 'goods_in' and not order.collection_address_id:
                 raise ValidationError(_("Collection Address is required for Goods In orders."))
+
+    @api.depends('partner_id.commercial_partner_id.id_numbers.name',
+                 'partner_id.commercial_partner_id.id_numbers.category_id')
+    def _compute_customs_consignee_eori(self):
+        for order in self:
+            company = order.partner_id.commercial_partner_id
+            number = company.id_numbers.filtered(
+                lambda n: n.category_id.code == 'eori_id_number' and n.name
+            )[:1]
+            order.customs_consignee_eori = number.name or False
 
     @staticmethod
     def _customs_direction_for(from_country, to_country):
