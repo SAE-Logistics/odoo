@@ -50,12 +50,28 @@
         <field name="model">sale.transport.leg</field>
         <field name="inherit_id" ref="sale_goods_order.sale_transport_leg_list_view"/>
         <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-danger">carrier_exception</attribute>
+            </xpath>
             <field name="service_id" position="after">
                 <field name="carrier_exception" column_invisible="1"/>
                 <field name="carrier_status_description" optional="hide"/>
                 <field name="carrier_exception_description" optional="show"
                        decoration-danger="carrier_exception"/>
             </field>
+        </field>
+    </record>
+
+    <record id="view_sale_order_search_carrier_exception" model="ir.ui.view">
+        <field name="name">sale.order.search.carrier.exception</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="carrier_exception" string="Courier Exception"
+                        domain="[('transport_all_leg_ids.carrier_exception', '=', True)]"/>
+            </xpath>
         </field>
     </record>
 
