@@ -4,7 +4,7 @@ import logging
 
 from markupsafe import Markup
 
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 from ..booking import TransportBookingAdapter, TransportBookingError
@@ -279,6 +279,38 @@ class SaleTransportLeg(models.Model):
         self.ensure_one()
         if self.booking_state != "booked":
             raise UserError(_("This leg has no booking to cancel."))
+        blocker = self._leg_cancel_blocker()
+        if blocker:
+            raise UserError(blocker)
+        return self._leg_cancel_booking()
+
+    def _leg_cancel_blocker(self):
+        """Why this leg's carrier booking can't be cancelled now, or False.
+
+        Only API carriers can refuse: manual carriers and the internal fleet
+        have nothing booked remotely. Kept separate from the cancel itself so
+        a sale order cancel can check every leg before voiding any of them.
+        """
+        self.ensure_one()
+        carrier = self._leg_find_delivery_carrier()
+        adapter = self._leg_booking_adapter(carrier) if carrier else None
+        if adapter is None:
+            return False
+        if self.state != "scheduled":
+            return _(
+                "This leg is already %s, so the booking can no longer be "
+                "cancelled from Odoo. Contact the carrier.") % dict(
+                    self._fields["state"].selection).get(self.state, self.state)
+        try:
+            adapter.check_cancellable(self)
+        except TransportBookingError as exc:
+            return _("Could not cancel: %s") % exc
+        return False
+
+    def _leg_cancel_booking(self):
+        """Cancel the booking with the carrier and clear it in Odoo. Callers
+        check ``_leg_cancel_blocker`` first."""
+        self.ensure_one()
         carrier = self._leg_find_delivery_carrier()
         adapter = self._leg_booking_adapter(carrier) if carrier else None
         if adapter is None:
@@ -286,13 +318,7 @@ class SaleTransportLeg(models.Model):
             self.write({"booking_state": "none", "booking_message": False})
             return self._leg_notify("success", _("Booking cancelled."))
 
-        if self.state != "scheduled":
-            raise UserError(_(
-                "This leg is already %s, so the booking can no longer be "
-                "cancelled from Odoo. Contact the carrier.") % dict(
-                    self._fields["state"].selection).get(self.state, self.state))
         try:
-            adapter.check_cancellable(self)
             cancelled_remotely = adapter.cancel(self)
         except TransportBookingError as exc:
             raise UserError(_("Could not cancel: %s") % exc)
@@ -310,6 +336,16 @@ class SaleTransportLeg(models.Model):
         return self._leg_notify("warning", _(
             "Booking %s cleared in Odoo only - this carrier has no cancel "
             "API. Discard the unused label.") % old_ref)
+
+    @api.ondelete(at_uninstall=False)
+    def _unlink_except_booked(self):
+        # Deleting a booked leg loses the booking without voiding it at the
+        # carrier, so the parcel can still be collected and charged.
+        booked = self.filtered(lambda leg: leg.booking_state == "booked")
+        if booked:
+            raise UserError(_(
+                "Cancel the booking before deleting these transport legs: "
+                "%s") % ", ".join(booked.mapped("display_name")))
 
     def _leg_cancelled_booking_vals(self):
         """Fields reset after an adapter cancel, so the leg is ready to be

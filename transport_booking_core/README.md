@@ -101,6 +101,13 @@ it again; there is no amend. `action_leg_cancel_booking`:
   (`_leg_cancelled_booking_vals`, extended by carrier modules) and logs the
   old reference in chatter.
 
+**Order cancel voids bookings.** Cancelling a sale order runs the same cancel
+on every booked leg (`sale.order._action_cancel`). All legs are checked
+first (`_leg_cancel_blocker`): if any booked leg is already In Transit /
+Completed, or the carrier would refuse the cancel, the order cancel is
+blocked and nothing is voided. A booked leg can't be deleted; cancel its
+booking first.
+
 `action_leg_reset_booking` resets `booking_state` in Odoo only. It is hidden
 (and refused) for carriers whose adapter sets `supports_remote_cancel`
 (APC), because it would leave a live carrier booking behind.
