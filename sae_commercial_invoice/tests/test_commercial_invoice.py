@@ -76,6 +76,25 @@ class TestCommercialInvoice(TransactionCase):
         self.assertIn('SUM(H', sheet)
         self.assertIn('*G', sheet)
 
+    def test_xlsx_text_is_never_a_formula(self):
+        data = self.order._commercial_invoice_data()
+        data['date'] = datetime.date(2026, 6, 19)
+        data['items'][0]['description'] = '=HYPERLINK("http://evil.example","x")'
+        content = build_commercial_invoice_xlsx(data)
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            sheet = archive.read('xl/worksheets/sheet1.xml').decode()
+        # Only the line total, weight total and three SUM totals are formulas.
+        self.assertEqual(sheet.count('<f>'), 5)
+        self.assertNotIn('HYPERLINK(', ''.join(
+            chunk.split('</f>')[0] for chunk in sheet.split('<f>')[1:]))
+
+    def test_xlsx_builds_with_blank_optional_fields(self):
+        data = self.order._commercial_invoice_data()
+        data['date'] = datetime.date(2026, 6, 19)
+        data['delivery'].update(vat='', eori='', other_ref='')
+        data['shipper'].update(vat='', eori='', phone='', email='')
+        self.assertTrue(build_commercial_invoice_xlsx(data))
+
     def test_filename_is_filesystem_safe(self):
         name = self.order._commercial_invoice_filename()
         self.assertTrue(name.startswith('Commercial_Invoice_Medtronic_Test_'))

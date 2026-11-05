@@ -20,7 +20,14 @@ def _address_text(block):
 
 def build_commercial_invoice_xlsx(data):
     output = io.BytesIO()
-    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    # Text comes from user-entered records (descriptions, partner names), so
+    # never let it be interpreted as a formula or URL. The totals use explicit
+    # write_formula() calls and are unaffected.
+    workbook = xlsxwriter.Workbook(output, {
+        'in_memory': True,
+        'strings_to_formulas': False,
+        'strings_to_urls': False,
+    })
     sheet = workbook.add_worksheet('Commercial Invoice')
     sheet.set_paper(9)  # A4
     sheet.fit_to_pages(1, 0)
@@ -58,8 +65,7 @@ def build_commercial_invoice_xlsx(data):
     def pair(row, left, right):
         """One label/value row: left block (A | B:D), right block (E | F:H)."""
         height = 15 * max(
-            1,
-            *(str(v).count('\n') + 1 for v in (left[1], right[1] if right else '') if v),
+            [1] + [str(v).count('\n') + 1 for v in (left[1], right[1] if right else '') if v]
         )
         sheet.set_row(row, height)
         sheet.write(row, 0, left[0], label)
