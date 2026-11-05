@@ -347,6 +347,14 @@ class SaleTransportLeg(models.Model):
                 "Cancel the booking before deleting these transport legs: "
                 "%s") % ", ".join(booked.mapped("display_name")))
 
+    @api.depends("carrier_exception")
+    def _compute_tag_color(self):
+        # Red leg tag on the order list while the courier reports a problem,
+        # so exceptions stand out without opening each order.
+        super()._compute_tag_color()
+        for leg in self.filtered("carrier_exception"):
+            leg.tag_color = 1
+
     def _leg_cancelled_booking_vals(self):
         """Fields reset after an adapter cancel, so the leg is ready to be
         re-sent with no stale carrier data. Carrier modules extend this."""
