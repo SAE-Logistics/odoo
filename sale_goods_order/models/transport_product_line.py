@@ -46,6 +46,15 @@ class TransportProductLine(models.Model):
         readonly=True,
     )
 
+    def _customs_missing_fields(self):
+        """Labels of the customs fields still blank (or zero) on this line."""
+        self.ensure_one()
+        checks = (
+            'description', 'hs_code_id', 'country_of_origin_id',
+            'qty', 'weight', 'price',
+        )
+        return [self._fields[f].string for f in checks if not self[f]]
+
     @api.onchange("sale_order_id")
     def _onchange_sale_order_id_product_domain(self):
         customer = self.sale_order_id.commercial_partner_id

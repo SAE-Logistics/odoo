@@ -176,4 +176,26 @@
             </xpath>
         </field>
     </record>
+    <record id="view_picking_form_inherit_customs_items" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.customs.items</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='move_ids_without_package']" position="before">
+                <field name="customs_items_required" invisible="1"/>
+            </xpath>
+            <!-- Declared customs details for the commercial invoice: required on
+                 goods in/out transfers whose order crosses the UK border. -->
+            <xpath expr="//field[@name='move_ids_without_package']/list" position="inside">
+                <field name="customs_hs_code_id" column_invisible="not parent.customs_items_required"
+                       required="parent.customs_items_required"/>
+                <field name="customs_country_of_origin_id" column_invisible="not parent.customs_items_required"
+                       required="parent.customs_items_required"/>
+                <field name="customs_weight" column_invisible="not parent.customs_items_required"
+                       required="parent.customs_items_required"/>
+                <field name="customs_unit_value" column_invisible="not parent.customs_items_required"
+                       required="parent.customs_items_required"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

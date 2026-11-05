@@ -1,6 +1,7 @@
 from collections import defaultdict
 
-from odoo import fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 from odoo.tools.float_utils import float_round
 
 from .sale_order import PickingDoneSaleLineGrant
@@ -65,6 +66,38 @@ class StockPicking(models.Model):
     collect_note = fields.Text(related='sale_id.collect_note')
     deliver_note = fields.Text(related='sale_id.deliver_note')
 
+    customs_items_required = fields.Boolean(
+        string="Customs Item Details Required",
+        compute='_compute_customs_items_required',
+        help="True for goods in/out transfers whose order crosses the UK border: "
+             "every item needs HS code, country of origin, weight and declared value.",
+    )
+
+    @api.depends('sale_id.customs_required', 'sale_id.order_type', 'is_material_picking')
+    def _compute_customs_items_required(self):
+        for picking in self:
+            sale = picking.sale_id
+            picking.customs_items_required = bool(
+                sale
+                and sale.customs_required
+                and sale.order_type in ('goods_in', 'goods_out')
+                and not picking.is_material_picking
+            )
+
+    def _check_customs_item_details(self):
+        for picking in self.filtered('customs_items_required'):
+            problems = []
+            for move in picking.move_ids.filtered(lambda m: m.state != 'cancel'):
+                missing = move._customs_missing_fields()
+                if missing:
+                    problems.append("%s: %s" % (move.product_id.display_name, ", ".join(missing)))
+            if problems:
+                raise ValidationError(_(
+                    "%(picking)s belongs to an order that crosses the UK border. "
+                    "Complete the customs details for every item before validating:\n%(items)s",
+                    picking=picking.name, items="\n".join(problems),
+                ))
+
     def action_open_material_wizard(self):
         """Button on picking: open wizard with template lines."""
         self.ensure_one()
@@ -99,6 +132,7 @@ class StockPicking(models.Model):
         }
 
     def button_validate(self):
+        self._check_customs_item_details()
         incoming_pickings = self.filtered(lambda p: p.picking_type_code == 'incoming')
         incoming_pickings._route_incoming_to_rental_or_default()
 

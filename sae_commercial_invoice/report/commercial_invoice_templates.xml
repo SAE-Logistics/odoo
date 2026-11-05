@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_commercial_invoice_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-set="d" t-value="o._commercial_invoice_data()"/>
+                <t t-call="web.basic_layout">
+                    <div class="page ci-page">
+                        <style>
+                            .ci-page { font-family: Arial, sans-serif; font-size: 10px; color: #1f2a44; }
+                            .ci-page table { width: 100%; border-collapse: collapse; }
+                            .ci-title { text-align: right; color: #1f3f99; font-size: 24px; font-weight: bold; line-height: 1.1; margin-bottom: 14px; }
+                            .ci-section td, .ci-section th { padding: 3px 6px; vertical-align: top; border: 1px solid #c5cce6; }
+                            .ci-section .ci-label { background: #e8ecf8; color: #1f3f99; width: 21%; text-transform: uppercase; font-size: 9px; }
+                            .ci-section .ci-band { background: #1f3f99; color: #fff; font-weight: bold; text-transform: uppercase; }
+                            .ci-gap { height: 10px; }
+                            .ci-items th { background: #1f3f99; color: #fff; padding: 4px 5px; border: 1px solid #1f3f99; text-align: center; font-size: 9px; }
+                            .ci-items td { padding: 4px 5px; border: 1px solid #c5cce6; vertical-align: top; }
+                            .ci-items .ci-num { text-align: right; white-space: nowrap; }
+                            .ci-items .ci-total td { background: #e8ecf8; font-weight: bold; }
+                            .ci-box { display: inline-block; width: 11px; height: 11px; border: 1px solid #1f2a44; text-align: center; line-height: 10px; font-size: 10px; font-weight: bold; vertical-align: middle; margin-right: 6px; }
+                            .ci-sign td { height: 26px; }
+                        </style>
+
+                        <div class="ci-title">COMMERCIAL INVOICE<br/>INVOICE NO: <span t-out="d['invoice_no']"/></div>
+
+                        <table class="ci-section">
+                            <tr>
+                                <td class="ci-band" colspan="2">Shipper details</td>
+                                <td class="ci-band" colspan="2">Invoice details</td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Company name</td>
+                                <td><t t-out="d['shipper']['company']"/></td>
+                                <td class="ci-label">Date</td>
+                                <td><span t-out="d['date']" t-options="{'widget': 'date'}"/></td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Company address</td>
+                                <td><t t-foreach="d['shipper']['address']" t-as="line"><div t-out="line"/></t></td>
+                                <td class="ci-label">VAT number</td>
+                                <td><t t-out="d['shipper']['vat']"/></td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Contact name</td>
+                                <td><t t-out="d['shipper']['contact']"/></td>
+                                <td class="ci-label">EORI number</td>
+                                <td><t t-out="d['shipper']['eori']"/></td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Telephone</td>
+                                <td><t t-out="d['shipper']['phone']"/></td>
+                                <td class="ci-label">Email address</td>
+                                <td><t t-out="d['shipper']['email']"/></td>
+                            </tr>
+                        </table>
+
+                        <div class="ci-gap"/>
+
+                        <table class="ci-section">
+                            <tr>
+                                <td class="ci-band" colspan="2">Collection address</td>
+                                <td class="ci-band" colspan="2">Delivery address</td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Company</td>
+                                <td><t t-out="d['collection']['company']"/></td>
+                                <td class="ci-label">Company</td>
+                                <td><t t-out="d['delivery']['company']"/></td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Address</td>
+                                <td><t t-foreach="d['collection']['address']" t-as="line"><div t-out="line"/></t></td>
+                                <td class="ci-label">Address</td>
+                                <td><t t-foreach="d['delivery']['address']" t-as="line"><div t-out="line"/></t></td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Contact name</td>
+                                <td><t t-out="d['collection']['contact']"/></td>
+                                <td class="ci-label">Contact name</td>
+                                <td><t t-out="d['delivery']['contact']"/></td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Telephone</td>
+                                <td><t t-out="d['collection']['phone']"/></td>
+                                <td class="ci-label">Telephone</td>
+                                <td><t t-out="d['delivery']['phone']"/></td>
+                            </tr>
+                            <tr>
+                                <td class="ci-label">Email address</td>
+                                <td><t t-out="d['collection']['email']"/></td>
+                                <td class="ci-label">Email address</td>
+                                <td><t t-out="d['delivery']['email']"/></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"/>
+                                <td class="ci-label">VAT number</td>
+                                <td><t t-out="d['delivery']['vat']"/></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2"/>
+                                <td class="ci-label">EORI number</td>
+                                <td><t t-out="d['delivery']['eori']"/></td>
+                            </tr>
+                            <tr t-if="d['delivery']['other_ref']">
+                                <td colspan="2"/>
+                                <td class="ci-label">Other reference</td>
+                                <td><t t-out="d['delivery']['other_ref']"/></td>
+                            </tr>
+                        </table>
+
+                        <div class="ci-gap"/>
+
+                        <table class="ci-items">
+                            <thead>
+                                <tr>
+                                    <th style="width: 30%">Product description</th>
+                                    <th>HS code</th>
+                                    <th>Country of origin</th>
+                                    <th>Qty</th>
+                                    <th>Unit weight (kg)</th>
+                                    <th>Total weight (kg)</th>
+                                    <th>Unit value</th>
+                                    <th>Total value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="d['items']" t-as="item">
+                                    <td><t t-out="item['description']"/></td>
+                                    <td><t t-out="item['hs_code']"/></td>
+                                    <td><t t-out="item['origin']"/></td>
+                                    <td class="ci-num"><t t-out="'%g' % item['qty']"/></td>
+                                    <td class="ci-num"><t t-out="'%.3f' % item['unit_weight']"/></td>
+                                    <td class="ci-num"><t t-out="'%.3f' % item['total_weight']"/></td>
+                                    <td class="ci-num"><span t-out="item['unit_value']" t-options="{'widget': 'monetary', 'display_currency': d['currency']}"/></td>
+                                    <td class="ci-num"><span t-out="item['total_value']" t-options="{'widget': 'monetary', 'display_currency': d['currency']}"/></td>
+                                </tr>
+                                <tr class="ci-total">
+                                    <td colspan="3" class="ci-num">TOTAL</td>
+                                    <td class="ci-num"><t t-out="'%g' % d['total_qty']"/></td>
+                                    <td/>
+                                    <td class="ci-num"><t t-out="'%.3f' % d['total_weight']"/></td>
+                                    <td class="ci-num">Total value <t t-out="d['currency'].name"/></td>
+                                    <td class="ci-num"><span t-out="d['total_value']" t-options="{'widget': 'monetary', 'display_currency': d['currency']}"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="ci-gap"/>
+
+                        <table class="ci-section">
+                            <tr><td class="ci-band" colspan="2">Reason for export</td></tr>
+                            <tr><td colspan="2"><t t-out="d['reason']"/></td></tr>
+                            <tr><td class="ci-band" colspan="2">Terms for shipping</td></tr>
+                            <tr>
+                                <td style="width: 50%">
+                                    <span class="ci-box"><t t-if="d['terms'] == 'dap'">X</t></span>
+                                    DAP (Deliver at Place). Receiver pays duties &amp; taxes.
+                                </td>
+                                <td>
+                                    <span class="ci-box"><t t-if="d['terms'] == 'ddp'">X</t></span>
+                                    DDP (Deliver Duty Paid). Shipper pays duties &amp; taxes.
+                                </td>
+                            </tr>
+                            <tr><td class="ci-band" colspan="2">Declaration</td></tr>
+                            <tr>
+                                <td colspan="2">I declare that the information presented on this invoice is true to the best of my knowledge and that the value is for customs purpose only.</td>
+                            </tr>
+                        </table>
+                        <table class="ci-section ci-sign">
+                            <tr><td class="ci-label">Signed</td><td/></tr>
+                            <tr><td class="ci-label">Print name</td><td/></tr>
+                            <tr><td class="ci-label">Date</td><td/></tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

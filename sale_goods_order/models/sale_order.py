@@ -409,6 +409,30 @@ class SaleOrder(models.Model):
                     "before confirming: %(fields)s.",
                     order=order.name, fields=", ".join(missing),
                 ))
+            # Goods in/out declare their items on the delivery moves (checked when
+            # the transfer is validated); transport orders declare them here.
+            if order.order_type == 'transport':
+                order._check_transport_product_lines()
+
+    def _check_transport_product_lines(self):
+        self.ensure_one()
+        if not self.product_line_ids:
+            raise ValidationError(_(
+                "%s crosses the UK border. Add the goods being shipped to the "
+                "Products tab before confirming.", self.name))
+        problems = []
+        for line in self.product_line_ids:
+            missing = line._customs_missing_fields()
+            if missing:
+                problems.append("%s: %s" % (
+                    line.description or line.product_id.display_name or _("(no description)"),
+                    ", ".join(missing)))
+        if problems:
+            raise ValidationError(_(
+                "%(order)s crosses the UK border. Complete the customs details for every "
+                "product before confirming:\n%(items)s",
+                order=self.name, items="\n".join(problems),
+            ))
 
     def _compute_has_only_service_products(self):
         """
