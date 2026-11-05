@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- "Action" menu entry on Sales Orders that downloads the editable XLSX. -->
+    <record id="action_commercial_invoice_xlsx" model="ir.actions.server">
+        <field name="name">Commercial Invoice (XLSX)</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">action</field>
+        <field name="state">code</field>
+        <field name="code">
+if len(records) != 1:
+    raise UserError("Select a single order to export its commercial invoice.")
+action = {
+    "type": "ir.actions.act_url",
+    "url": "/sae/commercial_invoice/xlsx/%d" % records.id,
+    "target": "self",
+}
+        </field>
+    </record>
+</odoo>
