@@ -9,6 +9,7 @@
                 <t t-set="customer_order" t-value="o._get_transport_invoice_customer_order()"/>
 
                 <t t-call="web.basic_layout">
+                    <t t-call="sale_goods_order.invoice_report_page_header"/>
                     <div class="page transport-invoice-page">
                         <style>
                             .transport-invoice-page {
@@ -165,32 +166,6 @@
                             }
                         </style>
 
-                        <table class="transport-header">
-                            <tr>
-                                <td style="width: 48%;">
-                                    <img t-if="company.logo"
-                                         t-att-src="image_data_uri(company.logo)"
-                                         class="transport-logo"
-                                         alt="Company Logo"/>
-                                </td>
-                                <td style="width: 52%;" class="company-address">
-                                    <div><span t-esc="company.street or ''"/></div>
-                                    <div t-if="company.street2"><span t-esc="company.street2"/></div>
-                                    <div>
-                                        <span t-esc="company.city or ''"/>
-                                        <t t-if="company.city and company.state_id">, </t>
-                                        <span t-esc="company.state_id.name if company.state_id else ''"/>
-                                        <t t-if="company.zip">, </t><span t-esc="company.zip or ''"/>
-                                    </div>
-                                    <div t-if="company.phone"><strong>T:</strong> <span t-esc="company.phone"/></div>
-                                    <div t-if="company.email"><strong>E:</strong> <span t-esc="company.email"/></div>
-                                    <div class="website" t-if="company.website">
-                                        <span t-esc="company.website.replace('http://', '').replace('https://', '')"/>
-                                    </div>
-                                </td>
-                            </tr>
-                        </table>
-
                         <table class="transport-title-block">
                             <tr>
                                 <td style="width: 45%; padding-top: 48px;">
@@ -204,7 +179,7 @@
                                     </div>
                                 </td>
                                 <td style="width: 55%;">
-                                    <div class="transport-title">UK Transport - INVOICE</div>
+                                    <div class="transport-title"><span t-esc="data.get('region') or 'UK'"/> Transport - INVOICE</div>
                                     <table class="invoice-meta">
                                         <tr>
                                             <td class="label">Number:</td>
@@ -306,16 +281,18 @@
                                 <td style="width: 55%; padding-top: 20px;">
                                     <table class="tax-summary">
                                         <thead>
-                                            <tr><th>Tax Summary</th><th>Goods</th><th>Tax</th></tr>
+                                            <tr><th>Tax Summary</th><th>Rate</th><th>Goods</th><th>Tax</th></tr>
                                         </thead>
                                         <tbody>
-                                            <tr>
-                                                <td><span t-esc="data.get('tax_label') or 'VAT'"/></td>
-                                                <td><span t-out="data.get('untaxed')" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
-                                                <td><span t-out="data.get('tax')" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                                            <tr t-foreach="data.get('tax_summary')" t-as="tax_row">
+                                                <td><span t-if="tax_row['exempt']">*</span></td>
+                                                <td><span t-esc="tax_row['label']"/></td>
+                                                <td><span t-out="tax_row['goods']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
+                                                <td><span t-out="tax_row['tax']" t-options='{"widget": "monetary", "display_currency": o.currency_id}'/></td>
                                             </tr>
                                         </tbody>
                                     </table>
+                                    <div style="font-size: 8px; padding: 2px 5px;" t-if="any(r['exempt'] for r in data.get('tax_summary'))">* indicates VAT exempt item</div>
                                 </td>
                                 <td style="width: 45%;">
                                     <table class="invoice-totals">
@@ -336,23 +313,8 @@
                             </tr>
                         </table>
 
-                        <div class="transport-footer">
-                            <div>
-                                <strong t-esc="company.name"/>
-                                <t t-if="company.company_registry"> | Company Reg no: <span t-esc="company.company_registry"/></t>
-                                <t t-if="company.vat"> | VAT: <span t-esc="company.vat"/></t>
-                            </div>
-                            <div t-if="company.partner_id.bank_ids">
-                                <strong>Payment details:</strong>
-                                <span t-esc="company.partner_id.bank_ids[0].bank_id.name or ''"/>
-                                <t t-if="company.partner_id.bank_ids[0].acc_number"> | Account no: <span t-esc="company.partner_id.bank_ids[0].acc_number"/></t>
-                            </div>
-                            <div t-if="o.invoice_payment_term_id">
-                                <strong>Payment Terms:</strong> <span t-esc="o.invoice_payment_term_id.name"/>
-                            </div>
-                            <div t-if="company.report_footer" t-out="company.report_footer"/>
-                        </div>
                     </div>
+                    <t t-call="sale_goods_order.invoice_report_page_footer"/>
                 </t>
             </t>
         </t>

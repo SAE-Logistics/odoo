@@ -91,9 +91,50 @@ class AccountMove(models.Model):
                     sale_line.transport_surcharge_charge_line
                     and sale_line.order_id in transport_orders
                 )
+                # Manual charge added to a transport order that has no leg of
+                # its own: still a transport-order line, so it belongs here.
+                or sale_line.order_id.order_type == "transport"
                 for sale_line in invoice_line.sale_line_ids
             )
         )
+
+    def _is_manual_transport_line(self, invoice_line):
+        """Transport-order invoice line with no leg and not a leg surcharge."""
+        sale_lines = invoice_line.sale_line_ids
+        return bool(sale_lines) and not any(
+            sale_line.transport_leg_ids or sale_line.transport_surcharge_charge_line
+            for sale_line in sale_lines
+        )
+
+    def _get_report_tax_summary(self, invoice_lines):
+        """Group lines by VAT rate for the invoice tax summary."""
+        self.ensure_one()
+        groups = {}
+        for line in invoice_lines:
+            rate = sum(line.tax_ids.filtered(lambda tax: tax.amount_type == "percent").mapped("amount"))
+            group = groups.setdefault(rate, {"rate": rate, "goods": 0.0, "tax": 0.0})
+            group["goods"] += line.price_subtotal
+            group["tax"] += line.price_total - line.price_subtotal
+        return [
+            {
+                "rate": group["rate"],
+                "label": "%g%%" % group["rate"],
+                "exempt": not group["rate"],
+                "goods": self.currency_id.round(group["goods"]),
+                "tax": self.currency_id.round(group["tax"]),
+            }
+            for _rate, group in sorted(groups.items())
+        ]
+
+    def _get_transport_report_region(self):
+        """'UK' when every leg stays in the UK, otherwise 'International'."""
+        self.ensure_one()
+        legs = self._get_transport_invoice_lines().sale_line_ids.transport_leg_ids
+        uk_codes = {"GB", False}
+        for leg in legs:
+            if (leg.from_country.code or False) not in uk_codes or (leg.to_country.code or False) not in uk_codes:
+                return "International"
+        return "UK"
 
     def _get_transport_sale_orders(self):
         self.ensure_one()
@@ -114,6 +155,9 @@ class AccountMove(models.Model):
         rows = []
         seen_sale_line_ids = set()
         for invoice_line in self._get_transport_invoice_lines():
+            if self._is_manual_transport_line(invoice_line):
+                rows.append(self._prepare_transport_manual_row(invoice_line))
+                continue
             sale_lines = invoice_line.sale_line_ids.filtered("transport_leg_ids")
             for sale_line in sale_lines:
                 if sale_line.id in seen_sale_line_ids:
@@ -264,6 +308,25 @@ class AccountMove(models.Model):
             "fuel_charge": 0.0,
         }
 
+    def _prepare_transport_manual_row(self, invoice_line):
+        """Row for a manual charge on a transport order (no leg behind it)."""
+        order = invoice_line.sale_line_ids[:1].order_id
+        order_date = order.date_order.date() if order and order.date_order else False
+        return {
+            "row_type": "surcharge",
+            "date": order_date or self.invoice_date,
+            "client_ref": "Additional charges:",
+            "job_no": "",
+            "service": invoice_line.name or invoice_line.product_id.display_name or "",
+            "description": "",
+            "weight": 0.0,
+            "from_postcode": "",
+            "to_postcode": "",
+            "consignee": "",
+            "value": invoice_line.price_subtotal,
+            "fuel_charge": 0.0,
+        }
+
     def _get_transport_invoice_report_data(self):
         self.ensure_one()
         invoice_lines = self._get_transport_invoice_lines()
@@ -273,6 +336,8 @@ class AccountMove(models.Model):
         untaxed = sum(invoice_lines.mapped("price_subtotal"))
         total = sum(invoice_lines.mapped("price_total"))
         return {
+            "tax_summary": self._get_report_tax_summary(invoice_lines),
+            "region": self._get_transport_report_region(),
             "rows": rows,
             "consignment_count": len(consignment_rows),
             "summary_value": sum(row["value"] for row in rows),
@@ -349,6 +414,7 @@ class AccountMove(models.Model):
         total = sum(invoice_lines.mapped("price_total"))
         return {
             "lines": invoice_lines,
+            "tax_summary": self._get_report_tax_summary(invoice_lines),
             "rows": grouped_rows,
             "untaxed": self.currency_id.round(untaxed),
             "tax": self.currency_id.round(total - untaxed),
