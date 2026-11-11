@@ -10,6 +10,10 @@
                     <field name="is_surcharge_product"/>
                     <label for="is_surcharge_product"/>
                 </span>
+                <span class="d-inline-flex" invisible="not is_surcharge_product">
+                    <field name="surcharge_vat_rule"/>
+                    <label for="surcharge_vat_rule"/>
+                </span>
             </xpath>
         </field>
     </record>

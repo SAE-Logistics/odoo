@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class PickingDoneSaleLineGrant:
@@ -533,6 +533,37 @@ class SaleOrder(models.Model):
     def action_view_delivery(self):
         return self._get_action_view_picking(self.picking_ids.filtered(lambda p: not p.is_material_picking))
 
+    def _get_transport_region(self):
+        """'international' if any leg starts or ends outside the UK, else 'uk'.
+
+        A leg with no country counts as UK, the same rule the invoice PDF title
+        and the batch invoice split use.
+        """
+        self.ensure_one()
+        for leg in self.order_line.transport_leg_ids:
+            for country in (leg.from_country, leg.to_country):
+                if country and country.code != 'GB':
+                    return 'international'
+        return 'uk'
+
+    def _get_zero_rated_tax(self):
+        """The company's 0% sales tax, for zero-rated (T0) surcharges."""
+        self.ensure_one()
+        tax = self.env['account.tax'].search([
+            ('type_tax_use', '=', 'sale'),
+            ('amount_type', '=', 'percent'),
+            ('amount', '=', 0.0),
+            ('name', '=', '0%'),
+            ('company_id', '=', self.company_id.id),
+        ], limit=1)
+        if not tax:
+            raise UserError(_(
+                "No sales tax named '0%' exists for %s. Create it (Invoicing > Configuration > "
+                "Taxes), because a surcharge on this order is zero-rated.",
+                self.company_id.name,
+            ))
+        return tax
+
     def _sync_transport_surcharge_sale_lines(self):
         for order in self:
             if not order:
@@ -656,6 +687,9 @@ class SaleOrderLine(models.Model):
         if not product or not order:
             return []
         taxes = product.taxes_id._filter_taxes_by_company(order.company_id)
+        if product.is_surcharge_product and product.surcharge_vat_rule != 'standard':
+            if product.surcharge_vat_rule == 'zero' or order._get_transport_region() == 'international':
+                taxes = order._get_zero_rated_tax()
         if not taxes:
             return []
         return order.fiscal_position_id.map_tax(taxes).ids
