@@ -177,6 +177,20 @@ class SaleOrder(models.Model):
         index=True,
     )
 
+    first_pickup_date = fields.Date(
+        string='Date (Pickup)',
+        compute='_compute_first_pickup_date',
+        store=True,
+        index=True,
+        help="Earliest pickup date across the order's transport legs.",
+    )
+
+    @api.depends('transport_all_leg_ids.from_date')
+    def _compute_first_pickup_date(self):
+        for order in self:
+            dates = order.transport_all_leg_ids.mapped('from_date')
+            order.first_pickup_date = min((d for d in dates if d), default=False)
+
     @api.depends('transport_all_leg_ids')
     def _compute_has_transport_legs(self):
         for order in self:
