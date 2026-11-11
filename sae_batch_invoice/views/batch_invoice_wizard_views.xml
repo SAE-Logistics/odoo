@@ -29,6 +29,7 @@
                             <field name="partner_id"/>
                             <field name="cost_centre_id"/>
                             <field name="family"/>
+                            <field name="region"/>
                             <field name="order_count" string="Orders"/>
                             <field name="earlier_order_count" optional="show"/>
                             <field name="estimated_date_count" optional="show"/>

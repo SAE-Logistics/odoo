@@ -25,7 +25,10 @@ The split is by line, so a goods order can land on two invoices.
 | Transport Only | Transport orders | Transport Invoice |
 
 Each is split by customer and by cost centre where the order has one, then by company and
-currency, with orders oldest first. UK / EU / ROW is not applied yet, pending SAE's rules.
+currency, with orders oldest first. The two transport invoices are also split into **UK**
+and **International**: SAE confirmed (Nov 2026) that EU and rest of world are one group,
+so there is no separate EU invoice. An order is International if any of its legs starts or
+ends outside the UK. Warehouse invoices are not split by region.
 Storage space is not billed here: SAE invoice it outside Odoo for now.
 
 Batch invoices print and send with the PDF above instead of Odoo's standard invoice, and

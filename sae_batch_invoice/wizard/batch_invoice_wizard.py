@@ -261,9 +261,26 @@ class SaeBatchInvoiceWizard(models.TransientModel):
                 ready |= order
         return ready, skipped
 
+    def _get_order_region(self, order, family):
+        """Return "uk" or "international" for transport invoices, else False.
+
+        SAE no longer separate EU from rest of world (the UK left the EU), so
+        every non-UK job is "international". An order with any leg that
+        starts or ends outside the UK counts as international. A leg with no
+        country is treated as UK, as on the invoice PDF title.
+        """
+        if family == "warehouse":
+            return False
+        for leg in order.order_line.transport_leg_ids:
+            for country in (leg.from_country, leg.to_country):
+                if country and country.code != "GB":
+                    return "international"
+        return "uk"
+
     def _get_bucket_key(self, order, family):
         return (
             family,
+            self._get_order_region(order, family),
             order.company_id.id,
             order.commercial_partner_id.id,
             order.cost_centre_id.id,
@@ -296,7 +313,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
                 total += self._get_line_amount(line)
         return total
 
-    def _prepare_group_line_vals(self, orders, family):
+    def _prepare_group_line_vals(self, orders, family, region=False):
         month_start = self._local_day_start_utc(self.date_to.replace(day=1))
         base_order = orders[0]
         billing_dates = [self._get_order_billing_date(order) for order in orders]
@@ -304,6 +321,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             "partner_id": base_order.commercial_partner_id.id,
             "cost_centre_id": base_order.cost_centre_id.id,
             "family": family,
+            "region": region,
             "currency_id": base_order.currency_id.id,
             "order_ids": [Command.set(orders.ids)],
             "earlier_order_count": sum(1 for billing_date in billing_dates if billing_date[0] < month_start),
@@ -328,7 +346,7 @@ class SaeBatchInvoiceWizard(models.TransientModel):
             raise UserError(_("No orders with something to invoice."))
 
         group_vals = [
-            Command.create(self._prepare_group_line_vals(orders, key[0]))
+            Command.create(self._prepare_group_line_vals(orders, key[0], key[1]))
             for key, orders in self._bucket_orders(ready).items()
         ]
         skipped_vals = [
@@ -445,6 +463,12 @@ class SaeBatchInvoiceWizardGroup(models.TransientModel):
     partner_id = fields.Many2one("res.partner", string="Customer", readonly=True)
     cost_centre_id = fields.Many2one("partner.cost.centre", string="Cost Centre", readonly=True)
     family = fields.Selection(FAMILY_SELECTION, string="Type", readonly=True)
+    region = fields.Selection(
+        [("uk", "UK"), ("international", "International")],
+        readonly=True,
+        help="Transport invoices are split into UK and International (EU and rest of world "
+             "together). Warehouse invoices have no region.",
+    )
     order_ids = fields.Many2many("sale.order", string="Orders", readonly=True)
     order_count = fields.Integer(compute="_compute_order_count")
     earlier_order_count = fields.Integer(
