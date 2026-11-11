@@ -125,7 +125,7 @@ class SaleOrder(models.Model):
     # rep_name = fields.Char(string="Rep Name")
     label_email = fields.Char(string="Collection Label Email")
     order_note = fields.Text(string="Order Notes")
-    service_level = fields.Selection(SERVICE_LEVEL, string="Service Level", copy=True, tracking=True)
+    service_level = fields.Selection(SERVICE_LEVEL, string="Service", copy=True, tracking=True)
     customs_direction = fields.Selection(CUSTOMS_DIRECTION, string="Direction", copy=True)
     customs_reason = fields.Selection(CUSTOMS_REASON, string="Reason", copy=True)
     customs_terms = fields.Selection(CUSTOMS_TERMS, string="Terms", copy=True)
@@ -178,7 +178,7 @@ class SaleOrder(models.Model):
     )
 
     first_pickup_date = fields.Date(
-        string='Date (Pickup)',
+        string='Pickup Date',
         compute='_compute_first_pickup_date',
         store=True,
         index=True,
