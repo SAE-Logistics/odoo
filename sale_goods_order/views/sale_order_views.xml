@@ -197,6 +197,37 @@
                            widget="many2many_tags"
                            options="{'color_field': 'tag_color', 'no_create_edit': True}"
                            optional="show"/>
+                    <field name="service_level" optional="show"/>
+                    <field name="first_pickup_date" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Orders list (Sales > Orders > Orders) -->
+        <record id="sale_order_list_inherit_service_level" model="ir.ui.view">
+            <field name="name">sale.order.list.inherit.service.level</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="service_level" optional="show"/>
+                    <field name="first_pickup_date" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Search: type to find by service level + group by -->
+        <record id="sale_order_search_inherit_service_level" model="ir.ui.view">
+            <field name="name">sale.order.search.inherit.service.level</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="service_level"/>
+                </xpath>
+                <xpath expr="//filter[@name='customer']" position="after">
+                    <filter string="Service Level" name="group_by_service_level" context="{'group_by': 'service_level'}"/>
+                    <filter string="Pickup Date" name="group_by_first_pickup_date" context="{'group_by': 'first_pickup_date:day'}"/>
                 </xpath>
             </field>
         </record>
