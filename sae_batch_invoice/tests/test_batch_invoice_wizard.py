@@ -389,3 +389,33 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         product_lines = invoice.invoice_line_ids.filtered(lambda line: line.display_type == "product")
         self.assertEqual(product_lines.product_id, self.service)
         self.assertTrue(all(product_lines.sale_line_ids))
+
+    def test_transport_invoices_split_uk_and_international_with_eu_and_row_together(self):
+        finished_at = datetime(2026, 10, 5, 12, 0)
+
+        def make_order(country_xmlid=None):
+            order = self._make_order(template=self.transport_template)
+            location = self.env["res.partner"].create({
+                "name": "Drop %s" % (country_xmlid or "uk"),
+                "country_id": self.env.ref(country_xmlid or "base.uk").id,
+            })
+            self._add_leg(order, date_completion=finished_at, to_location=location.id)
+            return order
+
+        uk_order = make_order()
+        eu_order = make_order("base.fr")
+        row_order = make_order("base.us")
+
+        groups = self._run().group_line_ids.filtered(lambda group: group.family == "transport")
+        self.assertEqual(len(groups), 2)
+        self.assertEqual(groups.filtered(lambda group: group.region == "uk").order_ids, uk_order)
+        self.assertEqual(
+            groups.filtered(lambda group: group.region == "international").order_ids,
+            eu_order | row_order,
+        )
+
+    def test_warehouse_invoice_has_no_region(self):
+        self._make_goods_order(datetime(2026, 10, 5, 12, 0))
+        group = self._run().group_line_ids
+        self.assertEqual(group.family, "warehouse")
+        self.assertFalse(group.region)
