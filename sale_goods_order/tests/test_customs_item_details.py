@@ -43,6 +43,7 @@ class TestCustomsItemDetails(TransactionCase):
             'location_dest_id': picking_type.default_location_dest_id.id,
             'partner_id': cls.destination.id,
             'group_id': group.id,
+            'sale_id': cls.order.id,
         })
 
     def _add_move(self, **vals):
