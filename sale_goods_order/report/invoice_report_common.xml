@@ -14,7 +14,7 @@
     <template id="invoice_report_page_header">
         <div class="header">
             <style>
-                .inv-hdr { width: 100%; border-collapse: collapse; border: 0; font-family: Arial, sans-serif; }
+                .inv-hdr { width: 100%; border-collapse: separate; border-spacing: 0; border: 0; font-family: Arial, sans-serif; }
                 .inv-hdr td { vertical-align: top; padding: 0; border: 0; }
                 .inv-hdr .inv-logo { max-height: 70px; max-width: 230px; }
                 .inv-hdr .inv-company { text-align: right; color: #63749b; font-size: 11px; line-height: 1.3; }
