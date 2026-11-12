@@ -9,6 +9,30 @@
                 <separator/>
                 <filter string="Batch Invoice (New)" name="sae_batch_invoice"
                         domain="[('sae_batch_invoice', '=', True)]"/>
+                <separator/>
+                <filter string="Goods In/Out" name="sae_family_warehouse"
+                        domain="[('sae_invoice_family', '=', 'warehouse')]"/>
+                <filter string="Goods Order Transport" name="sae_family_goods_transport"
+                        domain="[('sae_invoice_family', '=', 'goods_transport')]"/>
+                <filter string="Transport Only" name="sae_family_transport"
+                        domain="[('sae_invoice_family', '=', 'transport')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Invoice Type" name="group_sae_invoice_family"
+                            context="{'group_by': 'sae_invoice_family'}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Invoice type column in the customer invoices list. Blank on invoices that were
+         not made by the Batch Invoice wizard. -->
+    <record id="view_out_invoice_list_sae_batch_invoice" model="ir.ui.view">
+        <field name="name">account.invoice.list.sae.batch.invoice</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_out_invoice_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='invoice_date_due']" position="after">
+                <field name="sae_invoice_family" string="Type" optional="show"/>
             </xpath>
         </field>
     </record>
