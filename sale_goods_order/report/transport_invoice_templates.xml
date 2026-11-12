@@ -191,7 +191,7 @@
                                     <table class="invoice-meta">
                                         <tr>
                                             <td class="label">Number:</td>
-                                            <td class="value"><span t-esc="o.name"/></td>
+                                            <td class="value"><span t-esc="o.name if o.name and o.name != '/' else 'Draft'"/></td>
                                         </tr>
                                         <tr>
                                             <td class="label">Tax Point Date:</td>
