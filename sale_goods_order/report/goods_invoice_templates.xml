@@ -28,7 +28,7 @@
                             .warehouse-lines,
                             .warehouse-bottom {
                                 width: 100%;
-                                border-collapse: collapse;
+                                border-collapse: separate; border-spacing: 0;
                             }
                             .warehouse-header td,
                             .warehouse-meta td,
@@ -69,7 +69,7 @@
                             .invoice-details {
                                 width: 290px;
                                 margin-left: auto;
-                                border-collapse: collapse;
+                                border-collapse: separate; border-spacing: 0;
                             }
                             .invoice-details td {
                                 padding: 0 0 11px;
@@ -120,7 +120,7 @@
                             .warehouse-totals {
                                 width: 390px;
                                 margin-left: auto;
-                                border-collapse: collapse;
+                                border-collapse: separate; border-spacing: 0;
                                 font-size: 10.5px;
                             }
                             .warehouse-totals td {
@@ -237,7 +237,7 @@
                             <tr>
                                 <td style="width: 38%;" class="due-date">
                                     <span t-if="o.invoice_date_due">Due Date: <span t-field="o.invoice_date_due"/></span>
-                                    <table style="margin-top: 14px; border-collapse: collapse; font-size: 9px; color: #556a99;">
+                                    <table style="margin-top: 14px; border-collapse: separate; border-spacing: 0; font-size: 9px; color: #556a99;">
                                         <thead>
                                             <tr><th style="padding: 2px 5px;">Tax Summary</th><th style="padding: 2px 5px; text-align: right;">Rate</th><th style="padding: 2px 5px; text-align: right;">Goods</th><th style="padding: 2px 5px; text-align: right;">Tax</th></tr>
                                         </thead>
