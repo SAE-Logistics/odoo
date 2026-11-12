@@ -352,6 +352,27 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
             self.assertEqual(report, expected)
             self.assertTrue(report.is_invoice_report)
 
+    def test_print_action_picks_the_layout_matching_the_invoice(self):
+        self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0))
+        self._make_transport_order(datetime(2026, 10, 6, 12, 0))
+        invoices = self._create(self._run())
+        for invoice in invoices:
+            action = invoice.action_print_sae_invoice()
+            expected = (
+                "sale_goods_order.report_goods_invoice_document"
+                if invoice.sae_invoice_family == "warehouse"
+                else "sale_goods_order.report_transport_invoice_document"
+            )
+            self.assertEqual(action["report_name"], expected)
+
+    def test_print_action_refuses_a_mixed_selection(self):
+        self._make_goods_order_with_transport(datetime(2026, 10, 5, 12, 0))
+        invoices = self._create(self._run())
+        self.assertEqual(
+            set(invoices.mapped("sae_invoice_family")), {"warehouse", "goods_transport"})
+        with self.assertRaises(UserError):
+            invoices.action_print_sae_invoice()
+
     def test_order_with_draft_invoice_is_listed_as_skipped(self):
         order = self._make_goods_order(datetime(2026, 10, 5, 12, 0))
         order._create_invoices()
