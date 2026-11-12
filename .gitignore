@@ -58,6 +58,7 @@ _label_preview*.png
 apc_kb/
 dpd_api_kb/
 archive/
+docs/Tax/
 
 # --- OS ---
 .DS_Store
