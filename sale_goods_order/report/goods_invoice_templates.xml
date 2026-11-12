@@ -11,6 +11,12 @@
                     <t t-call="sale_goods_order.invoice_report_page_header"/>
                     <div class="page warehouse-invoice-page">
                         <style>
+                            /* No borders by default: only the rules set below are drawn. */
+                            .warehouse-invoice-page table,
+                            .warehouse-invoice-page th,
+                            .warehouse-invoice-page td {
+                                border: 0;
+                            }
                             .warehouse-invoice-page {
                                 font-family: Arial, sans-serif;
                                 color: #181818;
