@@ -46,6 +46,9 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
     def _make_order(self, cost_centre=False, template=None):
         order = self.env["sale.order"].create({
             "partner_id": self.customer.id,
+            # Goods Out orders blank the shipping partner by design (the user
+            # picks the delivery address), but the column is NOT NULL.
+            "partner_shipping_id": self.customer.id,
             "sale_order_template_id": (template or self.goods_template).id,
             "cost_centre_id": cost_centre and cost_centre.id,
             "order_line": [(0, 0, {
