@@ -78,6 +78,12 @@ class SaleOrder(models.Model):
         self.ensure_one()
         invoice_vals = super()._prepare_invoice()
         invoice_vals["cost_centre_id"] = self.cost_centre_id.id or False
+        if not invoice_vals.get("invoice_payment_term_id"):
+            # SAE terms are "Strictly 30 days nett" (invoice footer). Without a term Odoo
+            # makes the due date equal to the invoice date, or even earlier.
+            term = self.env.ref("account.account_payment_term_30days", raise_if_not_found=False)
+            if term:
+                invoice_vals["invoice_payment_term_id"] = term.id
         if self.order_type in ("goods_in", "goods_out", "transport") and self.cost_centre_id:
             invoice_vals["ref"] = self.cost_centre_id.display_name
         return invoice_vals

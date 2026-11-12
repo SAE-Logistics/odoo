@@ -104,6 +104,10 @@
                                 border-bottom: 1px solid #d6dbea;
                                 vertical-align: top;
                             }
+                            .transport-table th.addr,
+                            .transport-table td.addr {
+                                padding-right: 10px;
+                            }
                             .transport-table .surcharge-row td {
                                 background: #dfe3ef;
                                 color: #40547c;
@@ -210,16 +214,16 @@
                             <thead>
                                 <tr>
                                     <th style="width: 7%;">Date</th>
-                                    <th style="width: 9%;">Client Ref</th>
-                                    <th style="width: 9%;">Job No</th>
+                                    <th style="width: 8%;">Client Ref</th>
+                                    <th style="width: 8%;">Job No</th>
                                     <th style="width: 10%;">Service</th>
-                                    <th style="width: 12%;">Description</th>
+                                    <th style="width: 9%;">Description</th>
                                     <th class="text-right" style="width: 5%;">Weight</th>
-                                    <th style="width: 10%;">From</th>
-                                    <th style="width: 10%;">To</th>
+                                    <th class="addr" style="width: 13%;">From</th>
+                                    <th class="addr" style="width: 13%;">To</th>
                                     <th style="width: 12%;">Consignee</th>
-                                    <th class="text-right" style="width: 8%;">Value</th>
-                                    <th class="text-right" style="width: 8%;">Fuel Chg</th>
+                                    <th class="text-right" style="width: 7.5%;">Value</th>
+                                    <th class="text-right" style="width: 7.5%;">Fuel Chg</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -246,8 +250,8 @@
                                         <td class="text-right nowrap">
                                             <span t-if="row.get('weight')" t-esc="'%g Kg' % row.get('weight')"/>
                                         </td>
-                                        <td><span t-esc="row.get('from_postcode') or ''"/></td>
-                                        <td><span t-esc="row.get('to_postcode') or ''"/></td>
+                                        <td class="addr"><span t-esc="row.get('from_postcode') or ''"/></td>
+                                        <td class="addr"><span t-esc="row.get('to_postcode') or ''"/></td>
                                         <td><span t-esc="row.get('consignee') or ''"/></td>
                                         <td class="text-right nowrap">
                                             <span t-if="not o.currency_id.is_zero(row.get('value', 0.0))"
