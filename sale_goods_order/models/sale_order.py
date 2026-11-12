@@ -558,7 +558,7 @@ class SaleOrder(models.Model):
         ], limit=1)
         if not tax:
             raise UserError(_(
-                "No sales tax named '0%' exists for %s. Create it (Invoicing > Configuration > "
+                "No sales tax named '0%%' exists for %s. Create it (Invoicing > Configuration > "
                 "Taxes), because a surcharge on this order is zero-rated.",
                 self.company_id.name,
             ))
