@@ -13,8 +13,8 @@ from ..models.account_move import FAMILY_SELECTION
 class SaeBatchInvoiceWizard(models.TransientModel):
     """Batch invoicing of goods and transport orders.
 
-    Replacement candidate for ``sale.bulk.invoice.wizard`` (sale_goods_order),
-    which is left untouched as a fallback. Differences:
+    Replaces the original Bulk Invoice Orders wizard (``sale.bulk.invoice.wizard``
+    in sale_goods_order), which has been removed. How it works:
 
     * an order is billed once its job is finished: transport orders when all
       legs are completed, goods orders when the warehouse has validated the

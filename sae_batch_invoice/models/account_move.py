@@ -23,7 +23,7 @@ class AccountMove(models.Model):
         readonly=True,
         index=True,
         help="Set on invoices created by the Batch Invoice wizard (sae_batch_invoice), "
-             "to tell them apart from invoices made by the original Bulk Invoice Orders wizard.",
+             "to tell them apart from older invoices made before it existed.",
     )
     sae_invoice_family = fields.Selection(
         FAMILY_SELECTION,

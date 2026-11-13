@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
                 <separator/>
-                <filter string="Batch Invoice (New)" name="sae_batch_invoice"
+                <filter string="Batch Invoice" name="sae_batch_invoice"
                         domain="[('sae_batch_invoice', '=', True)]"/>
                 <separator/>
                 <filter string="Goods In/Out" name="sae_family_warehouse"

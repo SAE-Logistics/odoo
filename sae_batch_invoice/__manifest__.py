@@ -2,8 +2,7 @@
 {
     "name": "SAE Batch Invoice",
     "version": "18.0.1.2.1",
-    "summary": "Batch invoicing of goods and transport orders with a preview step. "
-               "Runs alongside the original Bulk Invoice Orders wizard.",
+    "summary": "Batch invoicing of goods and transport orders with a preview step.",
     "author": "eartisan",
     "website": "https://eartisan.co.uk",
     "license": "LGPL-3",

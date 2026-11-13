@@ -73,7 +73,7 @@
     </record>
 
     <menuitem id="menu_sae_batch_invoice"
-              name="Batch Invoice (New)"
+              name="Batch Invoice"
               parent="sale.menu_sale_order"
               sequence="28"
               action="action_sae_batch_invoice_wizard"
