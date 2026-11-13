@@ -1,11 +1,10 @@
 # SAE Batch Invoice
 
-Monthly batch invoicing of goods and transport orders: **Sales → Orders → Batch Invoice (New)**.
+Monthly batch invoicing of goods and transport orders: **Sales → Orders → Batch Invoice**.
 
-Installed next to the original **Bulk Invoice Orders** wizard
-(`sale.bulk.invoice.wizard` in `sale_goods_order`), which is not modified and keeps
-working. To go back to the original only, uninstall this module. Invoices it has
-already created remain normal invoices.
+This replaces the original **Bulk Invoice Orders** wizard (`sale.bulk.invoice.wizard`
+in `sale_goods_order`), which has been removed. Invoices the old wizard created
+remain normal invoices. They have no invoice type, so the Type column is blank for them.
 
 ## How a run works
 
@@ -33,21 +32,6 @@ Storage space is not billed here: SAE invoice it outside Odoo for now.
 
 Batch invoices print and send with the PDF above instead of Odoo's standard invoice, and
 their shipping address is the billing customer, because one invoice covers many jobs.
-
-## Differences from the original wizard
-
-| | Original (`sale.bulk.invoice.wizard`) | This module |
-|---|---|---|
-| Which orders | `date_order` between Date From and Date To | Finished jobs still "to invoice" up to Invoice Up To (see below). Late charges on older orders are picked up |
-| Start date | Required, filters orders | None. `invoice_status` stops a line being billed twice |
-| Timezone | UTC midnight | User's timezone (default Europe/London) |
-| Lines | Temporary per-order invoice, copied then deleted | Prepared directly from sale order lines; section/note lines kept |
-| Rental/storage lines | Added automatically | Not added |
-| Preview / skipped list | No | Yes |
-| Marker | — | `account.move.sae_batch_invoice`; filter "Batch Invoice (New)" on invoices |
-
-Run **one** of the two wizards per period. Both only pick up lines that are still
-"to invoice", so a line is never billed twice, but mixing them in one period is confusing.
 
 ## Billing date
 

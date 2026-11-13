@@ -9,7 +9,6 @@
     "data": [
         "security/ir.model.access.csv",
         "data/order_sequence_data.xml",
-        "views/bulk_invoice_wizard_views.xml",
         "views/container_report_views.xml",
         "views/inventory_reporting_views.xml",
         "views/res_config_settings_views.xml",
