@@ -357,7 +357,9 @@ class TestBatchInvoiceWizard(AccountTestInvoicingCommon):
         self._make_transport_order(datetime(2026, 10, 6, 12, 0))
         invoices = self._create(self._run())
         for invoice in invoices:
-            action = invoice.action_print_sae_invoice()
+            # As admin (a test env is), report_action can return the "Choose your
+            # document layout" wizard instead of the report. Skip that check here.
+            action = invoice.with_context(discard_logo_check=True).action_print_sae_invoice()
             expected = (
                 "sale_goods_order.report_goods_invoice_document"
                 if invoice.sae_invoice_family == "warehouse"
