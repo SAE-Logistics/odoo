@@ -5,7 +5,7 @@ from odoo.tests.common import TransactionCase
 
 
 class TestSurchargeVatRule(TransactionCase):
-    """Surcharge VAT: standard, zero-rated, or UK standard / international zero-rated."""
+    """Surcharge VAT: rule applies on UK jobs; every extra charge is 0% on international jobs."""
 
     @classmethod
     def setUpClass(cls):
@@ -39,25 +39,23 @@ class TestSurchargeVatRule(TransactionCase):
         with patch.object(type(self.order), '_get_transport_region', return_value=region):
             return self.env['sale.order.line']._get_product_sale_tax_ids(product, self.order)
 
-    def test_standard_uses_product_tax_everywhere(self):
+    def test_standard_is_product_tax_in_uk_and_zero_international(self):
         product = self._product('standard')
         self.assertEqual(self._tax_ids(product, 'uk'), self.standard.ids)
-        self.assertEqual(self._tax_ids(product, 'international'), self.standard.ids)
+        self.assertEqual(self._tax_ids(product, 'international'), self.zero.ids)
 
     def test_zero_is_zero_rated_everywhere(self):
         product = self._product('zero')
         self.assertEqual(self._tax_ids(product, 'uk'), self.zero.ids)
         self.assertEqual(self._tax_ids(product, 'international'), self.zero.ids)
 
-    def test_by_region_is_standard_in_uk_and_zero_international(self):
-        product = self._product('by_region')
-        self.assertEqual(self._tax_ids(product, 'uk'), self.standard.ids)
-        self.assertEqual(self._tax_ids(product, 'international'), self.zero.ids)
-
     def test_rule_ignored_on_non_surcharge_product(self):
         product = self._product('zero')
         product.is_surcharge_product = False
         self.assertEqual(self._tax_ids(product, 'uk'), self.standard.ids)
+        # Not an extra charge (e.g. the main Transport Charges line): the
+        # international 0% rule does not reach it.
+        self.assertEqual(self._tax_ids(product, 'international'), self.standard.ids)
 
     def test_missing_zero_tax_is_an_error_not_wrong_vat(self):
         self.zero.name = 'Renamed'
