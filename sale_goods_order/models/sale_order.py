@@ -693,9 +693,13 @@ class SaleOrderLine(models.Model):
         if not product or not order:
             return []
         taxes = product.taxes_id._filter_taxes_by_company(order.company_id)
-        if product.is_surcharge_product and product.surcharge_vat_rule != 'standard':
-            if product.surcharge_vat_rule == 'zero' or order._get_transport_region() == 'international':
-                taxes = order._get_zero_rated_tax()
+        # Extra charges on international jobs are 0% (SAE, 17 Nov 2026). On UK
+        # jobs the product's rule decides.
+        if product.is_surcharge_product and (
+            product.surcharge_vat_rule == 'zero'
+            or order._get_transport_region() == 'international'
+        ):
+            taxes = order._get_zero_rated_tax()
         if not taxes:
             return []
         return order.fiscal_position_id.map_tax(taxes).ids

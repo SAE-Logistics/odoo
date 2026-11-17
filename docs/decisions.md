@@ -9,14 +9,21 @@ Open questions and tasks live in claude-mem work-state (list `sae-week-2026-11-0
 | 2026-11-10 | VAT number and bank details printed on invoices come from the company Document footer (Settings > Companies). HSBC bank details verified printing on both PDFs 2026-11-12. | Nick; PDFs checked by Pradeep |
 | 2026-11-10 | EU and rest-of-world transport share one invoice format (UK is outside the EU). Transport batch invoices split UK vs International only. | Nick; PR #64 |
 | 2026-11-10 | £0 "new stock" goods-in lines stay off invoices. Stock-movement charge is a manual Xero report. | Nick |
-| 2026-11 | Import duty paid on a client's behalf: no VAT. Other extra charges (e.g. congestion): 20%. Labour (warehouse only, ad hoc): £7.50 per 15 min. | Nick, inline reply to 1 Nov extra-charges email |
+| 2026-11 | Import duty paid on a client's behalf: no VAT. Other extra charges (e.g. congestion): 20% on UK jobs (0% on international jobs, see 17 Nov). Labour (warehouse only, ad hoc): £7.50 per 15 min. | Nick, inline reply to 1 Nov extra-charges email |
 | 2026-11-11 | Surcharge VAT is a per-product rule (standard / zero / by region). Admin and Brexit = zero; Collection, Covid, Fuel Surcharge, NDS = standard. | PR #65 |
 | 2026-11-12 | Default payment term on invoices made from orders is 30 Days (footer says strictly 30 days nett) when the customer has none. | Pradeep, PR |
 | 2026-11-02 | To Invoice and Completed order-status definitions stand as built. No need to confirm with SAE. | Pradeep |
+| 2026-11-17 | International transport VAT: exports to EU and rest of world are zero-rated (0%). On a mixed job, any UK leg (both ends in the UK) is 20% and the rest is 0%. | SAE meeting 17 Nov (A2, A4) |
+| 2026-11-17 | Extra charges on international jobs (congestion, late charges, waiting time, etc.) are 0%, not 20%. | SAE meeting 17 Nov (A5); built in sale_goods_order 18.0.1.11.0 |
+| 2026-11-17 | No VAT note or zero-rating wording on international invoices. | SAE meeting 17 Nov (A3) |
+| 2026-11-17 | No EU/ROW customer is UK VAT-registered, so the VAT rule is set by the job (legs), not by the customer. | SAE meeting 17 Nov (A6) |
+| 2026-11-17 | SAE never pays import VAT for clients, so there is no import VAT recharge product. | SAE meeting 17 Nov (B1) |
+| 2026-11-17 | Goods In/Out invoice PDF heading stays "Warehouse". | SAE meeting 17 Nov (C1) |
+| 2026-11-17 | Short name "SAE Logistics" in letter headings is fine; full legal name stays in the footer. | SAE meeting 17 Nov (C3) |
 
 ## Still waiting on SAE
 
-- EU/ROW transport invoice title and VAT treatment (Nick's point 2): Chris Bousfield, back 16 Nov.
-- Import VAT paid on a client's behalf, and whether it is recharged: SAE's accountant and Chris.
+- International transport invoice title: plain "Invoice", "Export Invoice", or other (A1, left blank on 17 Nov).
+- VAT on imports into the UK: the 17 Nov answer covers exports only. No import jobs on staging yet.
+- UK leg of an export job: SAE said 20% (A4), but HMRC (VAT Notice 744B) normally zero-rates a UK leg sold under the same contract as the international leg. Accountant to confirm before the main Transport Charges line is changed (split per leg at 20%/0%, or the whole job at 0%).
 - Invoice numbering: an invoice with both warehouse and transport lines prints as two PDFs with the same number and different totals (e.g. INV/2026/00005: 158.27 + 62.49 = 220.76 on the one invoice). Does the accountant need separate numbers? The batch wizard already makes one invoice per family.
-- Warehouse PDF wording: "Warehouse" vs "Goods In/Out".
