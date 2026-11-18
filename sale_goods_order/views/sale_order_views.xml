@@ -251,10 +251,6 @@
             <field name="inherit_id" ref="sale.sale_order_view_search_inherit_sale"/>
             <field name="arch" type="xml">
                 <xpath expr="//filter[@name='to_invoice']/preceding-sibling::separator[1]" position="before">
-                    <filter string="Goods In" name="goods_in_orders" domain="[('order_type', '=', 'goods_in')]"/>
-                    <filter string="Goods Out" name="goods_out_orders" domain="[('order_type', '=', 'goods_out')]"/>
-                    <filter string="Transport" name="transport_orders" domain="[('order_type', '=', 'transport')]"/>
-                    <separator/>
                     <filter string="To Do" name="transport_status_to_do" domain="[('transport_leg_status', '=', 'to_do')]"/>
                     <filter string="Missing" name="transport_status_missing" domain="[('transport_leg_status', '=', 'missing')]"/>
                     <filter string="Not Needed" name="transport_status_not_needed" domain="[('transport_leg_status', '=', 'not_needed')]"/>
@@ -284,8 +280,8 @@
             </field>
         </record>
 
-        <!-- Extension of the base search view so the order status filters are
-             available in Quotations, Orders and the custom order menus alike. -->
+        <!-- Extension of the base search view so the order status and order type
+             filters are available in Quotations, Orders and the custom order menus alike. -->
         <record id="sale_order_search_inherit_open_orders" model="ir.ui.view">
             <field name="name">sale.order.search.inherit.open.orders</field>
             <field name="model">sale.order</field>
@@ -309,6 +305,11 @@
                     <!-- Completed = fully billed on posted invoices, none still in draft. -->
                     <filter string="Completed" name="order_completed"
                             domain="[('state', '=', 'sale'), ('invoice_status', '=', 'invoiced'), ('order_line.invoice_lines.parent_state', '=', 'posted'), ('order_line', 'not any', [('invoice_lines', 'any', [('parent_state', '=', 'draft')])])]"/>
+                    <!-- Order type: own section, so it combines (AND) with the status filters above. -->
+                    <separator/>
+                    <filter string="Goods In" name="goods_in_orders" domain="[('order_type', '=', 'goods_in')]"/>
+                    <filter string="Goods Out" name="goods_out_orders" domain="[('order_type', '=', 'goods_out')]"/>
+                    <filter string="Transport" name="transport_orders" domain="[('order_type', '=', 'transport')]"/>
                 </xpath>
             </field>
         </record>

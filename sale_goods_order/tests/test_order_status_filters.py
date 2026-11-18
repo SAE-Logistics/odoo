@@ -90,3 +90,42 @@ class TestOrderStatusFilters(TransactionCase):
         ]
         positions = [names.index(name) for name in expected]
         self.assertEqual(positions, list(range(positions[0], positions[0] + len(expected))))
+
+    def test_quotations_has_order_type_filters_after_status_filters(self):
+        view = self.env.ref('sale.sale_order_view_search_inherit_quotation')
+        arch = etree.fromstring(self.env['sale.order'].get_view(view.id, 'search')['arch'])
+        names = [f.get('name') for f in arch.iter('filter')]
+        for name in ('goods_in_orders', 'goods_out_orders', 'transport_orders'):
+            with self.subTest(filter=name):
+                self.assertEqual(names.count(name), 1)
+                self.assertGreater(names.index(name), names.index('order_completed'))
+
+    def test_all_orders_has_order_type_filters_once(self):
+        view = self.env.ref('sale_goods_order.sale_order_search_inherit_order_type_filters')
+        arch = etree.fromstring(self.env['sale.order'].get_view(view.id, 'search')['arch'])
+        names = [f.get('name') for f in arch.iter('filter')]
+        for name in ('goods_in_orders', 'goods_out_orders', 'transport_orders'):
+            self.assertEqual(names.count(name), 1)
+
+    def test_order_type_filter_domains(self):
+        domains = {
+            'goods_in_orders': [('order_type', '=', 'goods_in')],
+            'goods_out_orders': [('order_type', '=', 'goods_out')],
+            'transport_orders': [('order_type', '=', 'transport')],
+        }
+        view = self.env.ref('sale_goods_order.sale_order_search_inherit_open_orders')
+        arch = etree.fromstring(
+            self.env['sale.order'].get_view(view.inherit_id.id, 'search')['arch']
+        )
+        for name, expected in domains.items():
+            domain = safe_eval(arch.xpath(f"//filter[@name='{name}']")[0].get('domain'))
+            self.assertEqual(domain, expected)
+
+    def test_custom_order_menus_hidden(self):
+        for xmlid in (
+            'sale_goods_order.menu_sale_order_all_confirmed',
+            'sale_goods_order.menu_sale_order_goods',
+            'sale_goods_order.menu_sale_order_transport',
+        ):
+            with self.subTest(menu=xmlid):
+                self.assertFalse(self.env.ref(xmlid).active)
