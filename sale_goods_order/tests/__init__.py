@@ -5,3 +5,4 @@ from . import test_customs_item_details
 from . import test_surcharge_vat_rule
 from . import test_invoice_payment_term
 from . import test_order_status_filters
+from . import test_order_list_columns
