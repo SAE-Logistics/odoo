@@ -260,6 +260,15 @@
                     <filter string="Not Needed" name="transport_status_not_needed" domain="[('transport_leg_status', '=', 'not_needed')]"/>
                     <filter string="Transport Completed" name="transport_status_completed" domain="[('transport_leg_status', '=', 'completed')]"/>
                 </xpath>
+                <!-- All Orders: show the order status filters (from the base search view)
+                     right above the transport status filters. -->
+                <xpath expr="//filter[@name='transport_status_to_do']" position="before">
+                    <xpath expr="//filter[@name='open_orders']" position="move"/>
+                    <xpath expr="//filter[@name='in_progress']" position="move"/>
+                    <xpath expr="//filter[@name='ready_to_invoice']" position="move"/>
+                    <xpath expr="//filter[@name='order_completed']" position="move"/>
+                    <separator/>
+                </xpath>
             </field>
         </record>
 
