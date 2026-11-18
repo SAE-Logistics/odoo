@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- All Orders, Goods Orders and Transport Orders menus are hidden: Quotations
+         now has the same columns and filters. Actions kept so the menus can be
+         re-enabled (set active="True") without other changes. -->
     <record id="action_sale_order_all_confirmed" model="ir.actions.act_window">
         <field name="name">All Orders</field>
         <field name="res_model">sale.order</field>
@@ -14,7 +17,7 @@
         <field name="view_id" ref="sale_order_all_confirmed_list_view"/>
         <field name="act_window_id" ref="action_sale_order_all_confirmed"/>
     </record>
-    <menuitem id="menu_sale_order_all_confirmed" name="All Orders" parent="sale.menu_sale_order" sequence="24"
+    <menuitem id="menu_sale_order_all_confirmed" active="False" name="All Orders" parent="sale.menu_sale_order" sequence="24"
               action="action_sale_order_all_confirmed"/>
 
     <record id="action_sale_order_goods" model="ir.actions.act_window">
@@ -24,7 +27,7 @@
         <field name="context">{"ord_type":"goods"}</field>
         <field name="domain">[("order_type","in",["goods_in", "goods_out"])]</field>
     </record>
-    <menuitem id="menu_sale_order_goods" name="Goods Orders" parent="sale.menu_sale_order" sequence="25"
+    <menuitem id="menu_sale_order_goods" active="False" name="Goods Orders" parent="sale.menu_sale_order" sequence="25"
               action="action_sale_order_goods"/>
 
     <record id="action_sale_transport_legs" model="ir.actions.act_window">
@@ -42,7 +45,7 @@
         <field name="context">{"ord_type":"transport"}</field>
         <field name="domain">[("order_type","=","transport")]</field>
     </record>
-    <menuitem id="menu_sale_order_transport" name="Transport Orders" parent="sale.menu_sale_order" sequence="26"
+    <menuitem id="menu_sale_order_transport" active="False" name="Transport Orders" parent="sale.menu_sale_order" sequence="26"
               action="action_sale_order_transport"/>
     <menuitem id="menu_sale_transport_legs" name="Transport Legs" parent="sale.menu_sale_order" sequence="30"
               action="action_sale_transport_legs"/>
