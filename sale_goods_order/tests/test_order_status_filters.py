@@ -79,3 +79,14 @@ class TestOrderStatusFilters(TransactionCase):
         order = self._order_with_legs()
         self.assertTrue(self._in_filter('open_orders', order))
         self.assertFalse(self._in_filter('in_progress', order))
+
+    def test_all_orders_shows_status_filters_before_transport_status(self):
+        view = self.env.ref('sale_goods_order.sale_order_search_inherit_order_type_filters')
+        arch = etree.fromstring(self.env['sale.order'].get_view(view.id, 'search')['arch'])
+        names = [f.get('name') for f in arch.iter('filter')]
+        expected = [
+            'open_orders', 'in_progress', 'ready_to_invoice', 'order_completed',
+            'transport_status_to_do',
+        ]
+        positions = [names.index(name) for name in expected]
+        self.assertEqual(positions, list(range(positions[0], positions[0] + len(expected))))
