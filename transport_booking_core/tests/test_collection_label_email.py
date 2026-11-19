@@ -183,3 +183,97 @@ class TestCollectionLabelEmail(TransactionCase):
         self.assertEqual(len(mail), 1)
         self.assertEqual(mail.email_to, "poster@example.com")
         self.assertIn("TRK4", mail.subject)
+
+    # -- cancelled / reset label ----------------------------------------
+    def _fake_carrier(self, leg, remote_cancel=True, tracking="TRK9"):
+        """Patch the leg's carrier resolution with a fake API adapter."""
+
+        class FakeAdapter:
+            supports_remote_cancel = remote_cancel
+
+            def book(self, booked_leg):
+                return BookingResult(
+                    tracking_number=tracking, consignment_ref=tracking,
+                    label=PDF_BYTES, label_filename="Label-%s.pdf" % tracking)
+
+            def check_cancellable(self, booked_leg):
+                return None
+
+            def cancel(self, booked_leg):
+                return remote_cancel
+
+        leg_cls = type(leg)
+        carrier = self.env["delivery.carrier"].create({
+            "name": "Fake API Carrier",
+            "product_id": self.env["product.product"].create({
+                "name": "Fake API Carrier Delivery",
+                "type": "service",
+            }).id,
+        })
+        return [
+            patch.object(leg_cls, "_leg_booking_adapter",
+                         lambda self, carrier: FakeAdapter()),
+            patch.object(leg_cls, "_leg_find_delivery_carrier",
+                         lambda self: carrier),
+        ]
+
+    def _with_patches(self, patches, func):
+        for p in patches:
+            p.start()
+        try:
+            return func()
+        finally:
+            for p in reversed(patches):
+                p.stop()
+
+    def test_cancel_emails_the_poster_that_the_label_is_void(self):
+        _order, legs = self._order_with_legs("goods_in")
+        leg = legs[0]
+        patches = self._fake_carrier(leg, remote_cancel=True)
+
+        def run():
+            leg._leg_book_api(self.env["delivery.carrier"])
+            leg.action_leg_cancel_booking()
+
+        self._with_patches(patches, run)
+
+        mails = self._mails(leg).sorted("id")
+        self.assertEqual(len(mails), 2)
+        cancel_mail = mails[1]
+        self.assertTrue(cancel_mail.subject.startswith("CANCELLED"))
+        self.assertIn("TRK9", cancel_mail.subject)
+        self.assertIn("TRK9", cancel_mail.body_html)
+        self.assertEqual(cancel_mail.email_to, "poster@example.com")
+        self.assertFalse(cancel_mail.attachment_ids)
+
+    def test_reset_emails_the_poster_that_the_label_is_void(self):
+        _order, legs = self._order_with_legs("transport")
+        leg = legs[0]
+        patches = self._fake_carrier(leg, remote_cancel=False, tracking="TRK10")
+
+        def run():
+            leg._leg_book_api(self.env["delivery.carrier"])
+            leg.action_leg_reset_booking()
+
+        self._with_patches(patches, run)
+
+        mails = self._mails(leg).sorted("id")
+        self.assertEqual(len(mails), 2)
+        self.assertTrue(mails[1].subject.startswith("CANCELLED"))
+        self.assertIn("TRK10", mails[1].subject)
+
+    def test_cancel_sends_nothing_when_no_label_was_emailed(self):
+        order, legs = self._order_with_legs("goods_in", label_email=False)
+        leg = legs[0]
+        patches = self._fake_carrier(leg, remote_cancel=True)
+
+        def run():
+            leg._leg_book_api(self.env["delivery.carrier"])
+            # Address added after booking: the poster never got a label,
+            # so there is nothing to tell them about.
+            order.label_email = "poster@example.com"
+            leg.action_leg_cancel_booking()
+
+        self._with_patches(patches, run)
+
+        self.assertFalse(self._mails(leg))
