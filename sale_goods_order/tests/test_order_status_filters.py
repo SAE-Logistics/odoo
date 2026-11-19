@@ -80,6 +80,32 @@ class TestOrderStatusFilters(TransactionCase):
         self.assertTrue(self._in_filter('open_orders', order))
         self.assertFalse(self._in_filter('in_progress', order))
 
+    def test_confirmed_zero_qty_goods_in_stays_in_progress(self):
+        """GI00077: confirmed, No Transport Needed, every charge still at qty 0.
+
+        Odoo marks such an order 'invoiced'; it must still show as In Progress
+        until it is actually billed.
+        """
+        template = self.env['sale.order.template'].create({
+            'name': 'Filter Test Goods In',
+            'order_type': 'goods_in',
+        })
+        service = self.env['product.product'].create({
+            'name': 'Filter Test Handling',
+            'type': 'service',
+        })
+        order = self.env['sale.order'].create({
+            'partner_id': self.customer.id,
+            'sale_order_template_id': template.id,
+            'collection_address_id': self.location_a.id,
+            'no_transport_needed': True,
+            'order_line': [(0, 0, {'product_id': service.id, 'product_uom_qty': 0})],
+        })
+        order.action_confirm()
+        self.assertEqual(order.invoice_status, 'invoiced')
+        self.assertTrue(self._in_filter('in_progress', order))
+        self.assertFalse(self._in_filter('open_orders', order))
+
     def test_all_orders_shows_status_filters_before_transport_status(self):
         view = self.env.ref('sale_goods_order.sale_order_search_inherit_order_type_filters')
         arch = etree.fromstring(self.env['sale.order'].get_view(view.id, 'search')['arch'])
