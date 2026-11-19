@@ -136,6 +136,9 @@ class TestCollectionLabelEmail(TransactionCase):
         ]).mapped("name")
         self.assertIn("Label-TRK2.zpl", stored)
         self.assertIn("Label-TRK2.pdf", stored)
+        # The two chatter posts say which label is which.
+        bodies = leg.message_ids.mapped("body")
+        self.assertTrue(any("PDF copy" in (b or "") for b in bodies))
 
     def test_thermal_label_without_pdf_copy_is_not_emailed(self):
         _order, legs = self._order_with_legs("goods_in")
