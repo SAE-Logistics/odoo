@@ -6,3 +6,4 @@ from . import test_surcharge_vat_rule
 from . import test_invoice_payment_term
 from . import test_order_status_filters
 from . import test_order_list_columns
+from . import test_service_only_picking
