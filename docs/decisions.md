@@ -25,5 +25,5 @@ Open questions and tasks live in claude-mem work-state (list `sae-week-2026-11-0
 
 ## Still waiting on SAE
 
-- VAT on imports into the UK: the 17 Nov answer covers exports only. No import jobs on staging yet.
+- VAT on imports into the UK: the 17 Nov answer covers exports only.
 - UK leg of an export job: SAE said 20% (A4), but HMRC (VAT Notice 744B) normally zero-rates a UK leg sold under the same contract as the international leg. Accountant to confirm before the main Transport Charges line is changed (split per leg at 20%/0%, or the whole job at 0%).
