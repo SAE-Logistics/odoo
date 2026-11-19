@@ -209,8 +209,13 @@ responsibility and never send. Goods Out orders never send.
 - Never fails a booking. The result ("email queued for …" or "NOT emailed:
   reason") is posted to the leg chatter. Delivery itself goes through the
   normal Odoo mail queue (Settings → Technical → Emails).
-- Template: `transport_booking_core.mail_template_collection_label`
-  (`noupdate`, editable in Settings → Technical → Email Templates).
+- **Cancelled labels**: when such a booking is cancelled (Cancel Booking,
+  or cancelling the sale order) or reset (Reset Booking), the same address
+  gets a "CANCELLED: shipping label for …" email telling them not to use it.
+  It only sends if a label email actually went out for that tracking number.
+- Templates: `transport_booking_core.mail_template_collection_label` and
+  `mail_template_collection_label_cancelled` (`noupdate`, editable in
+  Settings → Technical → Email Templates).
 
 ## See also
 

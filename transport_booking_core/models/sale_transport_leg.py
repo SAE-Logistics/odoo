@@ -305,6 +305,60 @@ class SaleTransportLeg(models.Model):
         self._leg_post_log(_("Collection label email queued for %s.") % to)
         return True
 
+    def _leg_collection_label_was_emailed(self, tracking):
+        """True when a collection label email went out for ``tracking``."""
+        self.ensure_one()
+        if not tracking:
+            return False
+        return bool(self.env["mail.message"].search_count([
+            ("model", "=", self._name),
+            ("res_id", "=", self.id),
+            ("message_type", "=", "email_outgoing"),
+            ("subject", "ilike", tracking),
+        ], limit=1))
+
+    def _leg_email_collection_label_void(self, tracking):
+        """Tell the poster a label they were emailed must not be used.
+
+        Called when a booking is cancelled or reset. Only sends when a
+        collection label email actually went out for that tracking number,
+        so cancelling a booking nobody was emailed about sends nothing.
+        Never raises, so the cancel itself always goes through.
+        """
+        self.ensure_one()
+        recipients = self._leg_collection_label_recipients()
+        if not recipients or not self._leg_collection_label_was_emailed(
+                tracking):
+            return False
+        to = ", ".join(recipients)
+        template = self.env.ref(
+            "transport_booking_core.mail_template_collection_label_cancelled",
+            raise_if_not_found=False)
+        if not template:
+            self._leg_post_log(_(
+                "Label cancellation NOT emailed to %s: the email template "
+                "is missing.") % to)
+            return False
+        try:
+            with self.env.cr.savepoint():
+                template.with_context(cancelled_tracking=tracking).send_mail(
+                    self.id,
+                    force_send=False,
+                    email_values={"email_to": to, "recipient_ids": []},
+                )
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception(
+                "Could not queue label cancellation email for leg %s",
+                self.id)
+            self._leg_post_log(_(
+                "Label cancellation NOT emailed to %(to)s: %(error)s",
+                to=to, error=exc))
+            return False
+        self._leg_post_log(_(
+            "Label cancellation email (tracking %(tracking)s) queued for "
+            "%(to)s.", tracking=tracking, to=to))
+        return True
+
     def _apply_booking_result(self, result):
         """Write booking outcome + persist the label. Core owns this."""
         self.ensure_one()
@@ -380,10 +434,12 @@ class SaleTransportLeg(models.Model):
             raise UserError(_(
                 "This carrier supports cancelling the booking. Use Cancel "
                 "Booking instead, so the carrier booking is voided too."))
+        old_tracking = self.tracking_code
         self.write({
             "booking_state": "none",
             "booking_message": False,
         })
+        self._leg_email_collection_label_void(old_tracking)
         return True
 
     def action_leg_cancel_booking(self):
@@ -441,7 +497,9 @@ class SaleTransportLeg(models.Model):
             raise UserError(_("Could not cancel: %s") % exc)
 
         old_ref = self.booking_ref or self.tracking_code or "-"
+        old_tracking = self.tracking_code
         self.write(self._leg_cancelled_booking_vals())
+        self._leg_email_collection_label_void(old_tracking)
         if cancelled_remotely:
             self._leg_post_log(_(
                 "Booking %s cancelled with the carrier.") % old_ref)

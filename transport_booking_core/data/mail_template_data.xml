@@ -49,5 +49,41 @@
 </div>
             </field>
         </record>
+
+        <!-- Sent to the same address when a booking whose label was emailed
+             is cancelled or reset, so the poster never uses a dead label.
+             The cancelled tracking number is passed in the context
+             (cancelled_tracking) because the leg's own tracking_code has
+             already been cleared by then. -->
+        <record id="mail_template_collection_label_cancelled" model="mail.template">
+            <field name="name">Transport Leg: Collection Label Cancelled</field>
+            <field name="model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+            <field name="email_from">{{ (object.order_id.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="subject">CANCELLED: shipping label for {{ object.order_id.name or '' }} - tracking {{ ctx.get('cancelled_tracking') or '' }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="description">Tells the person posting a Goods In / Transport parcel that a label emailed to them has been cancelled</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-size: 14px;">
+    <p>Hello,</p>
+    <p>
+        The shipping label we sent you for order
+        <strong t-out="object.order_id.name or ''"/>
+        with tracking number
+        <strong t-out="ctx.get('cancelled_tracking') or ''"/>
+        has been <strong>cancelled</strong>.
+    </p>
+    <p>
+        <strong>Please do not use that label.</strong> Delete or destroy any
+        printed copy. If the parcel still needs to be sent, a new label will
+        follow in a separate email.
+    </p>
+    <p>If you have any questions, please reply to this email.</p>
+    <p>
+        Kind regards,<br/>
+        <t t-out="object.order_id.company_id.name or ''"/>
+    </p>
+</div>
+            </field>
+        </record>
     </data>
 </odoo>
