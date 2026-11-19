@@ -45,6 +45,8 @@ class DpdLocalAdapter(TransportBookingAdapter):
             consignment_ref=data.get("consignment") or "",
             label=data.get("label"),
             label_filename=data.get("filename"),
+            label_pdf=data.get("label_pdf"),
+            label_pdf_filename=data.get("label_pdf_filename"),
             raw_response=data.get("raw"),
         )
 

@@ -188,6 +188,30 @@ This mirror is display/back-compat only — nothing books or reasons off
 `picking.carrier_id` for multi-leg pickings; the legs themselves are the
 source of truth.
 
+## Collection label email
+
+The person who posts a Goods In / Transport parcel is often not the person
+who placed the order on the portal. When the sale order's **Collection Label
+Email** (`label_email`, Additional Information tab) is set, every successful
+API booking of the order's **first leg** (lowest `sequence`) queues an email
+to that address with the carrier label as a PDF. Later legs are SAE's
+responsibility and never send. Goods Out orders never send.
+
+- Hook: `_leg_book_api` → `_leg_email_collection_label(result)`, after
+  `_apply_booking_result`. Re-booking after a reset sends the new label.
+- Several addresses separated by `,` or `;` are all sent to; invalid
+  entries are dropped.
+- **Thermal carriers**: if the carrier's label format is not PDF (DPD
+  ZPL/EPL/CLP, APC ZPL/PNG), adapters check `leg._leg_wants_label_pdf_copy()`
+  and download the same label a second time as PDF into
+  `BookingResult.label_pdf`. It is the same shipment, not a second booking.
+  Both labels are stored on the leg.
+- Never fails a booking. The result ("email queued for …" or "NOT emailed:
+  reason") is posted to the leg chatter. Delivery itself goes through the
+  normal Odoo mail queue (Settings → Technical → Emails).
+- Template: `transport_booking_core.mail_template_collection_label`
+  (`noupdate`, editable in Settings → Technical → Email Templates).
+
 ## See also
 
 - [[transport-leg-location-field-mirroring]] — pickup/drop address fields (separate concern, `sale_goods_order`).

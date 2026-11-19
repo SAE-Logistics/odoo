@@ -4,7 +4,7 @@ import logging
 
 from markupsafe import Markup
 
-from odoo import _, api, fields, models
+from odoo import _, api, fields, models, tools
 from odoo.exceptions import UserError
 
 from ..booking import TransportBookingAdapter, TransportBookingError
@@ -186,7 +186,120 @@ class SaleTransportLeg(models.Model):
             })
             return self._leg_notify("danger", _("Booking failed: %s") % exc)
         self._apply_booking_result(result)
+        self._leg_email_collection_label(result)
         return self._leg_notify("success", _("Leg booked."))
+
+    # ------------------------------------------------------------------
+    # Collection label email
+    # ------------------------------------------------------------------
+    # The person who posts a Goods In / Transport parcel is often not the
+    # person who placed the order on the portal. When the order carries a
+    # Collection Label Email, the collection (first) leg's carrier label is
+    # emailed there as a PDF on every successful API booking. Later legs are
+    # SAE's responsibility, so they never send.
+    _COLLECTION_LABEL_ORDER_TYPES = ("goods_in", "transport")
+
+    def _leg_is_collection_leg(self):
+        """True when this leg is the order's first leg (lowest sequence)."""
+        self.ensure_one()
+        order = self.order_id
+        if not order:
+            return False
+        first = order.transport_all_leg_ids.sorted(
+            key=lambda leg: (leg.sequence, leg.id))[:1]
+        return first == self
+
+    def _leg_collection_label_recipients(self):
+        """Normalised addresses to email this leg's label to, or []."""
+        self.ensure_one()
+        order = self.order_id
+        if (not order
+                or order.order_type not in self._COLLECTION_LABEL_ORDER_TYPES
+                or not order.label_email
+                or not self._leg_is_collection_leg()):
+            return []
+        recipients = []
+        for address in tools.email_split(order.label_email):
+            normalized = tools.email_normalize(address)
+            if normalized and normalized not in recipients:
+                recipients.append(normalized)
+        return recipients
+
+    def _leg_wants_label_pdf_copy(self):
+        """Adapters call this to decide whether to also fetch a PDF copy of
+        the label when their configured format is thermal."""
+        self.ensure_one()
+        return bool(self._leg_collection_label_recipients())
+
+    def _leg_collection_label_attachment(self, result):
+        """Return the PDF ir.attachment to email for this booking, or an
+        empty recordset when the carrier produced no PDF label."""
+        self.ensure_one()
+        Attachment = self.env["ir.attachment"]
+        if result.label_pdf:
+            filename = result.label_pdf_filename or (
+                "label-%s.pdf" % self.id)
+            return self._leg_store_label(filename, result.label_pdf)
+        filename = result.label_filename or ""
+        if result.label and filename.lower().endswith(".pdf"):
+            # The booking label itself is a PDF; the core (or the APC
+            # override) already stored it moments ago - reuse that record.
+            return Attachment.search([
+                ("res_model", "=", self._name),
+                ("res_id", "=", self.id),
+                ("name", "=", filename),
+            ], order="id desc", limit=1)
+        return Attachment
+
+    def _leg_email_collection_label(self, result):
+        """Queue the collection label email for this booking, if it applies.
+
+        Never raises: the carrier has already accepted the booking, so an
+        email problem must not turn a good booking into an error. The
+        outcome is always logged on the leg chatter.
+        """
+        self.ensure_one()
+        recipients = self._leg_collection_label_recipients()
+        if not recipients:
+            return False
+        to = ", ".join(recipients)
+        template = self.env.ref(
+            "transport_booking_core.mail_template_collection_label",
+            raise_if_not_found=False)
+        if not template:
+            self._leg_post_log(_(
+                "Collection label NOT emailed to %s: the email template "
+                "is missing.") % to)
+            return False
+        try:
+            # Savepoint: a failure here must not roll back the booking
+            # write that already happened in this transaction.
+            with self.env.cr.savepoint():
+                attachment = self._leg_collection_label_attachment(result)
+                if attachment:
+                    template.send_mail(
+                        self.id,
+                        force_send=False,
+                        email_values={
+                            "email_to": to,
+                            "recipient_ids": [],
+                            "attachment_ids": attachment.ids,
+                        },
+                    )
+        except Exception as exc:  # noqa: BLE001
+            _logger.exception(
+                "Could not queue collection label email for leg %s", self.id)
+            self._leg_post_log(_(
+                "Collection label NOT emailed to %(to)s: %(error)s",
+                to=to, error=exc))
+            return False
+        if not attachment:
+            self._leg_post_log(_(
+                "Collection label NOT emailed to %s: the carrier did not "
+                "return a PDF label for this booking.") % to)
+            return False
+        self._leg_post_log(_("Collection label email queued for %s.") % to)
+        return True
 
     def _apply_booking_result(self, result):
         """Write booking outcome + persist the label. Core owns this."""

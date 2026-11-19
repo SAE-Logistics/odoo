@@ -45,6 +45,12 @@ class BookingResult:
     consignment_ref: str = ""            # -> leg.booking_ref
     label: Optional[bytes] = None        # label bytes; core persists it
     label_filename: Optional[str] = None
+    # Optional PDF copy of the same label, for the collection label email.
+    # Adapters fill it only when ``leg._leg_wants_label_pdf_copy()`` is True
+    # and the carrier's configured label format is not already PDF (a
+    # thermal ZPL/EPL label is useless to someone printing on a laser).
+    label_pdf: Optional[bytes] = None
+    label_pdf_filename: Optional[str] = None
     raw_response: Optional[dict] = field(default=None)
 
 

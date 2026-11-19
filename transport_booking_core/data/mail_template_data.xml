@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Emailed to the order's Collection Label Email when the collection
+             (first) leg of a Goods In / Transport order is booked through a
+             carrier API. Recipients and the PDF label are passed in at send
+             time by sale.transport.leg._leg_email_collection_label. -->
+        <record id="mail_template_collection_label" model="mail.template">
+            <field name="name">Transport Leg: Collection Label</field>
+            <field name="model_id" ref="sale_goods_order.model_sale_transport_leg"/>
+            <field name="email_from">{{ (object.order_id.company_id.email_formatted or user.email_formatted) }}</field>
+            <field name="subject">Shipping label for {{ object.order_id.name or '' }}{{ object.tracking_code and (' - tracking ' + object.tracking_code) or '' }}</field>
+            <field name="auto_delete" eval="False"/>
+            <field name="description">Sends the carrier label to the person posting a Goods In / Transport parcel</field>
+            <field name="body_html" type="html">
+<div style="margin: 0; padding: 0; font-size: 14px;">
+    <p>Hello,</p>
+    <p>
+        Please find attached the shipping label for order
+        <strong t-out="object.order_id.name or ''"/>.
+        Print it and attach it securely to the parcel before it is collected.
+    </p>
+    <table style="border-collapse: collapse;">
+        <tr t-if="object.carrier_id">
+            <td style="padding: 2px 12px 2px 0;">Carrier</td>
+            <td style="padding: 2px 0;"><strong t-out="object.carrier_id.name or ''"/></td>
+        </tr>
+        <tr t-if="object.tracking_code">
+            <td style="padding: 2px 12px 2px 0;">Tracking number</td>
+            <td style="padding: 2px 0;"><strong t-out="object.tracking_code or ''"/></td>
+        </tr>
+        <tr t-if="object.from_date">
+            <td style="padding: 2px 12px 2px 0;">Collection date</td>
+            <td style="padding: 2px 0;"><strong t-out="format_date(object.from_date)"/></td>
+        </tr>
+        <tr t-if="object.from_location">
+            <td style="padding: 2px 12px 2px 0; vertical-align: top;">Collection from</td>
+            <td style="padding: 2px 0;">
+                <t t-out="object.from_location.name or ''"/><br/>
+                <t t-out="object.from_address or ''"/>
+            </td>
+        </tr>
+    </table>
+    <p>If you have any questions, please reply to this email.</p>
+    <p>
+        Kind regards,<br/>
+        <t t-out="object.order_id.company_id.name or ''"/>
+    </p>
+</div>
+            </field>
+        </record>
+    </data>
+</odoo>
