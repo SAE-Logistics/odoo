@@ -461,6 +461,22 @@ class SaleOrder(models.Model):
         # Check if all lines are service type, or if there are no lines
         return all(line.product_id.type == 'service' for line in self.order_line.filtered(lambda sol: not sol.display_type))
 
+    def _ensure_procurement_group(self):
+        """Return the order's procurement group, creating it if missing.
+
+        Mirrors sale_stock: the group is stored on the order, so materials
+        added later reuse it and land on the same transfer.
+        """
+        self.ensure_one()
+        if not self.procurement_group_id:
+            self.procurement_group_id = self.env['procurement.group'].create({
+                'name': self.name,
+                'move_type': self.picking_policy,
+                'sale_id': self.id,
+                'partner_id': self.partner_shipping_id.id,
+            })
+        return self.procurement_group_id
+
     def _create_picking_for_service_only(self):
         """
         Creates a stock.picking record even if the sale order contains only service products.
@@ -472,8 +488,14 @@ class SaleOrder(models.Model):
             # Get the default picking type for sales orders (usually 'Outgoing Shipments')
             picking_type = self.warehouse_id.out_type_id if self.order_type == 'goods_out' else self.warehouse_id.in_type_id
 
+            # stock.picking.sale_id is related to group_id.sale_id, so without a
+            # procurement group the sale_id below is silently dropped and the
+            # transfer never shows on the order.
+            group = self._ensure_procurement_group()
+
             # Prepare the values for the new stock.picking record
             picking_vals = {
+                'group_id': group.id,
                 'partner_id': self.partner_shipping_id.id,
                 'origin': self.name,
                 'company_id': self.company_id.id,
