@@ -109,22 +109,27 @@ class ApcAdapter(TransportBookingAdapter):
                 return base64.b64decode(b64)
         return None
 
-    def _apc_fetch_label(self, carrier, waybill, leg=None):
+    def _apc_fetch_label(self, carrier, waybill, leg=None, label_format=None,
+                         initial_wait=3):
         """Fetch the label for a waybill with retry (KB p.34: retry is allowed).
 
-        Waits 3s before the first attempt, then retries up to 3 times with a 2s
-        backoff if the label has not been generated yet. Posts debug info to the
-        leg chatter.
+        Waits ``initial_wait`` seconds before the first attempt, then retries
+        up to 3 times with a 2s backoff if the label has not been generated
+        yet. Posts debug info to the leg chatter. ``label_format`` overrides
+        the carrier's configured format (e.g. "pdf" for the collection label
+        email copy).
         """
         import time
-        label_fmt = (carrier.apc_label_format or "pdf").upper()
+        label_fmt = (
+            label_format or carrier.apc_label_format or "pdf").upper()
         params = {
             "searchtype": "CarrierWaybill",
             "labelformat": label_fmt,
             "labels": "True",
         }
         client = ApcApiClient(carrier)
-        time.sleep(3)
+        if initial_wait:
+            time.sleep(initial_wait)
         all_debug = []
         for attempt in range(1, 5):
             try:
@@ -182,6 +187,8 @@ class ApcAdapter(TransportBookingAdapter):
             f"APC-Label-{waybill}.{label_ext}" if waybill
             else f"label.{label_ext}")
 
+        label_pdf = None
+        label_pdf_filename = None
         if waybill:
             label_bytes = self._apc_fetch_label(carrier, waybill, leg)
             if not label_bytes:
@@ -189,12 +196,24 @@ class ApcAdapter(TransportBookingAdapter):
                     "APC label could not be retrieved for waybill %s after "
                     "retries; booking will be marked booked without a label.",
                     waybill)
+            # Collection label email: the poster needs a printable PDF even
+            # when SAE's own printers use ZPL/PNG. Same waybill, second
+            # label download - not a second booking. The label already
+            # exists by now, so skip the initial wait.
+            elif label_ext != "pdf" and leg._leg_wants_label_pdf_copy():
+                label_pdf = self._apc_fetch_label(
+                    carrier, waybill, leg, label_format="pdf",
+                    initial_wait=0)
+                if label_pdf:
+                    label_pdf_filename = f"APC-Label-{waybill}.pdf"
 
         return BookingResult(
             tracking_number=waybill,
             consignment_ref=waybill,
             label=label_bytes,
             label_filename=label_filename,
+            label_pdf=label_pdf,
+            label_pdf_filename=label_pdf_filename,
             raw_response=data,
         )
 

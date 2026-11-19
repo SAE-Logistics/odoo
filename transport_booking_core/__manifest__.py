@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     "name": "Transport Booking Core",
-    "version": "18.0.1.6.0",
+    "version": "18.0.1.7.0",
     "summary": "Carrier-agnostic per-leg shipment booking framework "
                "(adapter registry, booking state, per-leg action).",
     "description": """
@@ -25,6 +25,9 @@ Provides the carrier-agnostic orchestration for booking shipments per
 * Shared **carrier tracking status** (``carrier_status_*``) and **courier
   exception** flag on the leg, applied by every carrier module through
   ``_leg_apply_carrier_status``.
+* **Collection label email**: on Goods In / Transport orders with a
+  Collection Label Email, the first leg's carrier label is emailed there as
+  a PDF on every API booking.
 
 Provider adapters (DPD Local, APC, Crossflight, Palletworks, ...) depend on this
 module and register themselves. This module contains no carrier API specifics.
@@ -42,6 +45,7 @@ module and register themselves. This module contains no carrier API specifics.
         "views/delivery_carrier_views.xml",
         "views/sale_transport_leg_views.xml",
         "views/stock_picking_views.xml",
+        "data/mail_template_data.xml",
     ],
     "installable": True,
     "application": False,

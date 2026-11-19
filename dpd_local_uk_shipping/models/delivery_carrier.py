@@ -459,20 +459,23 @@ class DeliveryCarrier(models.Model):
     # ====================================================================
     # Label handling
     # ====================================================================
-    def _dpd_local_label_params(self):
-        printer_type, ext = LABEL_FORMATS[self.dpd_local_label_format]
+    def _dpd_local_label_params(self, label_format=None):
+        label_format = label_format or self.dpd_local_label_format
+        printer_type, ext = LABEL_FORMATS[label_format]
         params = {"printerType": printer_type}
-        if self.dpd_local_label_format == "zpl":
+        if label_format == "zpl":
             params["printerDpi"] = self.dpd_local_label_dpi or "203"
         return params, ext
 
-    def _dpd_local_fetch_label_content(self, client, shipment_id):
-        """Return the raw label string DPD produced for the configured format.
+    def _dpd_local_fetch_label_content(self, client, shipment_id,
+                                       label_format=None):
+        """Return the raw label string DPD produced for ``label_format``
+        (default: the carrier's configured format).
 
         We request ``application/json`` uniformly; DPD returns
         ``data.printString`` as an array of raw label strings (one per parcel).
         """
-        params, ext = self._dpd_local_label_params()
+        params, ext = self._dpd_local_label_params(label_format)
         response = client.call(
             "GET",
             "/v1/customer/shipping/shipments/%s/labels" % shipment_id,
@@ -512,10 +515,14 @@ class DeliveryCarrier(models.Model):
                 _("Could not render the DPD label to PDF: %s") % exc) from exc
         return pdf
 
-    def _dpd_local_fetch_label_bytes(self, client, shipment_id, reference):
-        """Return (bytes, filename) for the label in the configured format."""
-        content, ext = self._dpd_local_fetch_label_content(client, shipment_id)
-        if self.dpd_local_label_format == "pdf":
+    def _dpd_local_fetch_label_bytes(self, client, shipment_id, reference,
+                                     label_format=None):
+        """Return (bytes, filename) for the label in ``label_format``
+        (default: the carrier's configured format)."""
+        label_format = label_format or self.dpd_local_label_format
+        content, ext = self._dpd_local_fetch_label_content(
+            client, shipment_id, label_format)
+        if label_format == "pdf":
             data = self._dpd_local_html_to_pdf(content)
         else:
             data = content.encode("utf-8")
@@ -755,6 +762,20 @@ class DeliveryCarrier(models.Model):
         ref = tracking_number or consignment_number or shipment_id
         label_bytes, filename = self._dpd_local_fetch_label_bytes(
             client, shipment_id, ref)
+        # Collection label email: the poster needs a printable PDF even when
+        # SAE's own printers use a thermal format. Same shipment, second
+        # label download - not a second booking. Never fails the booking.
+        label_pdf, label_pdf_filename = None, None
+        if (self.dpd_local_label_format != "pdf"
+                and leg._leg_wants_label_pdf_copy()):
+            try:
+                label_pdf, label_pdf_filename = \
+                    self._dpd_local_fetch_label_bytes(
+                        client, shipment_id, ref, label_format="pdf")
+            except Exception:  # noqa: BLE001
+                _logger.exception(
+                    "DPD Local: could not fetch PDF label copy for "
+                    "shipment %s", shipment_id)
 
         # Mirror the identifiers onto the picking for reference/back-compat.
         # No picking on Transport Order legs; tracking_code/booking_ref on
@@ -769,6 +790,8 @@ class DeliveryCarrier(models.Model):
             "consignment": consignment_number,
             "label": label_bytes,
             "filename": filename,
+            "label_pdf": label_pdf,
+            "label_pdf_filename": label_pdf_filename,
             "raw": response,
         }
 
