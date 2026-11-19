@@ -239,7 +239,11 @@ class SaleTransportLeg(models.Model):
         if result.label_pdf:
             filename = result.label_pdf_filename or (
                 "label-%s.pdf" % self.id)
-            return self._leg_store_label(filename, result.label_pdf)
+            return self._leg_store_label(
+                filename, result.label_pdf,
+                message=_("PDF copy of the shipping label for leg %s, for "
+                          "the collection label email")
+                % self.display_name)
         filename = result.label_filename or ""
         if result.label and filename.lower().endswith(".pdf"):
             # The booking label itself is a PDF; the core (or the APC
@@ -337,9 +341,9 @@ class SaleTransportLeg(models.Model):
             return False
         return True
 
-    def _leg_store_label(self, filename, content):
+    def _leg_store_label(self, filename, content, message=None):
         """Persist label bytes as an attachment on the leg and post it to the
-        leg chatter."""
+        leg chatter, with ``message`` (default: "Shipping label for leg X")."""
         self.ensure_one()
         import base64
         attachment = self.env["ir.attachment"].create({
@@ -349,7 +353,7 @@ class SaleTransportLeg(models.Model):
             "res_id": self.id,
         })
         self._leg_post_log(
-            _("Shipping label for leg %s") % self.display_name,
+            message or _("Shipping label for leg %s") % self.display_name,
             attachment_ids=[attachment.id],
         )
         return attachment
