@@ -574,6 +574,20 @@ class SaleOrder(models.Model):
                     return 'international'
         return 'uk'
 
+    def _refresh_transport_line_taxes(self):
+        """Re-set VAT on transport lines not yet invoiced, after the legs change.
+
+        Adding a leg abroad (or removing it) moves the whole job between 20%
+        and 0%, so the lines priced before the legs existed must follow.
+        """
+        lines = self.filtered(lambda o: o.state != 'cancel').order_line.filtered(
+            lambda l: not l.display_type
+            and l.product_id
+            and not l.qty_invoiced
+            and (l.product_id.is_surcharge_product or l._is_transport_charge_line())
+        )
+        lines._refresh_product_taxes_from_product()
+
     def _get_zero_rated_tax(self):
         """The company's 0% sales tax, for zero-rated (T0) surcharges."""
         self.ensure_one()
@@ -644,7 +658,9 @@ class SaleOrder(models.Model):
                     line_vals['product_uom'] = product.uom_id.id
                 existing_line = existing_by_product.get(product_id)
                 if existing_line:
-                    line_vals['tax_id'] = [(6, 0, existing_line._get_product_sale_tax_ids(product, order))]
+                    line_vals['tax_id'] = [(6, 0, existing_line._get_product_sale_tax_ids(
+                        product, order, is_transport=True,
+                    ))]
                     existing_line.write(line_vals)
                 else:
                     line_vals.update({
@@ -711,16 +727,21 @@ class SaleOrderLine(models.Model):
     fs_unit_price = fields.Monetary(string='F/S')
 
     @api.model
-    def _get_product_sale_tax_ids(self, product, order):
+    def _get_product_sale_tax_ids(self, product, order, is_transport=False):
+        """Customer taxes for ``product`` on ``order``.
+
+        International jobs (any leg starts or ends outside the UK, export or
+        import) are 0% on every transport charge, UK legs included, and on
+        every extra charge (SAE, 17 and 20 Nov 2026). Warehouse charges keep
+        the product tax. On UK jobs a surcharge's own rule decides.
+        """
         if not product or not order:
             return []
         taxes = product.taxes_id._filter_taxes_by_company(order.company_id)
-        # Extra charges on international jobs are 0% (SAE, 17 Nov 2026). On UK
-        # jobs the product's rule decides.
-        if product.is_surcharge_product and (
-            product.surcharge_vat_rule == 'zero'
-            or order._get_transport_region() == 'international'
-        ):
+        zero_rated = product.is_surcharge_product and product.surcharge_vat_rule == 'zero'
+        if not zero_rated and (is_transport or product.is_surcharge_product):
+            zero_rated = order._get_transport_region() == 'international'
+        if zero_rated:
             taxes = order._get_zero_rated_tax()
         if not taxes:
             return []
@@ -732,8 +753,39 @@ class SaleOrderLine(models.Model):
             return vals
         order = self.env['sale.order'].browse(vals['order_id'])
         product = self.env['product.product'].browse(vals['product_id'])
-        vals['tax_id'] = [(6, 0, self._get_product_sale_tax_ids(product, order))]
+        vals['tax_id'] = [(6, 0, self._get_product_sale_tax_ids(
+            product, order, is_transport=self._is_transport_charge_vals(vals, order),
+        ))]
         return vals
+
+    @api.model
+    def _is_transport_charge_vals(self, vals, order):
+        """Same test as ``_is_transport_charge_line``, for a line not created yet."""
+        service_type = vals.get('invoice_service_type')
+        if service_type:
+            return service_type == 'transport'
+        return bool(
+            vals.get('goods_delivery_transport_charge_line')
+            or vals.get('transport_surcharge_charge_line')
+            or order.order_type == 'transport'
+        )
+
+    def _is_transport_charge_line(self):
+        """True for a transport charge, false for a warehouse one.
+
+        Follows the split the invoices use (``_prepare_invoice_line``): the
+        line's service type when set, otherwise transport legs, transport
+        flags, or a transport-only order.
+        """
+        self.ensure_one()
+        if self.invoice_service_type:
+            return self.invoice_service_type == 'transport'
+        return bool(
+            self.transport_leg_ids
+            or self.goods_delivery_transport_charge_line
+            or self.transport_surcharge_charge_line
+            or self.order_id.order_type == 'transport'
+        )
 
     @api.model
     def _add_product_taxes_to_vals_list(self, vals_list):
@@ -743,7 +795,9 @@ class SaleOrderLine(models.Model):
 
     def _refresh_product_taxes_from_product(self):
         for line in self.filtered(lambda sol: not sol.display_type and sol.product_id):
-            line.tax_id = [(6, 0, line._get_product_sale_tax_ids(line.product_id, line.order_id))]
+            line.tax_id = [(6, 0, line._get_product_sale_tax_ids(
+                line.product_id, line.order_id, is_transport=line._is_transport_charge_line(),
+            ))]
 
     def _prepare_invoice_line(self, **optional_values):
         self.ensure_one()
@@ -790,7 +844,9 @@ class SaleOrderLine(models.Model):
         for record in self:
             if record.package_type_id:
                 record.product_id = record.package_type_id.product_id
-                record.tax_id = [(6, 0, record._get_product_sale_tax_ids(record.product_id, record.order_id))]
+                record.tax_id = [(6, 0, record._get_product_sale_tax_ids(
+                    record.product_id, record.order_id, is_transport=record._is_transport_charge_line(),
+                ))]
             else:
                 record.product_id = False
                 record.tax_id = False
@@ -891,7 +947,9 @@ class SaleOrderLine(models.Model):
             for line in self:
                 order = self.env['sale.order'].browse(vals.get('order_id')) if vals.get('order_id') else line.order_id
                 line.with_context(skip_sale_goods_order_tax_write=True).write({
-                    'tax_id': [(6, 0, self._get_product_sale_tax_ids(product, order))]
+                    'tax_id': [(6, 0, self._get_product_sale_tax_ids(
+                        product, order, is_transport=line._is_transport_charge_line(),
+                    ))]
                 })
         return super().write(vals)
 

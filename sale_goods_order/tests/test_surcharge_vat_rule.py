@@ -35,9 +35,39 @@ class TestSurchargeVatRule(TransactionCase):
             'taxes_id': [(6, 0, self.standard.ids)],
         })
 
-    def _tax_ids(self, product, region):
+    def _tax_ids(self, product, region, is_transport=False):
         with patch.object(type(self.order), '_get_transport_region', return_value=region):
-            return self.env['sale.order.line']._get_product_sale_tax_ids(product, self.order)
+            return self.env['sale.order.line']._get_product_sale_tax_ids(
+                product, self.order, is_transport=is_transport,
+            )
+
+    def _service(self):
+        return self.env['product.product'].create({
+            'name': 'Plain service',
+            'type': 'service',
+            'taxes_id': [(6, 0, self.standard.ids)],
+        })
+
+    def test_transport_charge_zero_rated_on_international_job(self):
+        product = self._service()
+        self.assertEqual(self._tax_ids(product, 'uk', is_transport=True), self.standard.ids)
+        self.assertEqual(self._tax_ids(product, 'international', is_transport=True), self.zero.ids)
+
+    def test_warehouse_charge_keeps_product_tax_on_international_job(self):
+        product = self._service()
+        self.assertEqual(self._tax_ids(product, 'international', is_transport=False), self.standard.ids)
+
+    def test_transport_charge_detection_for_new_lines(self):
+        Line = self.env['sale.order.line']
+        order = self.order
+        self.assertTrue(Line._is_transport_charge_vals({'invoice_service_type': 'transport'}, order))
+        self.assertFalse(Line._is_transport_charge_vals({'invoice_service_type': 'warehouse'}, order))
+        self.assertTrue(Line._is_transport_charge_vals({'transport_surcharge_charge_line': True}, order))
+        self.assertTrue(Line._is_transport_charge_vals({'goods_delivery_transport_charge_line': True}, order))
+        order.order_type = 'transport'
+        self.assertTrue(Line._is_transport_charge_vals({}, order))
+        order.order_type = 'goods_out'
+        self.assertFalse(Line._is_transport_charge_vals({}, order))
 
     def test_standard_is_product_tax_in_uk_and_zero_international(self):
         product = self._product('standard')

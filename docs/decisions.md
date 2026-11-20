@@ -14,7 +14,7 @@ Open questions and tasks live in claude-mem work-state (list `sae-week-2026-11-0
 | 2026-11-12 | Default payment term on invoices made from orders is 30 Days (footer says strictly 30 days nett) when the customer has none. | Pradeep, PR |
 | 2026-11-12 | Warehouse and transport charges get separate invoice numbers: the Batch Invoice wizard splits a goods order line by line into a warehouse invoice and a transport invoice. An invoice that still mixes both (made with Odoo's own Create Invoice) prints Odoo's standard PDF, never two PDFs under one number. | PR #64, PR #70 |
 | 2026-11-02 | To Invoice and Completed order-status definitions stand as built. No need to confirm with SAE. | Pradeep |
-| 2026-11-17 | International transport VAT: exports to EU and rest of world are zero-rated (0%). On a mixed job, any UK leg (both ends in the UK) is 20% and the rest is 0%. | SAE meeting 17 Nov (A2, A4) |
+| 2026-11-20 | International transport VAT: any job with a leg starting or ending outside the UK is 0% (tax code 0) throughout, UK legs included, for exports and imports alike. Warehouse charges keep their own rate. Replaces the 17 Nov answer that UK legs are 20%. | SAE reply to follow-ups D1, D2; built in sale_goods_order 18.0.1.14.0 |
 | 2026-11-17 | Extra charges on international jobs (congestion, late charges, waiting time, etc.) are 0%, not 20%. | SAE meeting 17 Nov (A5); built in sale_goods_order 18.0.1.11.0 |
 | 2026-11-19 | International transport invoice title is "International Transport - INVOICE", the same pattern as "UK Transport - INVOICE". Already printed this way, no change needed. | Pradeep (A1 left blank at 17 Nov meeting) |
 | 2026-11-17 | No VAT note or zero-rating wording on international invoices. | SAE meeting 17 Nov (A3) |
@@ -25,5 +25,4 @@ Open questions and tasks live in claude-mem work-state (list `sae-week-2026-11-0
 
 ## Still waiting on SAE
 
-- VAT on imports into the UK: the 17 Nov answer covers exports only.
-- UK leg of an export job: SAE said 20% (A4), but HMRC (VAT Notice 744B) normally zero-rates a UK leg sold under the same contract as the international leg. Accountant to confirm before the main Transport Charges line is changed (split per leg at 20%/0%, or the whole job at 0%).
+- Full list of extra-charge types (follow-up D3): in the legacy system (Neville), job > Charges tab > Type drop-down. Pradeep getting screenshots.
