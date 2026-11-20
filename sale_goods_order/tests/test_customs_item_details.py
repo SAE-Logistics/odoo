@@ -82,6 +82,13 @@ class TestCustomsItemDetails(TransactionCase):
         move.customs_unit_value = 4.44
         self.picking._check_customs_item_details()
 
+    def test_validation_blocked_when_hs_code_archived(self):
+        self._add_move()
+        self.hs_code.active = False
+        with self.assertRaises(ValidationError) as ctx:
+            self.picking._check_customs_item_details()
+        self.assertIn('no longer in the UK tariff', str(ctx.exception))
+
     def test_domestic_order_not_enforced(self):
         self.order.partner_shipping_id = self.customer
         self.order.invalidate_recordset()
@@ -147,3 +154,10 @@ class TestTransportCustomsItemDetails(TransactionCase):
     def test_complete_lines_pass(self):
         self._line()
         self.order._check_customs_details()
+
+    def test_confirm_blocked_when_hs_code_archived(self):
+        self._line()
+        self.hs_code.active = False
+        with self.assertRaises(ValidationError) as ctx:
+            self.order._check_customs_details()
+        self.assertIn('no longer in the UK tariff', str(ctx.exception))

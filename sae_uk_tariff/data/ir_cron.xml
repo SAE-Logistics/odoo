@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Weekly, so codes that leave the tariff (often on 1 January) stop being
+         selectable within days. One run is 22 API calls. -->
+    <record id="ir_cron_sync_uk_tariff" model="ir.cron">
+        <field name="name">HS Codes: update from UK Trade Tariff</field>
+        <field name="model_id" ref="product_harmonized_system.model_hs_code"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_sync_uk_tariff()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

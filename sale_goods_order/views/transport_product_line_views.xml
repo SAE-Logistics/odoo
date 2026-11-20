@@ -13,7 +13,7 @@
                                 <field name="sale_commercial_partner_id" invisible="1"/>
                                 <field name="product_id" domain="['|', ('goods_owner_customer_id', '=', sale_commercial_partner_id), ('goods_owner_customer_id', '=', False)]"/>
                                 <field name="type"/>
-                                <field name="hs_code_id" required="parent.customs_required"/>
+                                <field name="hs_code_id" required="parent.customs_required" options="{'no_create': True}"/>
                                 <field name="country_of_origin_id" required="parent.customs_required"/>
                             </group>
                             <group>
@@ -43,7 +43,7 @@
                     <field name="product_id" domain="['|', ('goods_owner_customer_id', '=', sale_commercial_partner_id), ('goods_owner_customer_id', '=', False)]"/>
                     <field name="type"/>
                     <field name="description"/>
-                    <field name="hs_code_id" required="parent.customs_required"/>
+                    <field name="hs_code_id" required="parent.customs_required" options="{'no_create': True}"/>
                     <field name="country_of_origin_id" required="parent.customs_required"/>
                     <field name="qty" required="parent.customs_required"/>
                     <field name="weight" required="parent.customs_required"/>

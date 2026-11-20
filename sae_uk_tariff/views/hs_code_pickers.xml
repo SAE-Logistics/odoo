@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- HS codes come from the UK tariff sync. Pickers must not create new
+         ones from typed text. -->
+    <record id="product_template_form_view_hs_no_create" model="ir.ui.view">
+        <field name="name">product.template.form.hs.no_create</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product_harmonized_system.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <field name="hs_code_id" position="attributes">
+                <attribute name="options">{'no_create': True}</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="product_category_form_view_hs_no_create" model="ir.ui.view">
+        <field name="name">product.category.form.hs.no_create</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product_harmonized_system.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <field name="hs_code_id" position="attributes">
+                <attribute name="options">{'no_create': True}</attribute>
+            </field>
+        </field>
+    </record>
+
+    <menuitem id="menu_hs_code"
+              name="HS Codes"
+              parent="stock.menu_product_in_config_stock"
+              action="product_harmonized_system.hs_code_action"
+              sequence="40"/>
+
+    <menuitem id="menu_hs_code_sync"
+              name="Update UK Tariff Codes"
+              parent="stock.menu_product_in_config_stock"
+              action="action_server_sync_uk_tariff"
+              groups="base.group_system"
+              sequence="41"/>
+</odoo>

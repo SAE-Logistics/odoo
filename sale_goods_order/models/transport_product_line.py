@@ -53,7 +53,11 @@ class TransportProductLine(models.Model):
             'description', 'hs_code_id', 'country_of_origin_id',
             'qty', 'weight', 'price',
         )
-        return [self._fields[f].string for f in checks if not self[f]]
+        missing = [self._fields[f].string for f in checks if not self[f]]
+        if self.hs_code_id and not self.hs_code_id.active:
+            missing.append(_("HS Code (%s is no longer in the UK tariff)",
+                             self.hs_code_id.local_code))
+        return missing
 
     @api.onchange("sale_order_id")
     def _onchange_sale_order_id_product_domain(self):
