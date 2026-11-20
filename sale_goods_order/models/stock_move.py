@@ -59,7 +59,11 @@ class StockMove(models.Model):
             'customs_hs_code_id', 'customs_country_of_origin_id',
             'customs_weight', 'customs_unit_value',
         )
-        return [self._fields[f].string for f in checks if not self[f]]
+        missing = [self._fields[f].string for f in checks if not self[f]]
+        if self.customs_hs_code_id and not self.customs_hs_code_id.active:
+            missing.append(_("HS Code (%s is no longer in the UK tariff)",
+                             self.customs_hs_code_id.local_code))
+        return missing
 
     def _check_goods_customer_product_allowed(self):
         for move in self:

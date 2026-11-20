@@ -188,7 +188,7 @@
                  goods in/out transfers whose order crosses the UK border. -->
             <xpath expr="//field[@name='move_ids_without_package']/list" position="inside">
                 <field name="customs_hs_code_id" column_invisible="not parent.customs_items_required"
-                       required="parent.customs_items_required"/>
+                       required="parent.customs_items_required" options="{'no_create': True}"/>
                 <field name="customs_country_of_origin_id" column_invisible="not parent.customs_items_required"
                        required="parent.customs_items_required"/>
                 <field name="customs_weight" column_invisible="not parent.customs_items_required"
