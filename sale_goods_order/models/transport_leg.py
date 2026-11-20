@@ -408,6 +408,7 @@ class SaleTransportLeg(models.Model):
         lines = records.mapped('order_line_id')
         if lines:
             lines._recompute_transport_cost_sell_from_legs()
+        records.mapped('order_id')._refresh_transport_line_taxes()
         return records
 
     def write(self, vals):
@@ -425,6 +426,8 @@ class SaleTransportLeg(models.Model):
         affected_orders._sync_transport_surcharge_sale_lines()
         if {'state', 'order_line_id', 'picking_id'} & set(vals):
             affected_orders._mark_transport_leg_lines_delivered()
+        if {'from_location', 'to_location', 'order_line_id', 'picking_id'} & set(vals):
+            affected_orders._refresh_transport_line_taxes()
         return res
 
     def unlink(self):
@@ -434,6 +437,7 @@ class SaleTransportLeg(models.Model):
         if lines:
             lines._recompute_transport_cost_sell_from_legs()
         orders._sync_transport_surcharge_sale_lines()
+        orders.exists()._refresh_transport_line_taxes()
         return res
     def action_in_transit(self):
         self._check_order_confirmed_for_state_change(_('In Transit'))
