@@ -16,6 +16,7 @@ Open questions and tasks live in claude-mem work-state (list `sae-week-2026-11-0
 | 2026-11-02 | To Invoice and Completed order-status definitions stand as built. No need to confirm with SAE. | Pradeep |
 | 2026-11-17 | International transport VAT: exports to EU and rest of world are zero-rated (0%). On a mixed job, any UK leg (both ends in the UK) is 20% and the rest is 0%. | SAE meeting 17 Nov (A2, A4) |
 | 2026-11-17 | Extra charges on international jobs (congestion, late charges, waiting time, etc.) are 0%, not 20%. | SAE meeting 17 Nov (A5); built in sale_goods_order 18.0.1.11.0 |
+| 2026-11-19 | International transport invoice title is "International Transport - INVOICE", the same pattern as "UK Transport - INVOICE". Already printed this way, no change needed. | Pradeep (A1 left blank at 17 Nov meeting) |
 | 2026-11-17 | No VAT note or zero-rating wording on international invoices. | SAE meeting 17 Nov (A3) |
 | 2026-11-17 | No EU/ROW customer is UK VAT-registered, so the VAT rule is set by the job (legs), not by the customer. | SAE meeting 17 Nov (A6) |
 | 2026-11-17 | SAE never pays import VAT for clients, so there is no import VAT recharge product. | SAE meeting 17 Nov (B1) |
@@ -24,6 +25,5 @@ Open questions and tasks live in claude-mem work-state (list `sae-week-2026-11-0
 
 ## Still waiting on SAE
 
-- International transport invoice title: plain "Invoice", "Export Invoice", or other (A1, left blank on 17 Nov).
-- VAT on imports into the UK: the 17 Nov answer covers exports only. No import jobs on staging yet.
+- VAT on imports into the UK: the 17 Nov answer covers exports only.
 - UK leg of an export job: SAE said 20% (A4), but HMRC (VAT Notice 744B) normally zero-rates a UK leg sold under the same contract as the international leg. Accountant to confirm before the main Transport Charges line is changed (split per leg at 20%/0%, or the whole job at 0%).
