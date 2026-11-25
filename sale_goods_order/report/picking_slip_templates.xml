@@ -21,6 +21,42 @@
 
         <xpath expr="//t[@t-set='address']" position="before">
             <t t-set="picking_slip_no_footer" t-value="True"/>
+            <!-- Same source as the standard Delivery Address block. UK deliveries drop
+                 the country line on both addresses (company address in the layout
+                 header reads `delivery_slip_uk`, see delivery_slip_templates.xml). -->
+            <t t-set="slip_dest" t-value="o.move_ids[:1].partner_id or o.partner_id"/>
+            <t t-set="delivery_slip_uk" t-value="slip_dest.country_id.code == 'GB'"/>
+        </xpath>
+
+        <!-- Delivery address: UK deliveries print without the country; others keep
+             the standard contact widget. -->
+        <xpath expr="//div[@t-if='o.should_print_delivery_address()']/div[@t-out]" position="replace">
+            <div t-if="delivery_slip_uk" name="slip_uk_address">
+                <t t-call="sale_goods_order.delivery_slip_uk_address"/>
+            </div>
+            <div t-else="" t-out="slip_dest"
+                 t-options="{'widget': 'contact', 'fields': ['address', 'name', 'phone'], 'no_marker': True, 'phone_icons': True}"/>
+        </xpath>
+
+        <!-- Customer Address block (outgoing pickings) is redundant next to the
+             Delivery Address. Vendor / warehouse blocks for other picking types stay. -->
+        <xpath expr="//div[@name='div_incoming_address']/div[contains(@t-elif, 'outgoing')]" position="replace"/>
+
+        <!-- Order notes + delivery instructions, ahead of the item lines -->
+        <xpath expr="//table[@t-if='o.move_line_ids and o.move_ids_without_package']" position="before">
+            <t t-set="slip_order_note" t-value="o.sale_id.order_note"/>
+            <t t-set="slip_deliver_note" t-value="o.sale_id.deliver_note"/>
+            <div t-if="slip_order_note or slip_deliver_note" name="slip_notes"
+                 style="border:1px solid #666; padding:8px 10px; margin-bottom:14px; page-break-inside:avoid;">
+                <div t-if="slip_order_note">
+                    <div style="font-weight:bold;">Order Notes</div>
+                    <div t-out="slip_order_note" style="white-space:pre-line;"/>
+                </div>
+                <div t-if="slip_deliver_note" t-att-style="'margin-top:8px;' if slip_order_note else ''">
+                    <div style="font-weight:bold;">Delivery Instructions</div>
+                    <div t-out="slip_deliver_note" style="white-space:pre-line;"/>
+                </div>
+            </div>
         </xpath>
 
         <!-- Title: form name, order number, transfer ref (left); barcode (right) -->
