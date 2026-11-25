@@ -17,6 +17,8 @@
            company footer.
         3. Layout: Delivery Address on the left, form name / order info on the
            right, so the header block takes less vertical space.
+        4. UK deliveries: no country line on either address, and no VAT number
+           under the company (From) address.
     -->
 
     <template id="report_delivery_document_sae" inherit_id="stock.report_delivery_document">
@@ -24,6 +26,26 @@
         <!-- Flag read by the layout footer inherits below. -->
         <xpath expr="//t[@t-set='address']" position="before">
             <t t-set="delivery_slip_footer" t-value="True"/>
+            <!-- Where the goods are going; same source the standard address block uses.
+                 UK deliveries drop the country line (both addresses). -->
+            <t t-set="slip_dest" t-value="o.move_ids[:1].partner_id or o.partner_id"/>
+            <t t-set="delivery_slip_uk" t-value="slip_dest.country_id.code == 'GB'"/>
+        </xpath>
+
+        <!-- Delivery address: for UK deliveries print the lines ourselves, without
+             the country. Other countries keep the standard contact widget. -->
+        <xpath expr="//div[@name='outgoing_delivery_address']/div[@t-out]" position="replace">
+            <div t-if="delivery_slip_uk" name="slip_uk_address">
+                <div t-if="slip_dest.name" t-out="slip_dest.name"/>
+                <div t-if="slip_dest.street" t-out="slip_dest.street"/>
+                <div t-if="slip_dest.street2" t-out="slip_dest.street2"/>
+                <div t-if="slip_dest.city" t-out="slip_dest.city"/>
+                <div t-if="slip_dest.state_id" t-out="slip_dest.state_id.name"/>
+                <div t-if="slip_dest.zip" t-out="slip_dest.zip"/>
+                <div t-if="slip_dest.phone"><i class="fa fa-phone fa-fw"/> <span t-out="slip_dest.phone"/></div>
+            </div>
+            <div t-else="" t-out="slip_dest"
+                 t-options="{'widget': 'contact', 'fields': ['address', 'name', 'phone'], 'no_marker': True, 'phone_icons': True}"/>
         </xpath>
 
         <!-- Two-column row to save vertical space:
@@ -78,6 +100,45 @@
             </t>
             <span t-else="" t-field="company.report_footer"/>
         </xpath>
+    </template>
+
+    <!-- From address (header): on the slip, print it ourselves so the VAT line is
+         omitted and the country is dropped for UK deliveries. Original list is
+         kept for every other document. -->
+    <template id="external_layout_bold_delivery_slip_header"
+              inherit_id="web.external_layout_bold"
+              priority="20">
+        <xpath expr="//ul[@name='company_address_list']" position="attributes">
+            <attribute name="t-if">not delivery_slip_footer</attribute>
+        </xpath>
+        <xpath expr="//ul[@name='company_address_list']" position="after">
+            <ul t-if="delivery_slip_footer" class="list-unstyled" name="company_address_list_slip">
+                <t t-call="sale_goods_order.delivery_slip_company_address"/>
+            </ul>
+        </xpath>
+    </template>
+
+    <template id="external_layout_standard_delivery_slip_header"
+              inherit_id="web.external_layout_standard"
+              priority="20">
+        <xpath expr="//ul[@name='company_address_list']" position="attributes">
+            <attribute name="t-if">not delivery_slip_footer</attribute>
+        </xpath>
+        <xpath expr="//ul[@name='company_address_list']" position="after">
+            <ul t-if="delivery_slip_footer" class="list-unstyled" name="company_address_list_slip">
+                <t t-call="sale_goods_order.delivery_slip_company_address"/>
+            </ul>
+        </xpath>
+    </template>
+
+    <template id="delivery_slip_company_address">
+        <li t-if="company.name" t-out="company.name"/>
+        <li t-if="company.street" t-out="company.street"/>
+        <li t-if="company.street2" t-out="company.street2"/>
+        <li t-if="company.city" t-out="company.city"/>
+        <li t-if="company.state_id" t-out="company.state_id.name"/>
+        <li t-if="company.zip" t-out="company.zip"/>
+        <li t-if="company.country_id and not delivery_slip_uk" t-out="company.country_id.name"/>
     </template>
 
     <!-- Same swap for the standard layout, in case the company layout is changed -->
