@@ -12,8 +12,11 @@
            edited. The slip sets `delivery_slip_footer` inside the layout call
            body (the same scope mechanism as `address` / `information_block`),
            and the two layout inherits below swap the footer text for the
-           customer-queries wording when that flag is present. Every other
-           document keeps the normal company footer.
+           company registration line plus the customer-queries wording (italic)
+           when that flag is present. Every other document keeps the normal
+           company footer.
+        3. Layout: Delivery Address on the left, form name / order info on the
+           right, so the header block takes less vertical space.
     -->
 
     <template id="report_delivery_document_sae" inherit_id="stock.report_delivery_document">
@@ -23,23 +26,46 @@
             <t t-set="delivery_slip_footer" t-value="True"/>
         </xpath>
 
-        <!-- Title: form name + prominent order number -->
+        <!-- Two-column row to save vertical space:
+             left  = Delivery Address (moved out of the layout's address slot)
+             right = form name, order number, transfer ref, shipping date / carrier -->
         <xpath expr="//div[hasclass('page')]/h2" position="replace">
-            <div name="slip_title" style="margin-bottom:14px;">
-                <div style="font-size:30px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; line-height:1.1;">
-                    Delivery Slip
-                </div>
-                <div t-if="o.origin" style="font-size:24px; font-weight:bold; margin-top:6px;">
-                    Order No: <span t-field="o.origin"/>
-                </div>
-                <div class="text-muted" style="font-size:13px; margin-top:2px;">
-                    Transfer: <span t-field="o.name"/>
+            <div name="slip_head_row" class="row" style="margin-bottom:14px;">
+                <div name="slip_address_col" class="col-6"/>
+                <div name="slip_title_col" class="col-6">
+                    <div style="font-size:30px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; line-height:1.1;">
+                        Delivery Slip
+                    </div>
+                    <div t-if="o.origin" style="font-size:24px; font-weight:bold; margin-top:6px;">
+                        Order No: <span t-field="o.origin"/>
+                    </div>
+                    <div class="text-muted" style="font-size:13px; margin-top:2px; margin-bottom:8px;">
+                        Transfer: <span t-field="o.name"/>
+                    </div>
                 </div>
             </div>
         </xpath>
 
         <!-- Order number is now in the title; drop the small duplicate -->
         <xpath expr="//div[@name='div_origin']" position="replace"/>
+
+        <!-- Delivery address: from the layout's right-hand address slot to the left column -->
+        <xpath expr="//div[@name='slip_address_col']" position="inside">
+            <xpath expr="//div[@name='div_outgoing_address']" position="move"/>
+        </xpath>
+
+        <!-- Shipping date / carrier: under the title, laid out inline because the
+             standard col-3 cells are too narrow inside a half-width column -->
+        <xpath expr="//div[@id='informations']" position="attributes">
+            <attribute name="class" add="slip-info" separator=" "/>
+        </xpath>
+        <xpath expr="//div[@name='slip_title_col']" position="inside">
+            <style>
+                #informations.slip-info { display: block !important; margin-bottom: 0 !important; }
+                #informations.slip-info > div { display: inline-block !important; width: auto !important; max-width: none !important; margin-right: 22px; vertical-align: top; }
+            </style>
+            <xpath expr="//div[@id='informations']" position="move"/>
+        </xpath>
 
     </template>
 
@@ -66,7 +92,8 @@
     </template>
 
     <template id="delivery_slip_footer_text">
-        <div>
+        <div>Security Air Express Ltd T/A SAE Logistics. Company Reg no: 02788444 VAT: GB 626994101</div>
+        <div style="font-style:italic; margin-top:3px;">
             Should you have any queries, discrepancies or concerns relating to your delivery,
             please notify SAE Logistics and or your supplier within 24 hours of receipt of the
             goods. This will allow us to investigate and resolve any issues as quickly as
