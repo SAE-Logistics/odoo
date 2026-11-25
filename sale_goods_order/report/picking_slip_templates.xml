@@ -49,35 +49,59 @@
             <div t-if="slip_order_note or slip_deliver_note" name="slip_notes"
                  style="border:1px solid #666; padding:8px 10px; margin-bottom:14px; page-break-inside:avoid;">
                 <div t-if="slip_order_note">
-                    <div style="font-weight:bold;">Order Notes</div>
-                    <div t-out="slip_order_note" style="white-space:pre-line;"/>
+                    <strong>Order Notes:</strong> <span t-out="slip_order_note" style="white-space:pre-line;"/>
                 </div>
-                <div t-if="slip_deliver_note" t-att-style="'margin-top:8px;' if slip_order_note else ''">
-                    <div style="font-weight:bold;">Delivery Instructions</div>
-                    <div t-out="slip_deliver_note" style="white-space:pre-line;"/>
+                <div t-if="slip_deliver_note" t-att-style="'margin-top:4px;' if slip_order_note else ''">
+                    <strong>Delivery Instructions:</strong> <span t-out="slip_deliver_note" style="white-space:pre-line;"/>
                 </div>
             </div>
         </xpath>
 
-        <!-- Title: form name, order number, transfer ref (left); barcode (right) -->
-        <xpath expr="//div[hasclass('row') and hasclass('mt16') and hasclass('mb16')]" position="replace">
-            <div name="slip_head_row" class="row mt16 mb16">
-                <div name="slip_title_col" class="col-7">
-                    <div style="font-size:30px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; line-height:1.1;">
-                        Picking Slip
-                    </div>
-                    <div t-if="o.origin" style="font-size:24px; font-weight:bold; margin-top:6px;">
-                        Order No: <span t-field="o.origin"/>
-                    </div>
-                    <div class="text-muted" style="font-size:13px; margin-top:2px;">
-                        Transfer: <span t-field="o.name"/>
-                    </div>
-                </div>
-                <div name="slip_barcode_col" class="col-5">
-                    <div t-field="o.name" t-options="{'widget': 'barcode', 'width': 600, 'height': 100, 'img_style': 'width:300px;height:50px;'}"/>
-                </div>
+        <!-- Compact header: the right-hand column next to the Delivery Address (the old
+             Customer Address slot, now empty on outgoing pickings) carries the title
+             block: form name, order number, transfer ref, barcode, status and scheduled
+             date. Vendor / warehouse address blocks for other picking types still render
+             in this column, below the title block. -->
+        <xpath expr="//div[@name='div_incoming_address']" position="attributes">
+            <attribute name="class">col-6</attribute>
+        </xpath>
+        <xpath expr="//div[@name='div_incoming_address']/*[1]" position="before">
+            <div name="slip_title_block" style="margin-bottom:6px;">
+                <table style="width:100%; border-collapse:collapse; border:0;">
+                    <tr>
+                        <td style="vertical-align:top; border:0; padding:0;">
+                            <div style="font-size:30px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; line-height:1.1;">
+                                Picking Slip
+                            </div>
+                            <div t-if="o.origin" style="font-size:24px; font-weight:bold; margin-top:6px;">
+                                Order No: <span t-field="o.origin"/>
+                            </div>
+                            <div class="text-muted" style="font-size:13px; margin-top:2px;">
+                                Transfer: <span t-field="o.name"/>
+                            </div>
+                        </td>
+                        <td style="vertical-align:top; text-align:right; width:170px; border:0; padding:0;">
+                            <div t-field="o.name" t-options="{'widget': 'barcode', 'width': 600, 'height': 100, 'img_style': 'width:170px;height:40px;'}"/>
+                        </td>
+                    </tr>
+                </table>
+                <style>
+                    #informations.slip-info { display: block !important; margin: 8px 0 0 0 !important; }
+                    #informations.slip-info > div { display: inline-block !important; width: auto !important; max-width: none !important; margin-right: 22px; vertical-align: top; padding: 0 !important; }
+                </style>
             </div>
         </xpath>
+
+        <!-- Status / scheduled date: under the title, inline (half-width column) -->
+        <xpath expr="//div[@id='informations']" position="attributes">
+            <attribute name="class" add="slip-info" separator=" "/>
+        </xpath>
+        <xpath expr="//div[@name='slip_title_block']" position="inside">
+            <xpath expr="//div[@id='informations']" position="move"/>
+        </xpath>
+
+        <!-- The old full-width title row is now empty: remove it -->
+        <xpath expr="//div[hasclass('row') and hasclass('mt16') and hasclass('mb16')]" position="replace"/>
 
         <!-- Order number is now in the title; drop the small duplicate -->
         <xpath expr="//div[@name='div_origin']" position="replace"/>
