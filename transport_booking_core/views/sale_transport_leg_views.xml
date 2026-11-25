@@ -87,6 +87,39 @@
                 <field name="tracking_code"/>
                 <field name="booking_ref"/>
                 <field name="carrier_id"/>
+                <field name="driver_id"/>
+                <field name="fleet_id"/>
+                <field name="from_location"/>
+                <field name="to_location"/>
+                <field name="from_postcode"/>
+                <field name="to_postcode"/>
+                <field name="reference"/>
+                <!-- One date box for both dates: type e.g. 26/11/2026 to see every leg
+                     collected OR delivered that day. -->
+                <field name="from_date" string="Job Date (collection or delivery)"
+                       filter_domain="['|', ('from_date', '=', self), ('to_date', '=', self)]"/>
+
+                <!-- SAE own-fleet planning. "Internal" = is_internal (set by ticking it
+                     on the list, or automatically once a driver/vehicle is assigned).
+                     A job is "for" a day when either its collection or delivery date
+                     falls on it. -->
+                <filter name="sae_tomorrow" string="SAE Drivers Tomorrow's Work"
+                        domain="[('is_internal', '=', True), '|',
+                                 ('from_date', '=', (context_today() + relativedelta(days=1)).strftime('%Y-%m-%d')),
+                                 ('to_date', '=', (context_today() + relativedelta(days=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="sae_today" string="SAE Drivers Today's Work"
+                        domain="[('is_internal', '=', True), '|',
+                                 ('from_date', '=', context_today().strftime('%Y-%m-%d')),
+                                 ('to_date', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="sae_internal" string="SAE (Internal)"
+                        domain="[('is_internal', '=', True)]"/>
+                <filter name="external_carrier" string="External Carriers"
+                        domain="[('is_internal', '=', False), ('carrier_service_id', '!=', False)]"/>
+                <filter name="to_allocate" string="To Allocate (no carrier, not internal)"
+                        domain="[('is_internal', '=', False), ('carrier_service_id', '=', False)]"/>
+                <filter name="no_dates" string="No Date Set"
+                        domain="[('from_date', '=', False), ('to_date', '=', False)]"/>
+                <separator/>
                 <filter name="carrier_exception" string="Courier Exception"
                         domain="[('carrier_exception', '=', True)]"/>
                 <separator/>
@@ -94,6 +127,10 @@
                 <filter name="in_transit" string="In Transit" domain="[('state', '=', 'in_transit')]"/>
                 <filter name="completed" string="Completed" domain="[('state', '=', 'completed')]"/>
                 <group expand="0" string="Group By">
+                    <filter name="group_driver" string="Driver" context="{'group_by': 'driver_id'}"/>
+                    <filter name="group_vehicle" string="Vehicle" context="{'group_by': 'fleet_id'}"/>
+                    <filter name="group_from_date" string="Collection Date" context="{'group_by': 'from_date:day'}"/>
+                    <filter name="group_to_date" string="Delivery Date" context="{'group_by': 'to_date:day'}"/>
                     <filter name="group_state" string="Status" context="{'group_by': 'state'}"/>
                 </group>
             </search>

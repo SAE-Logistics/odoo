@@ -179,7 +179,10 @@
                            options="{'text_field': 'to_town_postcode'}"/>
                     <field name="from_date" string="Collection Date" widget="remaining_days" optional="show"/>
                     <field name="to_date" string="Delivery Date" widget="remaining_days" optional="show"/>
-                    <field name="is_internal" optional="show"/>
+                    <!-- Instructions: used to shuffle the run order (first to last stop) -->
+                    <field name="from_instructions" string="Pick Up Instructions" optional="show"/>
+                    <field name="to_instructions" string="Drop Off Instructions" optional="show"/>
+                    <field name="is_internal" string="Internal" optional="show"/>
                     <field name="driver_id" optional="show"/>
                     <field name="fleet_id" optional="show"/>
                     <field name="carrier_id" string="Carrier Name" optional="show"/>
