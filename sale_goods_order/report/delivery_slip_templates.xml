@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Delivery Slip (stock.picking) customisation.
+
+        1. Title block: form name ("Delivery Slip") and the order number are
+           printed large. The picking reference (e.g. MHB/OUT/00040) drops to
+           a smaller secondary line.
+        2. Footer: the company footer (company.report_footer) carries the bank
+           / payment details and is shared with invoices, so it must NOT be
+           edited. The slip sets `delivery_slip_footer` inside the layout call
+           body (the same scope mechanism as `address` / `information_block`),
+           and the two layout inherits below swap the footer text for the
+           customer-queries wording when that flag is present. Every other
+           document keeps the normal company footer.
+    -->
+
+    <template id="report_delivery_document_sae" inherit_id="stock.report_delivery_document">
+
+        <!-- Flag read by the layout footer inherits below. -->
+        <xpath expr="//t[@t-set='address']" position="before">
+            <t t-set="delivery_slip_footer" t-value="True"/>
+        </xpath>
+
+        <!-- Title: form name + prominent order number -->
+        <xpath expr="//div[hasclass('page')]/h2" position="replace">
+            <div name="slip_title" style="margin-bottom:14px;">
+                <div style="font-size:30px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; line-height:1.1;">
+                    Delivery Slip
+                </div>
+                <div t-if="o.origin" style="font-size:24px; font-weight:bold; margin-top:6px;">
+                    Order No: <span t-field="o.origin"/>
+                </div>
+                <div class="text-muted" style="font-size:13px; margin-top:2px;">
+                    Transfer: <span t-field="o.name"/>
+                </div>
+            </div>
+        </xpath>
+
+        <!-- Order number is now in the title; drop the small duplicate -->
+        <xpath expr="//div[@name='div_origin']" position="replace"/>
+
+    </template>
+
+    <!-- Footer text, bold layout (SAE's configured layout) -->
+    <template id="external_layout_bold_delivery_slip_footer"
+              inherit_id="web.external_layout_bold">
+        <xpath expr="//span[@t-field='company.report_footer']" position="replace">
+            <t t-if="delivery_slip_footer">
+                <t t-call="sale_goods_order.delivery_slip_footer_text"/>
+            </t>
+            <span t-else="" t-field="company.report_footer"/>
+        </xpath>
+    </template>
+
+    <!-- Same swap for the standard layout, in case the company layout is changed -->
+    <template id="external_layout_standard_delivery_slip_footer"
+              inherit_id="web.external_layout_standard">
+        <xpath expr="//div[@t-field='company.report_footer']" position="replace">
+            <div t-if="delivery_slip_footer" class="flex-grow-1 text-start me-2">
+                <t t-call="sale_goods_order.delivery_slip_footer_text"/>
+            </div>
+            <div t-else="" class="flex-grow-1 text-start me-2" t-field="company.report_footer"/>
+        </xpath>
+    </template>
+
+    <template id="delivery_slip_footer_text">
+        <div>
+            Should you have any queries, discrepancies or concerns relating to your delivery,
+            please notify SAE Logistics and or your supplier within 24 hours of receipt of the
+            goods. This will allow us to investigate and resolve any issues as quickly as
+            possible. Any visible damage, shortages or delivery discrepancies should be
+            reported within this timeframe.
+        </div>
+    </template>
+
+</odoo>
