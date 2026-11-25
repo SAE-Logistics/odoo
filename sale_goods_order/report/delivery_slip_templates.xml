@@ -98,6 +98,8 @@
             <t t-if="delivery_slip_footer">
                 <t t-call="sale_goods_order.delivery_slip_footer_text"/>
             </t>
+            <!-- Picking slip: no company footer text (set in picking_slip_templates.xml) -->
+            <t t-elif="picking_slip_no_footer"/>
             <span t-else="" t-field="company.report_footer"/>
         </xpath>
     </template>
@@ -148,6 +150,7 @@
             <div t-if="delivery_slip_footer" class="flex-grow-1 text-start me-2">
                 <t t-call="sale_goods_order.delivery_slip_footer_text"/>
             </div>
+            <div t-elif="picking_slip_no_footer" class="flex-grow-1 text-start me-2"/>
             <div t-else="" class="flex-grow-1 text-start me-2" t-field="company.report_footer"/>
         </xpath>
     </template>
