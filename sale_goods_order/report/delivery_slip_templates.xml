@@ -36,13 +36,7 @@
              the country. Other countries keep the standard contact widget. -->
         <xpath expr="//div[@name='outgoing_delivery_address']/div[@t-out]" position="replace">
             <div t-if="delivery_slip_uk" name="slip_uk_address">
-                <div t-if="slip_dest.name" t-out="slip_dest.name"/>
-                <div t-if="slip_dest.street" t-out="slip_dest.street"/>
-                <div t-if="slip_dest.street2" t-out="slip_dest.street2"/>
-                <div t-if="slip_dest.city" t-out="slip_dest.city"/>
-                <div t-if="slip_dest.state_id" t-out="slip_dest.state_id.name"/>
-                <div t-if="slip_dest.zip" t-out="slip_dest.zip"/>
-                <div t-if="slip_dest.phone"><i class="fa fa-phone fa-fw"/> <span t-out="slip_dest.phone"/></div>
+                <t t-call="sale_goods_order.delivery_slip_uk_address"/>
             </div>
             <div t-else="" t-out="slip_dest"
                  t-options="{'widget': 'contact', 'fields': ['address', 'name', 'phone'], 'no_marker': True, 'phone_icons': True}"/>
@@ -111,10 +105,10 @@
               inherit_id="web.external_layout_bold"
               priority="20">
         <xpath expr="//ul[@name='company_address_list']" position="attributes">
-            <attribute name="t-if">not delivery_slip_footer</attribute>
+            <attribute name="t-if">not (delivery_slip_footer or picking_slip_no_footer)</attribute>
         </xpath>
         <xpath expr="//ul[@name='company_address_list']" position="after">
-            <ul t-if="delivery_slip_footer" class="list-unstyled" name="company_address_list_slip">
+            <ul t-if="delivery_slip_footer or picking_slip_no_footer" class="list-unstyled" name="company_address_list_slip">
                 <t t-call="sale_goods_order.delivery_slip_company_address"/>
             </ul>
         </xpath>
@@ -124,13 +118,26 @@
               inherit_id="web.external_layout_standard"
               priority="20">
         <xpath expr="//ul[@name='company_address_list']" position="attributes">
-            <attribute name="t-if">not delivery_slip_footer</attribute>
+            <attribute name="t-if">not (delivery_slip_footer or picking_slip_no_footer)</attribute>
         </xpath>
         <xpath expr="//ul[@name='company_address_list']" position="after">
-            <ul t-if="delivery_slip_footer" class="list-unstyled" name="company_address_list_slip">
+            <ul t-if="delivery_slip_footer or picking_slip_no_footer" class="list-unstyled" name="company_address_list_slip">
                 <t t-call="sale_goods_order.delivery_slip_company_address"/>
             </ul>
         </xpath>
+    </template>
+
+    <!-- UK delivery address lines (no country). Shared by the Delivery Slip and the
+         Picking Slip; expects `slip_dest` (the delivery partner) in scope.
+         display_name = "Company, Person" like the standard contact widget. -->
+    <template id="delivery_slip_uk_address">
+        <div t-if="slip_dest.display_name" t-out="slip_dest.display_name"/>
+        <div t-if="slip_dest.street" t-out="slip_dest.street"/>
+        <div t-if="slip_dest.street2" t-out="slip_dest.street2"/>
+        <div t-if="slip_dest.city" t-out="slip_dest.city"/>
+        <div t-if="slip_dest.state_id" t-out="slip_dest.state_id.name"/>
+        <div t-if="slip_dest.zip" t-out="slip_dest.zip"/>
+        <div t-if="slip_dest.phone"><i class="fa fa-phone fa-fw"/> <span t-out="slip_dest.phone"/></div>
     </template>
 
     <template id="delivery_slip_company_address">
