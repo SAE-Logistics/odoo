@@ -58,6 +58,12 @@ CUSTOMS_REASON = [
 
 CUSTOMS_TERMS = [('dap', 'DAP'), ('ddp', 'DDP')]
 
+# Order sections that code-added charge lines belong under, matched by the
+# section line's name (case-insensitive). The names come from the quotation
+# templates, so both spellings of Fulfil(l)ment are accepted.
+FULFILLMENT_SECTION_NAMES = ('fulfillment', 'fulfilment')
+TRANSPORT_SECTION_NAMES = ('transport',)
+
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
@@ -665,6 +671,71 @@ class SaleOrder(models.Model):
             ))
         return tax
 
+    def _get_section_line_bounds(self, section_names):
+        """Return (lines, start, end) for the first section named in
+        ``section_names``: ``lines`` is the order's lines in display order,
+        ``lines[start]`` the section line and ``lines[start + 1:end]`` its
+        content. Returns None when the order has no such section."""
+        self.ensure_one()
+        names = {name.lower() for name in section_names}
+        lines = self.order_line.sorted(lambda line: (line.sequence, line.id))
+        start = next((
+            index for index, line in enumerate(lines)
+            if line.display_type == 'line_section'
+            and (line.name or '').strip().lower() in names
+        ), None)
+        if start is None:
+            return None
+        end = next((
+            index for index in range(start + 1, len(lines))
+            if lines[index].display_type == 'line_section'
+        ), len(lines))
+        return lines, start, end
+
+    def _section_end_sequence(self, section_names):
+        """Sequence that sorts a new line last inside the named section.
+
+        Charge lines added by code (package cartons/pallets, transport
+        charges, surcharges) otherwise get the default sequence of 10, which
+        ties with the first template section and drops them under whatever
+        section happens to come first. Lines after the section are shifted
+        down when needed so the new line never sorts past the next section.
+        Returns None when the order has no such section, leaving the default
+        placement unchanged.
+        """
+        self.ensure_one()
+        bounds = self._get_section_line_bounds(section_names)
+        if not bounds:
+            return None
+        lines, start, end = bounds
+        sequence = lines[end - 1].sequence + 1
+        following = lines[end:]
+        if following and following[0].sequence <= sequence:
+            shift = sequence - following[0].sequence + 1
+            for line in following:
+                line.sequence += shift
+        return sequence
+
+    def _line_in_section(self, line, section_names):
+        self.ensure_one()
+        bounds = self._get_section_line_bounds(section_names)
+        if not bounds:
+            return False
+        lines, start, end = bounds
+        return line in lines[start + 1:end]
+
+    def _place_lines_in_section(self, lines, section_names):
+        """Move ``lines`` (of this order) to the end of the named section,
+        skipping any already inside it. No-op without such a section."""
+        self.ensure_one()
+        for line in lines:
+            if self._line_in_section(line, section_names):
+                continue
+            sequence = self._section_end_sequence(section_names)
+            if sequence is None:
+                return
+            line.sequence = sequence
+
     def _sync_transport_surcharge_sale_lines(self):
         for order in self:
             if not order:
@@ -726,6 +797,9 @@ class SaleOrder(models.Model):
                         'order_id': order.id,
                         'product_id': product_id,
                     })
+                    sequence = order._section_end_sequence(TRANSPORT_SECTION_NAMES)
+                    if sequence is not None:
+                        line_vals['sequence'] = sequence
                     self.env['sale.order.line']._add_product_taxes_to_vals(line_vals)
                     self.env['sale.order.line'].create(line_vals)
 
