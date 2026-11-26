@@ -7,6 +7,8 @@ import requests
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
+from .sale_order import TRANSPORT_SECTION_NAMES
+
 
 _logger = logging.getLogger(__name__)
 
@@ -207,6 +209,9 @@ class SaleTransportLeg(models.Model):
                 'name': product.get_product_multiline_description_sale() or product.display_name,
             })
             self.env['sale.order.line']._add_product_taxes_to_vals(line_vals)
+        sequence = sale._section_end_sequence(TRANSPORT_SECTION_NAMES)
+        if sequence is not None:
+            line_vals['sequence'] = sequence
         return self.env['sale.order.line'].create(line_vals)
 
     def _assign_goods_delivery_order_lines(self):

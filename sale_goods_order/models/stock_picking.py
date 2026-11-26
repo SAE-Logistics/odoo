@@ -4,7 +4,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.tools.float_utils import float_round
 
-from .sale_order import PickingDoneSaleLineGrant
+from .sale_order import FULFILLMENT_SECTION_NAMES, PickingDoneSaleLineGrant
 
 
 class StockPicking(models.Model):
@@ -332,6 +332,9 @@ class StockPicking(models.Model):
                 'invoice_service_type': 'warehouse',
             }
             if not line:
+                sequence = sale._section_end_sequence(FULFILLMENT_SECTION_NAMES)
+                if sequence is not None:
+                    values['sequence'] = sequence
                 line = self.env['sale.order.line'].create(values)
             else:
                 line.write(values)
