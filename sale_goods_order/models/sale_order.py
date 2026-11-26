@@ -290,10 +290,69 @@ class SaleOrder(models.Model):
             for order in self:
                 if order.order_line.mapped('transport_leg_ids'):
                     raise ValidationError(_("You cannot enable No Transport Needed once transport legs are already linked to the sale order."))
+        note_fields = {'collect_note', 'deliver_note'} & set(vals)
+        old_notes = {
+            order.id: {name: order[name] for name in note_fields}
+            for order in self
+        } if note_fields else {}
         res = super().write(vals)
         if 'fiscal_position_id' in vals:
             self.order_line._refresh_product_taxes_from_product()
+        if note_fields:
+            self._sync_leg_instructions(old_notes=old_notes)
         return res
+
+    # Leg field <- order note, and which leg it belongs on.
+    _LEG_NOTE_FIELDS = (
+        ('from_instructions', 'collect_note', 'first'),
+        ('to_instructions', 'deliver_note', 'last'),
+    )
+
+    def _sync_leg_instructions(self, old_notes=None, fill_only=False):
+        """Copy the order's Collection / Delivery Note onto its transport legs.
+
+        The collection note goes on the first leg's pickup instructions and the
+        delivery note on the last leg's drop off instructions (a single leg
+        gets both), ordered by ``sequence``.
+
+        - ``old_notes`` ({order id: {note field: previous value}}): those notes
+          just changed, so the new text replaces whatever the target leg holds,
+          hand-typed text included.
+        - Otherwise (legs added, removed or reordered) a target leg is filled
+          only when blank or when it still holds the order's note text, so text
+          typed on a leg by hand is kept.
+        - A leg that is no longer the target but still holds the note text
+          (e.g. the first leg kept the delivery note after a second leg was
+          added) is cleared.
+        - ``fill_only``: fill blank target legs, change nothing else. Used for
+          the one-off backfill on upgrade.
+        """
+        old_notes = old_notes or {}
+        for order in self:
+            legs = order.transport_all_leg_ids.sorted(lambda leg: (leg.sequence, leg.id))
+            if not legs:
+                continue
+            changed = old_notes.get(order.id, {})
+            for leg_field, note_field, position in self._LEG_NOTE_FIELDS:
+                note = order[note_field] or False
+                if note_field in changed and (changed[note_field] or False) == note:
+                    del changed[note_field]
+                note_texts = {text for text in (note, changed.get(note_field)) if text}
+                target = legs[:1] if position == 'first' else legs[-1:]
+                for leg in legs:
+                    current = leg[leg_field] or False
+                    if leg == target:
+                        if fill_only:
+                            follow = not current
+                        else:
+                            follow = note_field in changed or not current or current in note_texts
+                        value = note if follow else current
+                    elif current and current in note_texts and not fill_only:
+                        value = False
+                    else:
+                        value = current
+                    if value != current:
+                        leg.write({leg_field: value})
 
     def _get_warehouse_delivery_address(self, warehouse):
         self.ensure_one()
