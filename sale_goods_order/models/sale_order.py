@@ -63,6 +63,8 @@ CUSTOMS_TERMS = [('dap', 'DAP'), ('ddp', 'DDP')]
 # templates, so both spellings of Fulfil(l)ment are accepted.
 FULFILLMENT_SECTION_NAMES = ('fulfillment', 'fulfilment')
 TRANSPORT_SECTION_NAMES = ('transport',)
+# Materials go in their own section when the order has one, else Fulfillment.
+MATERIALS_SECTION_NAMES = ('materials', 'material')
 
 
 class SaleOrder(models.Model):
@@ -735,6 +737,15 @@ class SaleOrder(models.Model):
             if sequence is None:
                 return
             line.sequence = sequence
+
+    def _place_material_lines(self, lines):
+        """Put material lines in the Materials section, or Fulfillment when
+        the order has no Materials section."""
+        self.ensure_one()
+        if self._get_section_line_bounds(MATERIALS_SECTION_NAMES):
+            self._place_lines_in_section(lines, MATERIALS_SECTION_NAMES)
+        else:
+            self._place_lines_in_section(lines, FULFILLMENT_SECTION_NAMES)
 
     def _sync_transport_surcharge_sale_lines(self):
         for order in self:

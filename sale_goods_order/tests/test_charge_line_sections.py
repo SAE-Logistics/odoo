@@ -80,3 +80,23 @@ class TestChargeLineSections(TransactionCase):
         sequence = stray.sequence
         order._place_lines_in_section(stray, ('fulfillment',))
         self.assertEqual(stray.sequence, sequence)
+
+    def test_material_lines_prefer_materials_section(self):
+        order = self._order([('Fulfillment', 1), ('Materials', 1), ('Transport', 1)])
+        stray = self.env['sale.order.line'].create({
+            'order_id': order.id, 'product_id': self.charge.id, 'sequence': 99,
+        })  # Odoo's delivered-product line: bottom of the order
+        order._place_material_lines(stray)
+        self.assertEqual(self._layout(order), [
+            'Fulfillment', 'svc', 'Materials', 'svc', 'CHARGE', 'Transport', 'svc',
+        ])
+
+    def test_material_lines_fall_back_to_fulfillment(self):
+        order = self._order([('Fulfillment', 1), ('Transport', 1)])
+        stray = self.env['sale.order.line'].create({
+            'order_id': order.id, 'product_id': self.charge.id, 'sequence': 99,
+        })
+        order._place_material_lines(stray)
+        self.assertEqual(self._layout(order), [
+            'Fulfillment', 'svc', 'CHARGE', 'Transport', 'svc',
+        ])

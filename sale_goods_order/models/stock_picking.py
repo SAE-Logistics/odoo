@@ -513,6 +513,26 @@ class StockPicking(models.Model):
             picking.action_confirm()
             picking.action_assign()
 
+    def _place_delivered_material_lines(self, lines_before):
+        """Odoo's sale_stock adds an order line for each delivered product
+        not already on the order (the packing materials) and puts it at the
+        bottom, i.e. under whichever section comes last. Move the lines it
+        just added into the Materials (or Fulfillment) section."""
+        for sale in self.mapped("sale_id").filtered(
+            lambda order: order.order_type in ("goods_in", "goods_out")
+        ):
+            new_lines = (sale.order_line - lines_before).filtered(
+                lambda line: not line.display_type
+                and line.move_ids
+                and line.product_id.type == "consu"
+            )
+            if new_lines:
+                # Only sequences are written; warehouse users validating the
+                # transfer may not have write access to sale order lines.
+                sale.sudo()._place_material_lines(
+                    new_lines.sudo().sorted(lambda line: (line.sequence, line.id))
+                )
+
     def _recompute_consumed_products(self):
         """
         Rebuild the aggregated consumed products for each picking, based on
@@ -550,7 +570,9 @@ class StockPicking(models.Model):
         # sale_stock creates SO lines for delivered moves without sudo; the grant
         # lets sale.order.line.create elevate only within picking validation.
         grant = PickingDoneSaleLineGrant(self.mapped("sale_id").ids)
+        lines_before = self.mapped("sale_id.order_line")
         res = super(StockPicking, self.with_context(sae_picking_done=grant))._action_done()
+        self._place_delivered_material_lines(lines_before)
         self._update_goods_order_metrics()
         self.filtered(
             lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'
