@@ -79,5 +79,6 @@
               name="Client Reports"
               action="action_sae_client_report"
               parent="sale.sale_menu_root"
-              sequence="90"/>
+              sequence="90"
+              groups="sales_team.group_sale_salesman_all_leads"/>
 </odoo>

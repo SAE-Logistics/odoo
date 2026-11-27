@@ -23,7 +23,10 @@ class SaeClientReportGenerateWizard(models.TransientModel):
 
     def action_generate(self):
         self.ensure_one()
-        Report = self.env["sae.client.report"]
+        # Wizard access is limited to report runners (see ir.model.access.csv);
+        # the build itself reads across invoicing/stock, so it runs as sudo.
+        self.env["sae.client.report"].check_access("create")
+        Report = self.env["sae.client.report"].sudo()
         period_start, period_end = month_bounds(self.month)
         partners = self.partner_ids.commercial_partner_id or Report._clients_with_invoices(period_start, period_end)
         reports = Report._generate_for_clients(partners, period_start, period_end)

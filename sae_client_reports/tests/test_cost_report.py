@@ -188,3 +188,26 @@ class TestClientCostReport(AccountTestInvoicingCommon):
         reports = self.env["sae.client.report"].search(action["domain"])
         self.assertIn(self.client, reports.commercial_partner_id)
         self.assertEqual(reports.filtered(lambda r: r.commercial_partner_id == self.client).period_end, OCT_END)
+
+    def test_only_sales_all_documents_users_can_run_reports(self):
+        from odoo.exceptions import AccessError
+        Users = self.env["res.users"].with_context(no_reset_password=True)
+        own_docs = Users.create({
+            "name": "Own Docs Rep", "login": "own_docs_rep",
+            "groups_id": [(6, 0, [self.env.ref("sales_team.group_sale_salesman").id])],
+        })
+        all_docs = Users.create({
+            "name": "All Docs Rep", "login": "all_docs_rep",
+            "groups_id": [(6, 0, [self.env.ref("sales_team.group_sale_salesman_all_leads").id])],
+        })
+        with self.assertRaises(AccessError):
+            self.env["sae.client.report.generate.wizard"].with_user(own_docs).create({"month": OCT_START})
+        with self.assertRaises(AccessError):
+            self.env["sae.client.report"].with_user(own_docs).search([])
+        wizard = self.env["sae.client.report.generate.wizard"].with_user(all_docs).create({
+            "month": OCT_START, "partner_ids": [(6, 0, self.client.ids)],
+        })
+        action = wizard.action_generate()
+        report = self.env["sae.client.report"].with_user(all_docs).search(action["domain"])
+        self.assertEqual(report.commercial_partner_id, self.client)
+        self.assertEqual(report.state, "done")
