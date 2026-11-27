@@ -211,3 +211,33 @@ class TestClientCostReport(AccountTestInvoicingCommon):
         report = self.env["sae.client.report"].with_user(all_docs).search(action["domain"])
         self.assertEqual(report.commercial_partner_id, self.client)
         self.assertEqual(report.state, "done")
+
+    def test_only_portal_client_admins_see_their_company_reports(self):
+        from odoo.exceptions import AccessError
+        Report = self.env["sae.client.report"]
+        other_client = self.env["res.partner"].create({"name": "Other Client", "is_company": True})
+        own_report, other_report = Report.create([
+            {"commercial_partner_id": partner.id, "period_start": OCT_START, "period_end": OCT_END}
+            for partner in (self.client, other_client)
+        ])
+        portal = self.env.ref("base.group_portal")
+        client_admin = self.env.ref("sale_goods_order.group_portal_client_admin")
+        Users = self.env["res.users"].with_context(no_reset_password=True)
+        plain = Users.create({
+            "name": "Plain Portal", "login": "plain_portal", "partner_id": self.contact.id,
+            "groups_id": [(6, 0, portal.ids)],
+        })
+        admin = Users.create({
+            "name": "Client Admin", "login": "client_admin_portal",
+            "partner_id": self.env["res.partner"].create({
+                "name": "Ada Admin", "parent_id": self.client.id, "type": "contact",
+            }).id,
+            "groups_id": [(6, 0, (portal | client_admin).ids)],
+        })
+        # The flag never turns a portal user into an internal one.
+        self.assertTrue(admin.share)
+        with self.assertRaises(AccessError):
+            Report.with_user(plain).search([])
+        self.assertEqual(Report.with_user(admin).search([]), own_report)
+        with self.assertRaises(AccessError):
+            other_report.with_user(admin).check_access("read")

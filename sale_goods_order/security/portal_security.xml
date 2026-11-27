@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Role marker for the MySAE client portal. A portal user in this
+            group may invite and deactivate other users of their own company
+            in MySAE, and can see their company's monthly cost reports.
+            Grants no Odoo access by itself: no implied groups, no ACLs here,
+            and no category, so it never changes the user type (share stays True).
+        -->
+        <record id="group_portal_client_admin" model="res.groups">
+            <field name="name">MySAE Portal Client Admin</field>
+            <field name="comment">Marks a portal user who may invite and deactivate other users of their own company in the MySAE portal, and see their company's client reports. Grants no Odoo access by itself.</field>
+        </record>
+    </data>
+</odoo>
