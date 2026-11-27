@@ -10,7 +10,7 @@ class SaeClientReportPortal(CustomerPortal):
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)
         if "report_count" in counters:
-            values["report_count"] = request.env["sae.client.report"].search_count([])
+            values["report_count"] = request.env["sae.client.report"].search_count([("state", "=", "done")])
         return values
 
     @http.route(["/my/reports"], type="http", auth="user", website=True)
@@ -35,7 +35,11 @@ class SaeClientReportPortal(CustomerPortal):
         except (AccessError, MissingError):
             return request.not_found()
 
-        attachment = report.attachment_id
+        # Access to the report was checked above; the attachment is read
+        # with sudo so portal users do not need ir.attachment rights.
+        attachment = report.sudo().attachment_id
+        if report.state != "done" or not attachment:
+            return request.not_found()
         return request.env["ir.binary"]._get_stream_from(attachment).get_response(
             as_attachment=True,
         )
