@@ -7,10 +7,10 @@
         <field name="code">model._cron_generate_monthly_cost_breakdown()</field>
         <field name="interval_number">1</field>
         <field name="interval_type">months</field>
-        <!-- Left inactive: the generation method currently raises
-             NotImplementedError pending confirmation of the reports_designer
-             call (see models/sae_client_report.py). Activate once that's
-             wired up and tested manually against one real client/period. -->
+        <!-- Reports on the previous month's invoices. Left inactive until the
+             first reports have been checked with SAE; then activate it and set
+             the next run to a few days into the month so month-end invoices
+             are posted first. Late invoices: regenerate from the report. -->
         <field name="active" eval="False"/>
     </record>
 </odoo>

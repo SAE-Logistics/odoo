@@ -1,20 +1,33 @@
 # -*- coding: utf-8 -*-
+import base64
 import calendar
 import logging
 from datetime import date
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
 
+def month_bounds(day):
+    """First and last day of the month containing ``day``."""
+    start = day.replace(day=1)
+    return start, start.replace(day=calendar.monthrange(start.year, start.month)[1])
+
+
+def previous_month_bounds(today):
+    first_of_this_month = today.replace(day=1)
+    year, month = first_of_this_month.year, first_of_this_month.month - 1
+    if month == 0:
+        year, month = year - 1, 12
+    return month_bounds(date(year, month, 1))
+
+
 class SaeClientReport(models.Model):
-    """Tracks a generated client-facing report so it can be listed and
-    downloaded from the portal. The actual XLSX rendering is delegated to
-    the reports_designer module (see _generate_file below) — this model
-    is deliberately thin: it just records what was generated, for whom,
-    for which period, and holds the resulting attachment.
+    """A generated client-facing report, listed and downloaded on the portal.
+
+    Each record holds one XLSX for one client and period. Regenerating the
+    same client/period replaces the file on the existing record.
     """
     _name = "sae.client.report"
     _description = "SAE Client-Facing Report"
@@ -26,15 +39,10 @@ class SaeClientReport(models.Model):
         string="Client",
         required=True,
         index=True,
-        help="Commercial (top-level) partner this report was generated for. "
-             "Always use commercial_partner_id, not partner_id — SAE clients "
-             "like Medtronic and Digital Surgery have multiple contacts "
-             "against the same account.",
+        help="Commercial (top-level) partner this report was generated for.",
     )
     report_type = fields.Selection(
-        [
-            ("monthly_cost_breakdown", "Monthly Cost Breakdown"),
-        ],
+        [("monthly_cost_breakdown", "Monthly Cost Report")],
         string="Report Type",
         required=True,
         default="monthly_cost_breakdown",
@@ -44,19 +52,18 @@ class SaeClientReport(models.Model):
     attachment_id = fields.Many2one(
         "ir.attachment",
         string="Report File",
-        required=True,
         ondelete="restrict",
     )
     generated_date = fields.Datetime(default=fields.Datetime.now, required=True)
     state = fields.Selection(
-        [
-            ("done", "Generated"),
-            ("failed", "Failed"),
-        ],
+        [("done", "Generated"), ("failed", "Failed")],
         default="done",
         required=True,
     )
     error_message = fields.Text()
+    job_count = fields.Integer(string="Jobs")
+    invoice_count = fields.Integer(string="Invoices / Credit Notes")
+    amount_untaxed = fields.Float(string="Net Total", digits=(16, 2))
 
     display_name = fields.Char(compute="_compute_display_name", store=True)
 
@@ -68,103 +75,99 @@ class SaeClientReport(models.Model):
             rec.display_name = f"{label} — {period}"
 
     # ------------------------------------------------------------------
-    # Generation entry points
+    # Generation
     # ------------------------------------------------------------------
 
     @api.model
+    def _clients_with_invoices(self, period_start, period_end):
+        return self.env["account.move"].search([
+            ("move_type", "in", ("out_invoice", "out_refund")),
+            ("state", "=", "posted"),
+            ("invoice_date", ">=", period_start),
+            ("invoice_date", "<=", period_end),
+        ]).mapped("commercial_partner_id")
+
+    @api.model
     def _cron_generate_monthly_cost_breakdown(self):
-        """Called monthly by ir.cron. Generates the Monthly Cost Breakdown
-        report for every commercial partner with at least one sale.order
-        in the previous calendar month, and files the result as an
-        sae.client.report record.
-        """
-        today = fields.Date.context_today(self)
-        first_of_this_month = today.replace(day=1)
+        """Monthly cron: one report per client invoiced in the previous month."""
+        period_start, period_end = previous_month_bounds(fields.Date.context_today(self))
+        self._generate_for_clients(self._clients_with_invoices(period_start, period_end), period_start, period_end)
 
-        # Compute previous month/year explicitly — avoids DST/day-count edge
-        # cases that creep in with timedelta subtraction across month/year
-        # boundaries.
-        py = first_of_this_month.year
-        pm = first_of_this_month.month - 1
-        if pm == 0:
-            pm = 12
-            py -= 1
-        period_start = date(py, pm, 1)
-        period_end = date(py, pm, calendar.monthrange(py, pm)[1])
-
-        partners = self.env["sale.order"].search([
-            ("date_order", ">=", period_start),
-            ("date_order", "<=", period_end),
-        ]).mapped("partner_id.commercial_partner_id")
-
+    @api.model
+    def _generate_for_clients(self, partners, period_start, period_end):
+        reports = self.browse()
         for partner in partners:
             try:
-                self._generate_monthly_cost_breakdown(partner, period_start, period_end)
-            except Exception as exc:  # noqa: BLE001 — log and continue, one client's failure must not skip the rest
+                with self.env.cr.savepoint():
+                    reports |= self._generate_monthly_cost_breakdown(partner, period_start, period_end)
+            except Exception as exc:  # noqa: BLE001 — one client's failure must not skip the rest
                 _logger.exception(
-                    "Monthly cost breakdown generation failed for %s (%s)",
-                    partner.display_name, partner.id,
+                    "Monthly cost report failed for %s (%s)", partner.display_name, partner.id,
                 )
-                self.create({
-                    "commercial_partner_id": partner.id,
-                    "report_type": "monthly_cost_breakdown",
-                    "period_start": period_start,
-                    "period_end": period_end,
+                reports |= self._upsert(partner, period_start, period_end, {
                     "state": "failed",
                     "error_message": str(exc),
-                    # attachment_id is required=True above; a failed run has none.
-                    # See TODO note in this method's docstring area re: making
-                    # attachment_id optional, or logging failures to ir.logging
-                    # only rather than this model. Left as an open decision —
-                    # flagging rather than silently deciding for you.
                 })
+        return reports
 
+    @api.model
+    def _upsert(self, partner, period_start, period_end, vals):
+        report = self.search([
+            ("commercial_partner_id", "=", partner.id),
+            ("report_type", "=", "monthly_cost_breakdown"),
+            ("period_start", "=", period_start),
+        ], limit=1)
+        vals = {"generated_date": fields.Datetime.now(), **vals}
+        if report:
+            report.write(vals)
+            return report
+        return self.create({
+            "commercial_partner_id": partner.id,
+            "report_type": "monthly_cost_breakdown",
+            "period_start": period_start,
+            "period_end": period_end,
+            **vals,
+        })
+
+    @api.model
     def _generate_monthly_cost_breakdown(self, commercial_partner, period_start, period_end):
-        """Generate one Monthly Cost Breakdown report for one client/period
-        and file it as an sae.client.report record.
-
-        TODO — CONFIRM BEFORE RELYING ON THIS METHOD:
-        The actual call into reports_designer is not filled in below.
-        From the module's data model (reports.designer / reports.designer.param
-        / reports.designer.fields.sql) I can confirm the report is configured
-        with parameters (client, date_from, date_to) and a SQL-backed section —
-        that part is UI configuration inside Reports Designer, not code.
-        What I could NOT confirm from the database schema alone is the exact
-        Python method used to trigger generation headlessly (outside the
-        normal print-button/wizard flow a user drives). Grep the installed
-        module's source for the wizard's action method — likely something in
-        `reports_designer.wizard` or `reports_designer.gen` — and replace the
-        block below with the real call. Everything else in this model
-        (tracking record, portal listing, cron scheduling) does not depend
-        on getting that call signature right on the first try.
-        """
-        Designer = self.env["reports.designer"]
-        template = Designer.search([("name", "=", "Monthly Cost Breakdown")], limit=1)
-        if not template:
-            raise UserError(
-                "Reports Designer template 'Monthly Cost Breakdown' not found. "
-                "Build it in Settings > Technical > Reports Designer first "
-                "(see the build notes for the required params and SQL section)."
-            )
-
-        # --- Placeholder integration point ---
-        # attachment = template._some_generation_method(
-        #     param_values={
-        #         "client": commercial_partner.id,
-        #         "date_from": period_start,
-        #         "date_to": period_end,
-        #     }
-        # )
-        raise NotImplementedError(
-            "Wire this up to the confirmed reports_designer generation call "
-            "before enabling the cron."
+        """Build the XLSX for one client/period and file it on a report record."""
+        commercial_partner = commercial_partner.commercial_partner_id
+        content, data = self.env["sae.client.cost.report"].build(commercial_partner, period_start, period_end)
+        filename = "SAE Cost Report - {} - {}.xlsx".format(
+            commercial_partner.name, period_start.strftime("%Y-%m"),
         )
+        report = self._upsert(commercial_partner, period_start, period_end, {
+            "state": "done",
+            "error_message": False,
+            "job_count": len(data["jobs"]),
+            "invoice_count": len(data["invoices"]),
+            "amount_untaxed": sum(row["net"] for row in data["invoices"]),
+        })
+        old_attachment = report.attachment_id
+        attachment = self.env["ir.attachment"].create({
+            "name": filename,
+            "datas": base64.b64encode(content),
+            "res_model": self._name,
+            "res_id": report.id,
+            "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+        report.attachment_id = attachment
+        if old_attachment:
+            old_attachment.unlink()
+        return report
 
-        # self.create({
-        #     "commercial_partner_id": commercial_partner.id,
-        #     "report_type": "monthly_cost_breakdown",
-        #     "period_start": period_start,
-        #     "period_end": period_end,
-        #     "attachment_id": attachment.id,
-        #     "state": "done",
-        # })
+    def action_regenerate(self):
+        for report in self:
+            self._generate_for_clients(report.commercial_partner_id, report.period_start, report.period_end)
+        return True
+
+    def action_download(self):
+        self.ensure_one()
+        if not self.attachment_id:
+            return False
+        return {
+            "type": "ir.actions.act_url",
+            "url": f"/web/content/{self.attachment_id.id}?download=true",
+            "target": "self",
+        }
