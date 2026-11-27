@@ -1,7 +1,7 @@
 {
     "name": "SAE Client Reports",
     "summary": "Monthly client cost reports (XLSX) for the client portal",
-    "version": "18.0.1.1.0",
+    "version": "18.0.1.2.0",
     "category": "Sales",
     "author": "eartisan",
     "depends": [

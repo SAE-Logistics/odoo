@@ -158,8 +158,12 @@ class SaeClientReport(models.Model):
         return report
 
     def action_regenerate(self):
+        # Permission is checked on the report; building it reads invoices,
+        # orders, legs and pickings the user may not all have rights to.
+        self.check_access("write")
+        Report = self.sudo()
         for report in self:
-            self._generate_for_clients(report.commercial_partner_id, report.period_start, report.period_end)
+            Report._generate_for_clients(report.commercial_partner_id, report.period_start, report.period_end)
         return True
 
     def action_download(self):

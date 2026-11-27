@@ -32,5 +32,6 @@
               name="Generate Client Reports"
               action="action_sae_client_report_generate_wizard"
               parent="sale.sale_menu_root"
-              sequence="91"/>
+              sequence="91"
+              groups="sales_team.group_sale_salesman_all_leads"/>
 </odoo>
